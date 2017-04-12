@@ -1,0 +1,9 @@
+venv
+__pycache__
+*.pyc
+*.sublime-workspace
+htmlcov
+*.csv
+reports
+temp
+reportas.sublime-project
