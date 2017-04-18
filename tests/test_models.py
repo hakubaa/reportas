@@ -3,7 +3,7 @@ from collections import UserList
 import unittest
 import unittest.mock as mock
 
-from models import Document, SelfSearchingPage
+from models import Document, SelfSearchingPage, NGram
 
 
 @mock.patch("models.pdftotext",  
@@ -26,7 +26,6 @@ class DocumentTest(unittest.TestCase):
         doc = Document("reports/test.pdf")
         page = doc[1]
         self.assertEqual(page, "Page2\n")
-
 
 
 class SelfSearchingPageTest(unittest.TestCase):
@@ -56,3 +55,43 @@ class SelfSearchingPageTest(unittest.TestCase):
         pages = ssp.__get__(document, None)
         self.assertEqual(len(pages), 1)
         self.assertEqual(pages[0], document[2])
+
+
+class NGramTest(unittest.TestCase):
+
+    def test_creating_ngram_with_separate_words(self):
+        ng = NGram("one", "two", "test")
+        self.assertEqual(repr(ng), "NGram('one', 'two', 'test')")
+
+    def test_for_raising_error_when_creating_ngram_without_words(self):
+        with self.assertRaises(TypeError):
+            ng = NGram()
+
+    def test_for_raising_error_when_no_str_argument(self):
+        with self.assertRaises(TypeError):
+            ng = NGram("one", 2, "test")
+
+    def test_ngrams_with_similar_words_have_the_same_hash(self):
+        ng1 = NGram("one", "two", "four")
+        ng2 = NGram("one", "two", "four")
+        self.assertEqual(hash(ng1), hash(ng2))
+
+    def test_ngrams_with_the_same_words_are_equal(self):
+        ng1 = NGram("one", "two", "four")
+        ng2 = NGram("one", "two", "four")
+        self.assertEqual(ng1, ng2)        
+
+    def test_ngrams_with_the_same_words_but_with_different_order_are_not_equal(self):
+        ng1 = NGram("one", "two", "four")
+        ng2 = NGram("one", "four", "two")
+        self.assertNotEqual(ng1, ng2)      
+
+    def test_indexing_ngram_returns_new_ngram_when_more_than_one_token(self):
+        ng1 = NGram("one", "two", "three", "four")
+        ng2 = ng1[slice(None, None, 2)]
+        self.assertIsInstance(ng2, NGram)  
+
+    def test_for_handling_slice_object(self):
+        ng1 = NGram("one", "two", "three", "four")
+        ng2 = ng1[slice(None, None, 2)]
+        self.assertEqual(ng2, NGram("one", "three"))
