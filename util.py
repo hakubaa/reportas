@@ -5,6 +5,7 @@ import sys
 import inspect
 import ctypes
 import string
+import re
 
 import nltk
 from dateutil.parser import parse
@@ -31,7 +32,7 @@ def is_date(string):
     try: 
         parse(string)
         return True
-    except ValueError:
+    except (ValueError, OverflowError):
         return False
 
 
@@ -46,6 +47,12 @@ def find_ngrams(text, n):
     ngrams = [ models.NGram(*tokens) for tokens in nltk.ngrams(tokens, n) ]
     return ngrams
 
+
+def find_numbers(text):
+    '''Find all numbers in str and return list.'''
+    numbers = re.findall("(?:\+|-|\()?\d+(?:[,. ]\d+)*(?:\))?", text)
+    return numbers
+    
 
 def load_module(name, attach = False, force_reload = True):
     '''Load dynamically module.'''

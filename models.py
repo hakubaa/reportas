@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*
 
 from functools import reduce
+from collections import Counter
 import operator
 import itertools
 import reprlib
 import numbers
+import pickle
 
 import nltk
+import pandas as pd
+import numpy as np
 
 import util
 
@@ -92,131 +96,78 @@ class Document:
             raise IndexError("page number out of range")
 
     def __repr__(self):
-        return "Document('{}')".format(self.docpath)
+        return "{}('{}')".format(self.__class__.__name__, self.docpath)
 
 
 class SelfSearchingPage:
 
-    def __init__(self, attrname, distwords):
-        self.distwords = [word.lower() for word in distwords]
-        self.attrname = attrname
+    min_probe_rate = 0.5 # coefficient for filtiring adjecant pages to page
+    # with highest probability
 
-    def _calc_simple_cover_rate(self, text):
-        '''
-        Calculate simple cover rate of text with distinctive words. Return two 
-        elements tuple containing number of words in the text and cover rate.
-        '''
-        tokens = [token.lower() for token in nltk.word_tokenize(text)]
-        if not tokens:
-            return 0, 0
-        common_words = [word for word in self.distwords if word in tokens]
-        return len(common_words) / len(tokens), len(tokens)
+    def __init__(self, attrname, modelpath, use_number_ngram=True, 
+                 use_page_ngram=True):
+        self.attrname = attrname
+        self.use_number_ngram = use_number_ngram
+        self.use_page_ngram = use_page_ngram
+        with open(modelpath, "rb") as f:
+            self.model = pickle.load(f)
+
+    def _extract_ngrams(self, text, n=2):
+        freq = Counter(util.find_ngrams(text, n))
+        if self.use_number_ngram:
+            freq[NGram("fake#number")] = len(util.find_numbers(text))
+        return freq
+
+    def _select_and_order_ngrams(self, text_ngrams):
+        return [text_ngrams[ngram] for ngram in self.model["ngrams"]]
 
     def __get__(self, doc, owner):
-        # Sort doc's pages by cover rate.
-        cover_rates = [ (number,) + self._calc_simple_cover_rate(page) 
-                        for number, page in enumerate(doc) ]
-        cover_rates = sorted(cover_rates, key=lambda x: x[1], reverse=True)
+        ngrams_by_pages = list(map(self._extract_ngrams, doc))
+        if self.use_page_ngram: # Append fake page ngram for every page
+            for index, ngrams in enumerate(ngrams_by_pages):
+                ngrams[NGram("fake#page")] = index / len(doc)
+        ngrams_freq = map(self._select_and_order_ngrams, ngrams_by_pages)
+        prob_by_pages = self.model["clf"].predict_proba(
+            np.asarray(list(ngrams_freq))
+        )[:,1]
 
-        # Filter only consequitive pages staring from the first one with
-        # the highest cover rate.
-        cons_pages = map(operator.itemgetter(1), filter(
-            lambda item: item[0][0] == item[1], 
-            zip(cover_rates, itertools.count(cover_rates[0][0]))
-        ))
-        pages = [ doc[page] for page in cons_pages ]
+        # Standalone vs consolidated financial statements are often included
+        # in the same report. The balance sheet, net and loss account and 
+        # cash flows statements are very similar for standalone and 
+        # consolidated statements. Choose the correct one on the base of 
+        # financial report's type.
+        if getattr(doc, "consolidated", False):
+            for index, ngrams_page in enumerate(ngrams_by_pages):
+                if NGram("jednostkowe", "sprawozdanie") in ngrams_page \
+                   or NGram("finansowe", "jednostkowe") in ngrams_page:
+                    prob_by_pages[index] = 0
 
-        # Override descriptor with current results.
-        doc.__dict__[self.attrname] = pages
+        page_with_max_prob = prob_by_pages.argmax()
+        max_prob = prob_by_pages.max()
 
-        return pages
+        preceding_pages = len(list(itertools.takewhile(
+            lambda prob: prob > max_prob * SelfSearchingPage.min_probe_rate,
+            reversed(prob_by_pages[0:page_with_max_prob])
+        )))
 
+        suceeding_pages = len(list(itertools.takewhile(
+            lambda prob: prob > max_prob * SelfSearchingPage.min_probe_rate, 
+            prob_by_pages[(page_with_max_prob + 1):]
+        )))
 
+        page_numbers = list(range(page_with_max_prob - preceding_pages,
+                                  page_with_max_prob + 1 + suceeding_pages))
 
-BALANCE_SHEET_WORDS = [
-    #"skonsolidowane", "sprawozdanie", 
-    "aktywa", "trwałe", "wartość", "firmy", "wartości", "niematerialne"
-    "rzeczowe" "nieruchomości", "inwestycyjne", 
-    #"finansowe",
-    "odroczonego", "podatku", "dochodowego",
-    "obrotowe", "zapasy", "należności", "handlowe",
-    "bieżącego", "środki", "pieniężne", "ekwiwalenty",
-    "pasywa", "kapitały", "własne", "kapitał", 
-    "podstawowy", "zapasowy", "aktualizacji",
-    "wyceny", "różnice", "kursowe", "rezerwowy",
-    "akcje", "własne", "niepodzielone", "wyniki"
-    #"przypisane", "akcjonariuszom", "jednostki", "dominującej",
-    "udziały", "niedające", "kontroli", "zobowiązania", "długoterminowe",
-    "kredyty", "pożyczki", "wyemitowane", "papiery", "dłużne",
-    "rezerwa", "odroczony", "podatek", "dochodowy"
-    #"świadczenia", "pracownicze", 
-    "krótkoterminowe",
-    "handlowe", "tytułu", "bieżącego", "podatku",
-    "rezerwy", "zobowiązań", "pasywów", "wartość", "księgowa", "akcji",
-    "rozwodniona"
-]
+        doc.__dict__[self.attrname] = page_numbers
 
-CASH_FLOW_WORDS = [
-    
-]
-
-
-
-# NGram("skonsolidowane", "sprawozdanie"),
-# NGram("przepływów", "pieniężnych"),
-# NGram("środki", "pieniężne", "netto", "działalności", "finansowej"),
-# NGram("środki", "pieniężne")
-# NGram("środki", "pieniężne", "ekwiwalenty")
-
-# NGram("działalność", "operacyjna")
-# NGram("amorytzacja")
-# NGram("przepływy", "operacyjne")
-# NGram("zmiana", "stanu", "zapasów")
-# NGram("zmiana", "stanu", "należności")
-# NGram("zmiana", "stanu", "zobowiązań")
-# NGram("zmiana", "stanu", "rezerw")
-# NGram("działalność", "inwestycyjna")
-# NGram("działalności", "inwestycyjnej")
-# NGram("sprzedaż", "rzeczowych", "aktywów")
-# NGram("nabycie", "rzeczowych", "aktywów", "trwałych")
-
-
-
-# "przepływów" 
-# "pieniężnych" 
-# "działalność"
-# "finansowa"
-# "wpływy"
-# "zaciągniętych" 
-# "kredytów" 
-# "pożyczek"
-#   Wpływy z innych źródeł finansowania (umowa faktoringu)
-#   Dywidendy dla akcjonariuszy jednostki dominującej
-# "spłata"
-# "odsetki"
-#  zapłacone dotyczące działalności finansowej
-# "środki pieniężne" 
-# "netto" z działalności finansowej
-
-
-#  Środki pieniężne netto z działalności
-#    Środki pieniężne i ich ekwiwalenty na początek okresu
-#    Efekt zmiany kursów walut
-#  Środki pieniężne i ich ekwiwalenty na końcu okresu
-#  Struktura środków pieniężnych i ich ekwiwalentów:
-#    Środki o nieograniczonej możliwości dysponowania
-#    Środki o ograniczonej możliwości dysponowania
-
-
-#  * w tym 1.999 tys. zł należące do Energii Park Trzemoszna (spółka zależna) utrzymywane na rachunku o ograniczonej
-#  możliwości dysponowania.
-
+        return page_numbers
 
 
 class FinancialReport(Document):
-    balance_sheet = SelfSearchingPage("balance_sheet", BALANCE_SHEET_WORDS)
-    # cash_flows = SelfSearchingPage("cash_flow", CASH_FLOW_WORDS)
-    # net_and_loss = SelfSearchingPage("net_and_loss", NET_AND_LOSS_WORDS)
-    pass
+    net_and_loss = SelfSearchingPage("net_and_loss", "smodels/nls.pkl")
+    balance = SelfSearchingPage("balance", "smodels/balance.pkl")
+    cash_flows = SelfSearchingPage("cash_flows", "smodels/cfs.pkl")
 
-
+    def __init__(self, *args, consolidated=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.consolidated = consolidated

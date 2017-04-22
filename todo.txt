@@ -1,3 +1,4 @@
 1) Identyfication pages with important data (cash flow statement - cfs, balance sheet - balance, profit and loss accout - pla)
 2) Document
 3) FinancialReport (Document)
+4) Dodac zmienna okreslajaca ile liczb pojawilo sie na stronie
