@@ -40,3 +40,11 @@ class Convert2numberTest(unittest.TestCase):
 	def test_convert_number_with_dot_as_thousands_separator(self):
 		output = convert_to_number("(3.140.150,99)")
 		self.assertEqual(output, -3140150.99)
+
+	def test_convert_number_converts_empty_string_to_zero(self):
+		output = convert_to_number("")
+		self.assertEqual(output, 0)
+
+	def test_convert_number_converts_dash_to_zero(self):
+		output = convert_to_number("-")
+		self.assertEqual(output, 0)

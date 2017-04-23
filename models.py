@@ -106,7 +106,19 @@ class ASCITable:
     re_rows_separators = re.compile(r"\n")
 
     def __init__(self, text=None):
-        pass
+        self.rows = self._standardize_rows(self._extract_rows(text))
+
+    def __len__(self):
+        return len(self.rows)
+
+    def __getitem__(self, index):
+        try:
+            return self.rows[index]
+        except IndexError:
+            raise IndexError("row number out of range")
+
+    def __iter__(self):
+        return iter(self.rows)
 
     def _split_row_into_fields(self, text):
         '''Split text into separate fields.'''
@@ -120,12 +132,33 @@ class ASCITable:
         rows = [ row for row in rows if not row.isspace() ]
         return rows
 
-    def _create_initial_table(self, text):
+    def _extract_rows(self, text):
         '''Create simple table. Each row as separate list of fields.'''
         table = [self._split_row_into_fields(row) 
                  for row in self._split_text_into_rows(text)]
         table = [ row for row in table if row ] # remove empty rows
         return table
+
+    def _standardize_rows(self, rows):
+        '''Row: label (note) number_1 number_2 ... number_n'''
+
+        # 1. Keep only rows with at least one number
+        rows = [ row for row in rows if any(map(util.isnumber, row)) ]
+        if not rows: # no row with at least one number
+            return []
+
+        # 2. Remove rows with not enough fields
+        mode_of_fields_in_row = Counter(map(len, rows)).most_common(1)[0][0]
+
+        rows = list(filter(lambda row: len(row) >= mode_of_fields_in_row, rows))
+
+        # 3. Convert numbers, keep labels, ignore optional parts
+        std_rows = list()
+        for row in rows:
+            std_rows.append(row[0:1] + [ util.convert_to_number(item) 
+                            for item in row[-(mode_of_fields_in_row-1):] ])
+
+        return std_rows
 
 
 class SelfSearchingPage:

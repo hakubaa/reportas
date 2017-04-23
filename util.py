@@ -68,6 +68,9 @@ def convert_to_number(string, decimal_mark=","):
     if isinstance(string, numbers.Number):
         return string
 
+    if string == "" or string == "-": # '-' is often use in reports
+        return 0.0
+
     # Determine sign of the number
     sign = -1 if re.match(r"^(-|\()", string) else 1
 

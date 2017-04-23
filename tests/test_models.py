@@ -1,4 +1,6 @@
 from collections import UserList
+import functools
+import operator
 
 import unittest
 import unittest.mock as mock
@@ -70,16 +72,6 @@ class NGramTest(unittest.TestCase):
 
 class ASCITableTest(unittest.TestCase):
 
-
-
-    @unittest.skip
-    def test_split_row_into_fields_returns_list_of_fields(self):
-        row_str = "Zysk netto  12 000\t15 000 | 13 000"
-        table = ASCITable(row_str)
-        fields = table._split_row_into_fields(row_str)
-        self.assertEqual(len(fields), 4)
-        self.assertIsInstance(fields, list)
-
     def test_split_row_into_fields_does_not_split_sentances(self):
         row_str = "Net profit  very high  very low"
         table = ASCITable(row_str)
@@ -109,17 +101,32 @@ class ASCITableTest(unittest.TestCase):
         rows = table._split_text_into_rows(text)
         self.assertEqual(len(rows), 2)
 
-    def test_create_initial_tables_returns_list_of_lists(self):
+    def test_extract_rows_returns_list_of_lists(self):
         text = """
         Consolidated Financial Statement
         Income  12 000 | 13 000\n    \n            \nCosts  10 000 | 15 000
         """
         table = ASCITable(text)
-        st = table._create_initial_table(text)
+        st = table._extract_rows(text)
         self.assertEqual(len(st), 3)
         self.assertEqual(len(st[0]), 1)
         self.assertEqual(len(st[1]), 3)
         self.assertEqual(len(st[2]), 3)
 
+    def test_standardize_rows_keeps_only_rows_with_numbers(self):
+        text = """
+        Consolidated Financial Statement
+        Income  12 000 | 13 000\n    \n            \nCosts  10 000 | 15 000
+        """
+        table = ASCITable(text)
+        rows = table._standardize_rows(table._extract_rows(text))
+        self.assertEqual(len(rows), 2)
 
-        
+    def test_standarize_rows_returns_lists_with_equaly_len_lists(self):
+        text = """
+        Consolidated Financial Statement
+        Income  12 000 | 13 000\n    \n            \nCosts  10 000 | 15 000
+        """
+        table = ASCITable(text)
+        rows = table._standardize_rows(table._extract_rows(text))
+        self.assertEqual(len(set(map(len, rows))), 1)
