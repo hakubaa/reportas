@@ -3,10 +3,10 @@ from collections import UserList
 import unittest
 import unittest.mock as mock
 
-from models import Document, SelfSearchingPage, NGram
+from models import Document, SelfSearchingPage, NGram, ASCITable
 
 
-@mock.patch("models.pdftotext",  
+@mock.patch("models.util.pdftotext",  
             return_value=(b"Page 1\n\x0cPage2\n\x0cPage3", None))
 class DocumentTest(unittest.TestCase):
 
@@ -26,35 +26,6 @@ class DocumentTest(unittest.TestCase):
         doc = Document("reports/test.pdf")
         page = doc[1]
         self.assertEqual(page, "Page2\n")
-
-
-class SelfSearchingPageTest(unittest.TestCase):
-
-    def test_for_calculating_simple_cover_rate(self):
-        ssp = SelfSearchingPage("test", ["test", "one"])
-        cover_rate, tokens = ssp._calc_simple_cover_rate(
-            "One     test             will       concern     ..."
-        ) 
-        self.assertEqual(tokens, 5)
-        self.assertEqual(cover_rate, 2/5)
-        
-    def test_simple_cover_rate_for_empty_text_returns_0_0(self):
-        ssp = SelfSearchingPage("test", ["test", "one"])
-        cr, tokens = ssp._calc_simple_cover_rate("")
-        self.assertEqual((cr, tokens), (0, 0))
-
-    def test___get__sets_attr_inside_instance(self):
-        instance = UserList(["page one", "page two", "page test one"])
-        ssp = SelfSearchingPage("test", ["test", "one"])
-        ssp.__get__(instance, None)
-        self.assertTrue(hasattr(instance, "test"))
-
-    def test___get__returns_the_most_covered_pages(self):
-        document = UserList(["page one", "page two", "page test one"])
-        ssp = SelfSearchingPage("test", ["test", "page"])
-        pages = ssp.__get__(document, None)
-        self.assertEqual(len(pages), 1)
-        self.assertEqual(pages[0], document[2])
 
 
 class NGramTest(unittest.TestCase):
@@ -95,3 +66,60 @@ class NGramTest(unittest.TestCase):
         ng1 = NGram("one", "two", "three", "four")
         ng2 = ng1[slice(None, None, 2)]
         self.assertEqual(ng2, NGram("one", "three"))
+
+
+class ASCITableTest(unittest.TestCase):
+
+
+
+    @unittest.skip
+    def test_split_row_into_fields_returns_list_of_fields(self):
+        row_str = "Zysk netto  12 000\t15 000 | 13 000"
+        table = ASCITable(row_str)
+        fields = table._split_row_into_fields(row_str)
+        self.assertEqual(len(fields), 4)
+        self.assertIsInstance(fields, list)
+
+    def test_split_row_into_fields_does_not_split_sentances(self):
+        row_str = "Net profit  very high  very low"
+        table = ASCITable(row_str)
+        fields = table._split_row_into_fields(row_str)
+        self.assertEqual(len(fields), 3)
+        self.assertEqual(fields[1], "very high")
+
+    def test_split_row_into_fields_respects_different_separators(self):
+        row_str = "Net profit  very high | very low\tmedium   none;  huge   "
+        table = ASCITable(row_str)
+        fields = table._split_row_into_fields(row_str)
+        self.assertEqual(len(fields), 6)
+        self.assertCountEqual(
+            fields, 
+            ["Net profit", "very high", "very low", "medium", "none", "huge"]
+        )
+
+    def test_spit_text_into_rows_returns_list_of_rows(self):
+        text = "Income  12 000 | 13 000\nCosts  10 000 | 15 000"
+        table = ASCITable(text)
+        rows = table._split_text_into_rows(text)
+        self.assertEqual(len(rows), 2)
+
+    def test_split_text_into_rows_removes_empty_rows(self):
+        text = "Income  12 000 | 13 000\n    \n            \nCosts  10 000 | 15 000"
+        table = ASCITable(text)
+        rows = table._split_text_into_rows(text)
+        self.assertEqual(len(rows), 2)
+
+    def test_create_initial_tables_returns_list_of_lists(self):
+        text = """
+        Consolidated Financial Statement
+        Income  12 000 | 13 000\n    \n            \nCosts  10 000 | 15 000
+        """
+        table = ASCITable(text)
+        st = table._create_initial_table(text)
+        self.assertEqual(len(st), 3)
+        self.assertEqual(len(st[0]), 1)
+        self.assertEqual(len(st[1]), 3)
+        self.assertEqual(len(st[2]), 3)
+
+
+        

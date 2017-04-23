@@ -7,6 +7,7 @@ import itertools
 import reprlib
 import numbers
 import pickle
+import re
 
 import nltk
 import pandas as pd
@@ -99,14 +100,42 @@ class Document:
         return "{}('{}')".format(self.__class__.__name__, self.docpath)
 
 
+class ASCITable:
+
+    re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
+    re_rows_separators = re.compile(r"\n")
+
+    def __init__(self, text=None):
+        pass
+
+    def _split_row_into_fields(self, text):
+        '''Split text into separate fields.'''
+        return list(filter( # use filter to remove empty fields ('')
+            bool, re.split(ASCITable.re_fields_separators, text)
+        ))
+
+    def _split_text_into_rows(self, text):
+        '''Split text into rows. Remove empty rows.'''
+        rows = re.split(ASCITable.re_rows_separators, text)
+        rows = [ row for row in rows if not row.isspace() ]
+        return rows
+
+    def _create_initial_table(self, text):
+        '''Create simple table. Each row as separate list of fields.'''
+        table = [self._split_row_into_fields(row) 
+                 for row in self._split_text_into_rows(text)]
+        table = [ row for row in table if row ] # remove empty rows
+        return table
+
+
 class SelfSearchingPage:
 
     min_probe_rate = 0.5 # coefficient for filtiring adjecant pages to page
     # with highest probability
 
-    def __init__(self, attrname, modelpath, use_number_ngram=True, 
+    def __init__(self, modelpath, storage_name = None, use_number_ngram=True, 
                  use_page_ngram=True):
-        self.attrname = attrname
+        self.storage_name = storage_name
         self.use_number_ngram = use_number_ngram
         self.use_page_ngram = use_page_ngram
         with open(modelpath, "rb") as f:
@@ -118,7 +147,7 @@ class SelfSearchingPage:
             freq[NGram("fake#number")] = len(util.find_numbers(text))
         return freq
 
-    def _select_and_order_ngrams(self, text_ngrams):
+    def _select_ngrams(self, text_ngrams):
         return [text_ngrams[ngram] for ngram in self.model["ngrams"]]
 
     def __get__(self, doc, owner):
@@ -126,7 +155,7 @@ class SelfSearchingPage:
         if self.use_page_ngram: # Append fake page ngram for every page
             for index, ngrams in enumerate(ngrams_by_pages):
                 ngrams[NGram("fake#page")] = index / len(doc)
-        ngrams_freq = map(self._select_and_order_ngrams, ngrams_by_pages)
+        ngrams_freq = map(self._select_ngrams, ngrams_by_pages)
         prob_by_pages = self.model["clf"].predict_proba(
             np.asarray(list(ngrams_freq))
         )[:,1]
@@ -158,15 +187,15 @@ class SelfSearchingPage:
         page_numbers = list(range(page_with_max_prob - preceding_pages,
                                   page_with_max_prob + 1 + suceeding_pages))
 
-        doc.__dict__[self.attrname] = page_numbers
+        doc.__dict__[self.storage_name] = page_numbers
 
         return page_numbers
-
+ 
 
 class FinancialReport(Document):
-    net_and_loss = SelfSearchingPage("net_and_loss", "smodels/nls.pkl")
-    balance = SelfSearchingPage("balance", "smodels/balance.pkl")
-    cash_flows = SelfSearchingPage("cash_flows", "smodels/cfs.pkl")
+    net_and_loss = SelfSearchingPage("smodels/nls.pkl", "net_and_loss")
+    balance = SelfSearchingPage("smodels/balance.pkl", "balance")
+    cash_flows = SelfSearchingPage("smodels/cfs.pkl", "cash_flows")
 
     def __init__(self, *args, consolidated=True, **kwargs):
         super().__init__(*args, **kwargs)

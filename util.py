@@ -6,11 +6,15 @@ import inspect
 import ctypes
 import string
 import re
+import numbers
 
 import nltk
 from dateutil.parser import parse
 
 import models
+
+
+RE_NUMBER = re.compile(r"(?:\+|-|\()?\d+(?:[,. ]\d+)*(?:\))?")
 
 
 def pdftotext(path, layout=True, first_page=None, last_page=None,
@@ -50,9 +54,39 @@ def find_ngrams(text, n):
 
 def find_numbers(text):
     '''Find all numbers in str and return list.'''
-    numbers = re.findall("(?:\+|-|\()?\d+(?:[,. ]\d+)*(?:\))?", text)
+    numbers = re.findall(RE_NUMBER, text)
     return numbers
-    
+
+
+def isnumber(string):
+    '''Test whether str represents a number.'''
+    return bool(re.match(RE_NUMBER, string))
+
+
+def convert_to_number(string, decimal_mark=","):
+    '''Convert string to number.'''
+    if isinstance(string, numbers.Number):
+        return string
+
+    # Determine sign of the number
+    sign = -1 if re.match(r"^(-|\()", string) else 1
+
+    # Extract actual number
+    number = re.search("\d+(?:[,. ]\d+)*", string)
+    if not number:
+        return ValueError("could not convert string to number: {!r}".
+                          format(string))
+
+    # Split number into integral & fraction part
+    integral, *fraction = number.group(0).split(decimal_mark)
+    integral = int(re.sub("[^0-9]", "", integral)) # remove non digits
+    if fraction:
+        fraction = float("." + re.sub("[^0-9]", "", fraction[0]))
+    else:
+        fraction = 0.0
+
+    return sign * (integral + fraction)
+
 
 def load_module(name, attach = False, force_reload = True):
     '''Load dynamically module.'''
