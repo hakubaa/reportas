@@ -1,0 +1,11 @@
+Fields specification:
+- type: point in time (sc. pit) / period of time (sc. pot); 
+  balance sheet's fields are given at certain point in time, net and loss
+  account and cash flow statments' fields show company performance over some
+  period of time
+
+- time range (in case of period of time's fields): year, quarter, half a year;
+  one should specify end of the period and type e.g: quarter 2015-03-31 means
+  that the data concerns first quarter of 2015; all data are given at the end
+  of the months so 2015-03 is enough: q - quarter, h - half-a-year, y - year,
+  q201503, y201512, m201506, q201512

@@ -8,6 +8,7 @@ import reprlib
 import numbers
 import pickle
 import re
+from enum import Enum
 
 import nltk
 import pandas as pd
@@ -67,8 +68,9 @@ class Document:
         if Document.verbose:
             print("Loading document '{}' ... ".format(docpath), end="")
         self.docpath = docpath
-        text, errors = util.pdftotext(docpath, layout=True, first_page=first_page,
-                                 last_page=last_page) 
+        text, errors = util.pdftotext(
+            docpath, layout=True, first_page=first_page, last_page=last_page
+        ) 
         if errors:
             raise RuntimeError("pdftotext returned exit code: %r", errors)
         self.raw_text = str(text, encoding)
@@ -104,6 +106,7 @@ class ASCITable:
 
     re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
     re_rows_separators = re.compile(r"\n")
+    re_alphabetic_chars = re.compile("[A-Za-zżźćńółęąśŻŹĆĄŚĘŁÓŃ]")
 
     def __init__(self, text=None):
         self.rows = self._standardize_rows(self._extract_rows(text))
@@ -139,11 +142,11 @@ class ASCITable:
         table = [ row for row in table if row ] # remove empty rows
         return table
 
-    def _standardize_rows(self, rows):
+    def _standardize_rows(self, input_rows):
         '''Row: label (note) number_1 number_2 ... number_n'''
 
         # 1. Keep only rows with at least one number
-        rows = [ row for row in rows if any(map(util.isnumber, row)) ]
+        rows = [ row for row in input_rows if any(map(util.isnumber, row)) ]
         if not rows: # no row with at least one number
             return []
 
@@ -152,7 +155,23 @@ class ASCITable:
 
         rows = list(filter(lambda row: len(row) >= mode_of_fields_in_row, rows))
 
-        # 3. Convert numbers, keep labels, ignore optional parts
+        # 3. Identify and fix column with label
+        fields_length_by_rows = list(map(lambda row: list(map(
+            lambda field: 
+                len(re.findall(ASCITable.re_alphabetic_chars, field)), 
+            row
+        )), rows))
+
+        for index, row in enumerate(fields_length_by_rows):
+            field_with_max_chars = np.array(row).argmax()
+            if field_with_max_chars > 0:
+                rows[index][0:(field_with_max_chars+1)] = [
+                    ' '.join(rows[index][0:(field_with_max_chars+1)])
+                ]
+                
+        # 4. Convert numbers, keep labels, ignore optional parts
+        mode_of_fields_in_row = Counter(map(len, rows)).most_common(1)[0][0]
+
         std_rows = list()
         for row in rows:
             std_rows.append(row[0:1] + [ util.convert_to_number(item) 
