@@ -13,8 +13,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc
 from sklearn.ensemble import RandomForestClassifier
 
-from models import Document, NGram
-from util import find_ngrams, find_numbers
+
+from parser.nlp import NGram
+from parser.models import Document
+from parser.util import find_ngrams, find_numbers
 
 
 # 1) Load reports
@@ -26,7 +28,7 @@ from alis.data import reports
 
 random.seed(1)
 
-target_statement = "balance"
+target_statement = "cfs"
 neg_rate = 10 # negative pages / positive pages ratio
 ngram_doc_min_freq = 0.5 # minimum number of doc with the ngram
 
@@ -148,5 +150,5 @@ model = {
     "ngrams": ngrams
 }
 
-with open("smodels/%s.pkl" % target_statement, "wb") as f:
+with open("parser/cls/%s.pkl" % target_statement, "wb") as f:
     pickle.dump(model, f)

@@ -11,7 +11,7 @@ import numbers
 import nltk
 from dateutil.parser import parse
 
-import models
+from parser.nlp import NGram, STOP_WORDS
 
 
 RE_NUMBER = re.compile(r"(?:\+|-|\()?\d+(?:[,. ]\d+)*(?:\))?")
@@ -44,11 +44,11 @@ def find_ngrams(text, n):
     '''Find all n-grams in th text and return list of tuples.'''
     tokens = [token.lower() for token in nltk.word_tokenize(text)]
     tokens = [token for token in tokens 
-                    if token not in models.STOP_WORDS 
+                    if token not in STOP_WORDS 
                        and not token.lstrip("-+(").rstrip(")").isdigit() 
                        and token not in string.punctuation
                        and not is_date(token) ]
-    ngrams = [ models.NGram(*tokens) for tokens in nltk.ngrams(tokens, n) ]
+    ngrams = [ NGram(*tokens) for tokens in nltk.ngrams(tokens, n) ]
     return ngrams
 
 

@@ -21,6 +21,6 @@ class SQLAlchemy:
 		'''Create tables.'''
 		Base.metadata.create_all(self.engine, *args, **kwargs)
 
-	def drop_all(self):
+	def drop_all(self, *args, **kwargs):
 		'''Drop all tables.'''
 		Base.metadata.drop_all(self.engine, *args, **kwargs)

@@ -9,54 +9,14 @@ import numbers
 import pickle
 import re
 from enum import Enum
+import warnings
 
 import nltk
 import pandas as pd
 import numpy as np
 
-import util
-
-
-# polish stop words (source: wikipedia)
-STOP_WORDS = set("a, aby, ach, acz, aczkolwiek, aj, albo, ale, ależ, ani, aż, bardziej, bardzo, bo, bowiem, by, byli, bynajmniej, być, był, była, było, były, będzie, będą, cali, cała, cały, ci, cię, ciebie, co, cokolwiek, coś, czasami, czasem, czemu, czy, czyli, daleko, dla, dlaczego, dlatego, do, dobrze, dokąd, dość, dużo, dwa, dwaj, dwie, dwoje, dziś, dzisiaj, gdy, gdyby, gdyż, gdzie, gdziekolwiek, gdzieś, i, ich, ile, im, inna, inne, inny, innych, iż, ja, ją, jak, jakaś, jakby, jaki, jakichś, jakie, jakiś, jakiż, jakkolwiek, jako, jakoś, je, jeden, jedna, jedno, jednak, jednakże, jego, jej, jemu, jest, jestem, jeszcze, jeśli, jeżeli, już, ją, każdy, kiedy, kilka, kimś, kto, ktokolwiek, ktoś, która, które, którego, której, który, których, którym, którzy, ku, lat, lecz, lub, ma, mają, mało, mam, mi, mimo, między, mną, mnie, mogą, moi, moim, moja, moje, może, możliwe, można, mój, mu, musi, my, na, nad, nam, nami, nas, nasi, nasz, nasza, nasze, naszego, naszych, natomiast, natychmiast, nawet, nią, nic, nich, nie, niech, niego, niej, niemu, nigdy, nim, nimi, niż, no, o, obok, od, około, on, ona, one, oni, ono, oraz, oto, owszem, pan, pana, pani, po, pod, podczas, pomimo, ponad, ponieważ, powinien, powinna, powinni, powinno, poza, prawie, przecież, przed, przede, przedtem, przez, przy, roku, również, sama, są, się, skąd, sobie, sobą, sposób, swoje, ta, tak, taka, taki, takie, także, tam, te, tego, tej, temu, ten, teraz, też, to, tobą, tobie, toteż, trzeba, tu, tutaj, twoi, twoim, twoja, twoje, twym, twój, ty, tych, tylko, tym, u, w, wam, wami, was, wasz, wasza, wasze, we, według, wiele, wielu, więc, więcej, wszyscy, wszystkich, wszystkie, wszystkim, wszystko, wtedy, wy, właśnie, z, za, zapewne, zawsze, ze, zł, znowu, znów, został, żaden, żadna, żadne, żadnych, że, żeby, pln, '000, ..., .., -, +".replace(" ", "").split(","))
-
-
-class NGram:
-
-    def __init__(self, *args):
-        if not args:
-            raise TypeError("init expected at least 1 arguments, got 0")
-        if not all(isinstance(arg, str) for arg in args):
-            raise TypeError("init expected str arguments")
-        self._tokens = list(args)
-
-    def __repr__(self):
-        return "NGram('{}')".format("', '".join(self._tokens))
-
-    def __hash__(self):
-        hashes = (hash(token + str(index)) for index, token in enumerate(self))
-        return reduce(operator.xor, hashes)
-
-    def __eq__(self, other):
-        if len(self) != len(other):
-            return False
-        return tuple(self) == tuple(other)
-
-    def __len__(self):
-        return len(self._tokens)
-
-    def __getitem__(self, index):
-        cls = type(self)
-        if isinstance(index, slice):
-            return cls(*self._tokens[index])
-        elif isinstance(index, numbers.Integral):
-            return self._tokens[index]
-        else:
-            msg = "{cls.__name__} indices must be integers"
-            raise TypeError(msg.format(cls=cls))
-
-    def __iter__(self):
-        return iter(self._tokens)
+from parser.nlp import NGram
+import parser.util as util
 
 
 class Document:
@@ -190,8 +150,12 @@ class SelfSearchingPage:
         self.storage_name = storage_name
         self.use_number_ngram = use_number_ngram
         self.use_page_ngram = use_page_ngram
-        with open(modelpath, "rb") as f:
-            self.model = pickle.load(f)
+        try:
+            with open(modelpath, "rb") as f:
+                self.model = pickle.load(f)
+        except FileNotFoundError:
+            warnings.warn("No such file or directory: '{}'".format(modelpath))
+            self.model = None
 
     def _extract_ngrams(self, text, n=2):
         freq = Counter(util.find_ngrams(text, n))
@@ -203,6 +167,14 @@ class SelfSearchingPage:
         return [text_ngrams[ngram] for ngram in self.model["ngrams"]]
 
     def __get__(self, doc, owner):
+        # when the model was not load in init, inform user that sth went
+        # wrong and raise attribut error
+        if not self.model:
+            cls_name = doc.__class__.__name__
+            raise AttributeError("'{}' object has no attribute '{}'".format(
+                cls_name, self.storage_name)
+            )
+
         ngrams_by_pages = list(map(self._extract_ngrams, doc))
         if self.use_page_ngram: # Append fake page ngram for every page
             for index, ngrams in enumerate(ngrams_by_pages):
@@ -245,9 +217,9 @@ class SelfSearchingPage:
  
 
 class FinancialReport(Document):
-    net_and_loss = SelfSearchingPage("smodels/nls.pkl", "net_and_loss")
-    balance = SelfSearchingPage("smodels/balance.pkl", "balance")
-    cash_flows = SelfSearchingPage("smodels/cfs.pkl", "cash_flows")
+    net_and_loss = SelfSearchingPage("parser/cls/nls.pkl", "net_and_loss")
+    balance = SelfSearchingPage("parser/cls/balance.pkl", "balance")
+    cash_flows = SelfSearchingPage("parser/cls/cfs.pkl", "cash_flows")
 
     def __init__(self, *args, consolidated=True, **kwargs):
         super().__init__(*args, **kwargs)

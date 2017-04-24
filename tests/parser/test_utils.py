@@ -1,6 +1,6 @@
 import unittest
 
-from util import convert_to_number
+from parser.util import convert_to_number
 
 
 class Convert2numberTest(unittest.TestCase):

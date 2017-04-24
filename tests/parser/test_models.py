@@ -5,10 +5,10 @@ import operator
 import unittest
 import unittest.mock as mock
 
-from models import Document, SelfSearchingPage, NGram, ASCITable
+from parser.models import Document, SelfSearchingPage, NGram, ASCITable
 
 
-@mock.patch("models.util.pdftotext",  
+@mock.patch("parser.models.util.pdftotext",  
             return_value=(b"Page 1\n\x0cPage2\n\x0cPage3", None))
 class DocumentTest(unittest.TestCase):
 

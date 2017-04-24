@@ -35,6 +35,7 @@ class SQLAlchemyTest(unittest.TestCase):
 		db = SQLAlchemy("sqlite:///:memory:")
 		db.create_all()
 		self.assertTrue(db.engine.has_table("test"))
+		db.drop_all()
 
 	def test_for_creating_records_in_db(self):
 		db = SQLAlchemy("sqlite:///:memory")
@@ -43,6 +44,7 @@ class SQLAlchemyTest(unittest.TestCase):
 		db.session.add(test_record)
 		db.session.commit()
 		self.assertIsNotNone(test_record.id)
+		db.drop_all()
 
 	def test_for_quering_db(self):
 		db = SQLAlchemy("sqlite:///:memory")
@@ -51,3 +53,4 @@ class SQLAlchemyTest(unittest.TestCase):
 		db.session.commit()
 		test_record = db.session.query(TestModel).first()
 		self.assertEqual(test_record.number, 5)
+		db.drop_all()

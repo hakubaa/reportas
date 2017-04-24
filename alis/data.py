@@ -1,4 +1,4 @@
-from models import Document, FinancialReport
+from parser.models import FinancialReport, Document
 
 Document.verbose = True
 
