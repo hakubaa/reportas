@@ -8,10 +8,7 @@ import string
 import re
 import numbers
 
-import nltk
 from dateutil.parser import parse
-
-from parser.nlp import NGram, STOP_WORDS
 
 
 RE_NUMBER = re.compile(r"(?:\+|-|\()?\d+(?:[,. ]\d+)*(?:\))?")
@@ -40,25 +37,13 @@ def is_date(string):
         return False
 
 
-def find_ngrams(text, n):
-    '''Find all n-grams in th text and return list of tuples.'''
-    tokens = [token.lower() for token in nltk.word_tokenize(text)]
-    tokens = [token for token in tokens 
-                    if token not in STOP_WORDS 
-                       and not token.lstrip("-+(").rstrip(")").isdigit() 
-                       and token not in string.punctuation
-                       and not is_date(token) ]
-    ngrams = [ NGram(*tokens) for tokens in nltk.ngrams(tokens, n) ]
-    return ngrams
-
-
 def find_numbers(text):
     '''Find all numbers in str and return list.'''
     numbers = re.findall(RE_NUMBER, text)
     return numbers
 
 
-def isnumber(string):
+def is_number(string):
     '''Test whether str represents a number.'''
     return bool(re.match(RE_NUMBER, string))
 
@@ -70,6 +55,9 @@ def convert_to_number(string, decimal_mark=","):
 
     if string == "" or string == "-": # '-' is often use in reports
         return 0.0
+
+    if not is_number(string):
+        return None
 
     # Determine sign of the number
     sign = -1 if re.match(r"^(-|\()", string) else 1
@@ -90,7 +78,7 @@ def convert_to_number(string, decimal_mark=","):
 
     return sign * (integral + fraction)
 
-
+   
 def load_module(name, attach = False, force_reload = True):
     '''Load dynamically module.'''
     if name in sys.modules and force_reload:

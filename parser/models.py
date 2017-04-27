@@ -15,7 +15,7 @@ import nltk
 import pandas as pd
 import numpy as np
 
-from parser.nlp import NGram
+from parser.nlp import NGram, find_ngrams
 import parser.util as util
 
 
@@ -62,14 +62,30 @@ class Document:
         return "{}('{}')".format(self.__class__.__name__, self.docpath)
 
 
+
+class Field:
+    '''Representation of financial record in financial statement.'''
+
+    def __init__(self, value):
+        self.tokens = find_ngrams(value, n=1)
+        
+    def __iter__(self):
+        return iter(self.tokens)
+
+    def __len__(self):
+        return len(self.tokens)
+
+
 class ASCITable:
 
     re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
     re_rows_separators = re.compile(r"\n")
     re_alphabetic_chars = re.compile("[A-Za-zżźćńółęąśŻŹĆĄŚĘŁÓŃ]")
 
-    def __init__(self, text=None):
-        self.rows = self._standardize_rows(self._extract_rows(text))
+    def __init__(self, text, columns_number=None, note_presence=None):
+        self.columns_number = columns_number
+        self.note_presence = note_presence
+        self.rows = self._preprocess_labels(self._extract_rows(text))
 
     def __len__(self):
         return len(self.rows)
@@ -83,10 +99,10 @@ class ASCITable:
     def __iter__(self):
         return iter(self.rows)
 
-    def _split_row_into_fields(self, text):
+    def _split_row_into_fields(self, row):
         '''Split text into separate fields.'''
         return list(filter( # use filter to remove empty fields ('')
-            bool, re.split(ASCITable.re_fields_separators, text)
+            bool, re.split(ASCITable.re_fields_separators, row)
         ))
 
     def _split_text_into_rows(self, text):
@@ -102,20 +118,12 @@ class ASCITable:
         table = [ row for row in table if row ] # remove empty rows
         return table
 
-    def _standardize_rows(self, input_rows):
+    def _preprocess_labels(self, input_rows):
         '''Row: label (note) number_1 number_2 ... number_n'''
 
-        # 1. Keep only rows with at least one number
-        rows = [ row for row in input_rows if any(map(util.isnumber, row)) ]
-        if not rows: # no row with at least one number
-            return []
+        rows = list(input_rows)
 
-        # 2. Remove rows with not enough fields
-        mode_of_fields_in_row = Counter(map(len, rows)).most_common(1)[0][0]
-
-        rows = list(filter(lambda row: len(row) >= mode_of_fields_in_row, rows))
-
-        # 3. Identify and fix column with label
+        # 1. Identify and fix column with label
         fields_length_by_rows = list(map(lambda row: list(map(
             lambda field: 
                 len(re.findall(ASCITable.re_alphabetic_chars, field)), 
@@ -128,16 +136,62 @@ class ASCITable:
                 rows[index][0:(field_with_max_chars+1)] = [
                     ' '.join(rows[index][0:(field_with_max_chars+1)])
                 ]
+
+        # Get rid of leading numbers
+        # Comming Soon !!!
                 
-        # 4. Convert numbers, keep labels, ignore optional parts
-        mode_of_fields_in_row = Counter(map(len, rows)).most_common(1)[0][0]
+        # 2. Convert numbers, keep labels, ignore optional parts
+        # if self.columns_number:
+        #     fields_in_row = self.columns_number
+        # else:
+        #     fields_in_row = Counter(map(len, rows)).most_common(1)[0][0] - 1
 
-        std_rows = list()
-        for row in rows:
-            std_rows.append(row[0:1] + [ util.convert_to_number(item) 
-                            for item in row[-(mode_of_fields_in_row-1):] ])
+        # std_rows = list()
+        # for row in rows:
+        #     std_rows.append(row[0:1] + [ util.convert_to_number(item) 
+        #                     for item in row[-fields_in_row:] ])
 
-        return std_rows
+        return rows
+
+    def _identify_records(self, rows, recspec):
+        labels_stack = list()
+        numbers_stack = list()
+        for index, row in enumerate(rows):
+            label_ngrams = find_ngrams(row[0], n=1)
+            if label_ngrams:
+                csims = list(map(
+                    lambda spec: cos_similarity(spec["ngrams"], label_ngrams), 
+                    recspec
+                ))
+            else: # probably numbers
+                csims = [0]*len(recspec)
+                row_with_numbers = any(map(is_number, row))
+                if row_with_numbers:
+                    numbers_stack.append(row)
+
+            if not any(csims):
+                continue
+            if len(row) < columns_number + 1:
+                try:
+                    prev_label = labels_stack.pop()
+                except IndexError:
+                    labels_stack.append(label_ngrams)
+                else:
+                    extended_label = prev_label + label_ngrams
+                    extended_csims = list(map(
+                        lambda spec: cos_similarity(spec["ngrams"], extended_label), 
+                        recspec
+                    ))
+                    if max(extended_csims) > max(csims):
+                        labels_stack.append(extended_label)
+                    else:
+                        labels_stack.append(label_ngrams)
+                
+
+ # ['Przepływy środków pieniężnych netto z działalności'],
+ # ['(835)', '(5 450)'],
+ # ['inwestycyjnej'],
+
 
 
 class SelfSearchingPage:
@@ -158,7 +212,7 @@ class SelfSearchingPage:
             self.model = None
 
     def _extract_ngrams(self, text, n=2):
-        freq = Counter(util.find_ngrams(text, n))
+        freq = Counter(find_ngrams(text, n))
         if self.use_number_ngram:
             freq[NGram("fake#number")] = len(util.find_numbers(text))
         return freq

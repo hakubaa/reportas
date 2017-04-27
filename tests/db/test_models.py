@@ -7,6 +7,19 @@ from db.models import Report, ReportType, FinRecord, FinRecordType
 from tests.db import DbTestCase
 
 
+class FinRecordTypeTest(DbTestCase):
+
+	def test_for_uniqueness_of_names(self):
+		rtype = FinRecordType("TEST")
+		self.db.session.add(rtype)
+		self.db.session.commit()
+
+		with self.assertRaises(Exception):
+			rtype = FinRecordType("TEST")
+			self.db.session.add(rtype)
+			self.db.session.commit()
+	
+
 class FinRecordTest(DbTestCase):
 
 	def test_relationship_with_recordtype(self):

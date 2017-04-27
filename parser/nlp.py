@@ -1,5 +1,11 @@
 from functools import reduce
 import operator
+import math
+
+import nltk
+import string
+
+from parser.util import is_date
 
 
 # polish stop words (source: wikipedia)
@@ -42,3 +48,20 @@ class NGram:
 
     def __iter__(self):
         return iter(self._tokens)
+
+
+def find_ngrams(text, n):
+    '''Find all n-grams in th text and return list of tuples.'''
+    tokens = [token.lower() for token in nltk.word_tokenize(text)]
+    tokens = [token for token in tokens 
+                    if token not in STOP_WORDS 
+                       and not token.lstrip("-+(").rstrip(")").isdigit() 
+                       and token not in string.punctuation
+                       and not is_date(token) ]
+    ngrams = [ NGram(*tokens) for tokens in nltk.ngrams(tokens, n) ]
+    return ngrams
+
+
+def cos_similarity(a, b):
+    '''Calculate cos similarity between two iterables.'''
+    return len(set(a) & set(b)) / (math.sqrt(len(a)) * math.sqrt(len(b)))
