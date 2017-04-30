@@ -62,20 +62,6 @@ class Document:
         return "{}('{}')".format(self.__class__.__name__, self.docpath)
 
 
-
-class Field:
-    '''Representation of financial record in financial statement.'''
-
-    def __init__(self, value):
-        self.tokens = find_ngrams(value, n=1)
-        
-    def __iter__(self):
-        return iter(self.tokens)
-
-    def __len__(self):
-        return len(self.tokens)
-
-
 class ASCITable:
 
     re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
@@ -153,46 +139,84 @@ class ASCITable:
 
         return rows
 
-    def _identify_records(self, rows, recspec):
-        labels_stack = list()
-        numbers_stack = list()
+    def _identify_records(self, rows, recspec, min_csim=0.9):
+        stack = list()
         for index, row in enumerate(rows):
-            label_ngrams = find_ngrams(row[0], n=1)
-            if label_ngrams:
+            # Check for presence of label and find the most similar label
+            # in specification.
+            label_tokens = find_ngrams(row[0], n=1)
+            if label_tokens:
                 csims = list(map(
-                    lambda spec: cos_similarity(spec["ngrams"], label_ngrams), 
+                    lambda spec: (
+                        spec["id"], 
+                        cos_similarity(spec["ngrams"], label_tokens)
+                    ), 
                     recspec
                 ))
-            else: # probably numbers
-                csims = [0]*len(recspec)
-                row_with_numbers = any(map(is_number, row))
-                if row_with_numbers:
-                    numbers_stack.append(row)
 
-            if not any(csims):
-                continue
-            if len(row) < columns_number + 1:
+            # Check for presence of numbers in the row
+            row_numbers_count = sum(map(is_number, row))
+
+            if label_tokens and row_numbers_count: # full row
+                numbers = row[-row_numbers_count:]
+                stack.append((label_tokens, numbers, csims, (index,)))
+            elif label_tokens:
                 try:
-                    prev_label = labels_stack.pop()
+                    s_label, s_numbers, s_csims, s_index = stack.pop()
                 except IndexError:
-                    labels_stack.append(label_ngrams)
+                    stack.append((label_tokens, None, csims, (index,)))
                 else:
-                    extended_label = prev_label + label_ngrams
-                    extended_csims = list(map(
-                        lambda spec: cos_similarity(spec["ngrams"], extended_label), 
+                    # import pdb; pdb.set_trace()
+                    ext_label = label_tokens + s_label
+                    ext_csims = list(map(
+                        lambda spec: (
+                            spec["id"], 
+                            cos_similarity(spec["ngrams"], ext_label)
+                        ), 
                         recspec
                     ))
-                    if max(extended_csims) > max(csims):
-                        labels_stack.append(extended_label)
+
+                    max_ext_csims = max(ext_csims, key=operator.itemgetter(1))[1]
+                    max_s_csims = max(s_csims, key=operator.itemgetter(1))[1]
+                    max_csims = max(csims, key=operator.itemgetter(1))[1]
+
+                    if max_ext_csims > max_s_csims and max_ext_csims > max_csims:
+                        stack.append((ext_label, s_numbers, ext_csims, 
+                                      s_index + (index,)))
                     else:
-                        labels_stack.append(label_ngrams)
+                        stack.append((s_label, s_numbers, s_csims, s_index))
+                        stack.append((label_tokens, None, csims, (index,)))
+            elif row_numbers_count:
+                numbers = row[-row_numbers_count:] 
+                try:
+                    s_label, s_numbers, s_csims, s_index = stack.pop()
+                except IndexError:
+                    # stack.append((None, numbers, None))
+                    pass
+                else:
+                    if s_label and not s_numbers:
+                        stack.append((s_label, numbers, s_csims, 
+                                      s_index + (index,)))
+                    else:
+                        pass
+                        # stack.append((None, numbers, None))
+            else:
+                continue
+
+        # Reduce stack
+        identified_records = list()
+        for label, numbers, csims, rows_indices in stack:
+            max_csim = max(csims, key=operator.itemgetter(1))[1]
+            if max_csim > min_csim:
+                spec_id = tuple(id for id, csim in csims 
+                                   if abs(csim - max_csim) < 1e-3)
+                identified_records.append(
+                    (spec_id, numbers, rows_indices)
+                )
+
+        return identified_records
+
                 
-
- # ['Przepływy środków pieniężnych netto z działalności'],
- # ['(835)', '(5 450)'],
- # ['inwestycyjnej'],
-
-
 
 class SelfSearchingPage:
 
