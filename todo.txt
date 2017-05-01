@@ -9,3 +9,7 @@ Fields specification:
   that the data concerns first quarter of 2015; all data are given at the end
   of the months so 2015-03 is enough: q - quarter, h - half-a-year, y - year,
   q201503, y201512, m201506, q201512
+
+
+- get rid of polish characters everywhere
+- remove single character ngrams

@@ -27,7 +27,7 @@ class FinRecordTest(DbTestCase):
 		self.db.session.add(rtype)
 		self.db.session.commit()
 
-		record = FinRecord(rtype, 10)
+		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), "Q")
 		self.db.session.add(record)
 		self.db.session.commit()
 
@@ -64,7 +64,7 @@ class ReportTest(DbTestCase):
 
 		rtype = FinRecordType("FIXED_ASSETS")
 		self.db.session.add(rtype)
-		record = FinRecord(rtype, 10)
+		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), "Y")
 		self.db.session.add(record)
 		self.db.session.commit()
 

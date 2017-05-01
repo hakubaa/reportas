@@ -43,21 +43,21 @@ def find_numbers(text):
     return numbers
 
 
-def is_number(string):
+def is_number(string, special_zeros=" -"):
     '''Test whether str represents a number.'''
-    return bool(re.match(RE_NUMBER, string))
+    return string in special_zeros or bool(re.match(RE_NUMBER, string))
 
 
-def convert_to_number(string, decimal_mark=","):
+def convert_to_number(string, decimal_mark=",", special_zeros=" -"):
     '''Convert string to number.'''
     if isinstance(string, numbers.Number):
         return string
 
-    if string == "" or string == "-": # '-' is often use in reports
-        return 0.0
-
     if not is_number(string):
         return None
+
+    if string in special_zeros:
+        return 0.0
 
     # Determine sign of the number
     sign = -1 if re.match(r"^(-|\()", string) else 1
@@ -78,7 +78,13 @@ def convert_to_number(string, decimal_mark=","):
 
     return sign * (integral + fraction)
 
-   
+
+def remove_non_ascii(string):
+    ''' Return the string without non ASCII characters.'''
+    stripped = (c for c in string if 0 < ord(c) < 127)
+    return ''.join(stripped)
+
+
 def load_module(name, attach = False, force_reload = True):
     '''Load dynamically module.'''
     if name in sys.modules and force_reload:

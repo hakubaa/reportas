@@ -71,7 +71,9 @@ class FinRecord(Base):
 	__tablename__ = "finrecords"
 
 	id = Column(Integer, primary_key=True)
-	value = Column(Float)
+	value = Column(Float, nullable=False)
+	timestamp = Column(DateTime, nullable=False)
+	timerange = Column(String, nullable=False)
 
 	rtype_id = Column(Integer, ForeignKey("finrecords_dict.id"))
 	rtype = relationship("FinRecordType", back_populates="records")
@@ -79,10 +81,12 @@ class FinRecord(Base):
 	report_id = Column(Integer, ForeignKey("reports.id"))
 	report = relationship("Report", back_populates="records")
 
-	def __init__(self, rtype, value=None, report=None):
+	def __init__(self, rtype, value, timestamp, timerange, report=None):
 		self.rtype = rtype
 		self.value = value
-		self.report = None
+		self.timestamp = timestamp
+		self.timerange = timerange
+		self.report = report
 
 	def __repr__(self):
 		return "<FinRecord({!r}, {!r}, {!r})>".format(

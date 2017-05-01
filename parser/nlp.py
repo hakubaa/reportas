@@ -1,6 +1,7 @@
 from functools import reduce
 import operator
 import math
+import re
 
 import nltk
 import string
@@ -50,18 +51,23 @@ class NGram:
         return iter(self._tokens)
 
 
-def find_ngrams(text, n):
+def find_ngrams(text, n, min_len=0, remove_non_alphabetic=False, 
+                remove_stop_words=True, remove_dates=True):
     '''Find all n-grams in th text and return list of tuples.'''
     tokens = [token.lower() for token in nltk.tokenize.wordpunct_tokenize(text)]
     tokens = [token for token in tokens 
-                    if token not in STOP_WORDS 
+                    if remove_stop_words and token not in STOP_WORDS 
                        and not token.lstrip("-+(").rstrip(")").isdigit() 
                        and token not in string.punctuation
-                       and not is_date(token) ]
+                       and remove_dates and not is_date(token) 
+                       and len(token) >= min_len ]
+    if remove_non_alphabetic:
+        regex = re.compile(r"[^a-zA-Z]")
+        tokens = filter(bool, (re.sub(regex, "", token) for token in tokens))
     ngrams = [ NGram(*tokens) for tokens in nltk.ngrams(tokens, n) ]
     return ngrams
 
 
 def cos_similarity(a, b):
     '''Calculate cos similarity between two iterables.'''
-    return len(set(a) & set(b)) / (math.sqrt(len(a)) * math.sqrt(len(b)))
+    return len(set(a) & set(b)) / (math.sqrt(len(set(a))) * math.sqrt(len(set(b))))
