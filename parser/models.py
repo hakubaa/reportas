@@ -161,10 +161,13 @@ class RecordsExtractor:
     ) 
 
     def __init__(self, text, recspec, require_numbers=True, 
-                 remove_non_ascii=True, min_csim=0.8):
+                 remove_non_ascii=True, min_csim=0.8, fix_white_spaces=True):
         if remove_non_ascii:
             text = util.remove_non_ascii(text)
-        self.input_rows = self._preprocess_labels(self._extract_rows(text))
+        temp_rows = self._extract_rows(text)
+        self.input_rows = self._preprocess_labels(temp_rows)
+        if fix_white_spaces:
+             self.input_rows = self._fix_white_spaces(self.input_rows, recspec)
         self.rows = self._identify_records(
             self.input_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
@@ -249,35 +252,45 @@ class RecordsExtractor:
             # Check for presence of numbers in the row
             row_numbers_count = sum(map(util.is_number, row))
 
-            if label_tokens and row_numbers_count: # full row
-                numbers = row[-row_numbers_count:]
-                stack.append((label_tokens, numbers, csims, (index,)))
-            elif label_tokens:
+
+            if label_tokens:
+                if row_numbers_count:
+                    numbers = row[-row_numbers_count:]
+                else:
+                    numbers = None
+
                 try:
                     s_label, s_numbers, s_csims, s_index = stack.pop()
                 except IndexError:
-                    stack.append((label_tokens, None, csims, (index,)))
+                    stack.append((label_tokens, numbers, csims, (index,)))
                 else:
-                    # import pdb; pdb.set_trace()
-                    ext_label = label_tokens + s_label
-                    ext_csims = list(map(
-                        lambda spec: (
-                            spec["id"], 
-                            cos_similarity(spec["ngrams"], ext_label)
-                        ), 
-                        recspec
-                    ))
+                    if not (numbers and s_numbers):
+                        ext_label = label_tokens + s_label
+                        ext_csims = list(map(
+                            lambda spec: (
+                                spec["id"], 
+                                cos_similarity(spec["ngrams"], ext_label)
+                            ), 
+                            recspec
+                        ))
 
-                    max_ext_csims = max(ext_csims, key=operator.itemgetter(1))[1]
-                    max_s_csims = max(s_csims, key=operator.itemgetter(1))[1]
-                    max_csims = max(csims, key=operator.itemgetter(1))[1]
+                        item_selector = operator.itemgetter(1)
+                        max_ext_csims = max(ext_csims, key=item_selector)[1]
+                        max_s_csims = max(s_csims, key=item_selector)[1]
+                        max_csims = max(csims, key=item_selector)[1]
 
-                    if max_ext_csims > max_s_csims and max_ext_csims > max_csims:
-                        stack.append((ext_label, s_numbers, ext_csims, 
-                                      s_index + (index,)))
-                    else:
-                        stack.append((s_label, s_numbers, s_csims, s_index))
-                        stack.append((label_tokens, None, csims, (index,)))
+                        if (max_ext_csims > max_s_csims
+                                and max_ext_csims > max_csims
+                                # preceeding label has to be driving force 
+                                and max_s_csims > max_csims): 
+                            numbers = numbers or s_numbers
+                            stack.append((ext_label, numbers, ext_csims, 
+                                          s_index + (index,)))
+                            continue
+
+                    stack.append((s_label, s_numbers, s_csims, s_index))
+                    stack.append((label_tokens, numbers, csims, (index,)))
+                    
             elif row_numbers_count:
                 numbers = row[-row_numbers_count:] 
                 try:
@@ -310,10 +323,101 @@ class RecordsExtractor:
                 )
 
         # Remove duplicates/Choose the row with the higest csims
-        data = (record[0] + (index, ) 
+        data = list(record[0] + (index, ) 
                 for index, record in enumerate(identified_records))
         unique_rows = list()
-        for k, g in itertools.groupby(data, lambda item: item[0]):
+        for k, g in itertools.groupby(
+                sorted(data, key=lambda item: item[0], reverse=True), 
+                lambda item: item[0]
+            ):
             unique_rows.append(max(g, key=operator.itemgetter(2))[2])
 
-        return list(operator.itemgetter(*unique_rows)(identified_records))
+        return sorted(
+            list(operator.itemgetter(*unique_rows)(identified_records)),
+            key=lambda item: item[2][0], reverse=False
+        )
+
+    def _fix_white_spaces(self, rows, recspec):
+        '''
+        Fix broken labels. Sometimes the words are split with white spaces
+        without any reason. Concatenate all words and then split long string
+        into tokens.
+        '''
+        # Create vocabulary from specification
+        voc = set( 
+            map(str, reduce(
+                operator.add, 
+                map(operator.itemgetter("ngrams"), recspec)
+            ))
+        )
+
+        # Create list of bigrams
+        zip_ngrams = map(
+            lambda spec: zip(spec["ngrams"][:-1], spec["ngrams"][1:]), 
+            recspec
+        )
+        bigrams = set()
+        for item in zip_ngrams:
+            bigrams.update(map(lambda ngram: ngram[0] + ngram[1], item))
+
+        # Fix labels
+        for row in rows:
+            if not len(re.findall(RecordsExtractor.re_alphabetic_chars, row[0])):
+                continue
+            label_without_spaces = re.sub(' ', '', row[0])
+            pot_labels = self._split_sentence_into_tokens(
+                label_without_spaces, voc
+            )
+            if pot_labels: # label fixed, there are some results
+                if len(pot_labels) == 1: # one potential label, no much choice
+                    fixed_label = pot_labels[0]
+                else: # more than one potentail label
+                    # Choose the label with the largest number of identified 
+                    # bigrams
+                    temp_bigrams = [(index, set(find_ngrams(label, n=2))) 
+                                     for index, label in enumerate(pot_labels)]
+                    labels_bigrams = list(filter(lambda item: bool(item[1]), 
+                                                 temp_bigrams))
+                    if labels_bigrams:
+                        labels_fit = sorted([
+                            (index, len(bigram & bigrams) / len(bigram)) 
+                             for index, bigram in labels_bigrams
+                        ], key=operator.itemgetter(1), reverse=True)
+                        fixed_label = pot_labels[labels_fit[0][0]]
+                    else: # there are no bigrams, choose the longest unigram
+                        fixed_label = max(pot_labels, key=len)
+
+            else: # unabel to fix the label, return original label
+                fixed_label = row[0]
+
+            row[0] = fixed_label
+
+        return rows
+
+    def _split_sentence_into_tokens(self, sentence, voc):
+        '''Split sentence in accordance with vocabulary.'''
+        stack = [(list(), sentence)]
+        results = list()
+
+        re_voc = [re.compile("^" + word, flags=re.IGNORECASE) for word in voc]
+
+        while stack:
+            tokens, sentence = stack.pop()
+            tokens_match = list(filter(
+                bool, (re.match(re_word, sentence) for re_word in re_voc)
+            ))
+            if tokens_match:
+                for match in tokens_match:
+                    stack.append(
+                        (tokens + [sentence[slice(*match.span())]], 
+                         sentence[match.end():])
+                    )
+            else:
+                sentence = sentence[1:]
+                if not sentence:
+                    if tokens:
+                        results.append(' '.join(tokens))
+                else:
+                    stack.append((tokens, sentence))
+
+        return results

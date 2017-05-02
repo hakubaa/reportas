@@ -2,6 +2,8 @@ from functools import reduce
 import operator
 import math
 import re
+import numbers
+import itertools
 
 import nltk
 import string
@@ -25,6 +27,9 @@ class NGram:
     def __repr__(self):
         return "NGram('{}')".format("', '".join(self._tokens))
 
+    def __str__(self):
+        return ' '.join(self)
+
     def __hash__(self):
         hashes = (hash(token + str(index)) for index, token in enumerate(self))
         return reduce(operator.xor, hashes)
@@ -33,6 +38,15 @@ class NGram:
         if len(self) != len(other):
             return False
         return tuple(self) == tuple(other)
+
+    def __lt__(self, other):
+        if self == other: return False
+        for t1, t2 in zip(self, other):
+            if t1 < t2:
+                return True
+            elif t1 > t2:
+                return False
+        return len(self) < len(other)
 
     def __len__(self):
         return len(self._tokens)
@@ -49,6 +63,13 @@ class NGram:
 
     def __iter__(self):
         return iter(self._tokens)
+
+    def __add__(self, other):
+        return NGram(*itertools.chain(self, other))
+
+    def __iadd__(self, other):
+        self._tokens = list(itertools.chain(self, other))
+        return self
 
 
 def find_ngrams(text, n, min_len=0, remove_non_alphabetic=False, 

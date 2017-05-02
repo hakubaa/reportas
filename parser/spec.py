@@ -5,8 +5,7 @@
 # kghm_2016_y.pdf
 # arctic_2016_q3.pdf
 # dbc_2016_q4.pdf
-
-
+# tpe_2016_y.pdf
 
 finrecords = [ 
     {
@@ -19,6 +18,11 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "ZMIANA NETTO STANU ŚRODKÓW PIENIĘŻNYCH I ICH EKWIWALENTÓW"
+            },
+            {
+                "lang": "PL",
+                "value": "Zwiększenie/(zmniejszenie) netto stanu środków "
+                         "pieniężnych i ich ekwiwalentów"
             }
         ]
     },
@@ -129,6 +133,15 @@ finrecords = [
         ]
     },
     {
+        "statement": "cfs", "name": "CF#ZSKO",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zmiana stanu kapitału obrotowego"
+            }
+        ]
+    },
+    {
         "statement": "cfs", "name": "CF#ZSRM",
         "repr": [
             {
@@ -160,6 +173,16 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Strata netto"
+            }
+        ]
+    },
+    {
+        "statement": "cfs", "name": "CF#UZSN",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Udział w (zyskach) stratach netto jednostek "
+                         "podporządkowanych wycenianych metodą praw własności"
             }
         ]
     },
@@ -230,6 +253,11 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Zbycie aktywów niematerialnych oraz rzeczowych aktywów trwałych"
+            },
+            {
+                "lang": "PL",
+                "value": "Zbycie wartości niematerialnych i prawnych oraz "
+                         "rzeczowych aktywów trwałych"
             }
         ]
     },
