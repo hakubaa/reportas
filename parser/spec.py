@@ -6,6 +6,7 @@
 # arctic_2016_q3.pdf
 # dbc_2016_q4.pdf
 # tpe_2016_y.pdf
+# ltx_2016_y.pdf
 
 finrecords = [ 
     {
@@ -76,9 +77,17 @@ finrecords = [
                 "lang": "PL", 
                 "value": "Przepływy pieniężne netto z działalności inwestycyjnej" 
             },
+            { 
+                "lang": "PL", 
+                "value": "Przepływy pieniężne netto z działalności inwest." 
+            },
             {
                 "lang": "PL",
                 "value": "Przepływy środków pieniężnych netto z działalności inwestycyjnej"
+            },
+            {
+                "lang": "PL",
+                "value": "Przepływy środków pieniężnych netto z działalności inwest."
             },
             {
                 "lang": "PL",
@@ -533,7 +542,7 @@ finrecords = [
             }
         ]
     },
-    {
+    {   # Przepływy środków pieniężnych z działalności operacyjnej
         "statement": "cfs", "name": "CF#OID",
         "repr": [
             {
@@ -551,6 +560,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Odsetki i udziały w zyskach (dywidendy)"
+            },
+            {
+                "lang": "PL",
+                "value": "Przychody z tytułu dywidend"
             }
         ]
     },

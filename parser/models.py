@@ -252,7 +252,6 @@ class RecordsExtractor:
             # Check for presence of numbers in the row
             row_numbers_count = sum(map(util.is_number, row))
 
-
             if label_tokens:
                 if row_numbers_count:
                     numbers = row[-row_numbers_count:]
@@ -308,34 +307,47 @@ class RecordsExtractor:
                 continue
 
         # Reduce stack
-        identified_records = list()
+        ident_records = list()
         for label, numbers, csims, rows_indices in stack:
             if require_numbers and not numbers:
                 continue
             max_csim = max(csims, key=operator.itemgetter(1))[1]
             if max_csim > min_csim:
-                spec_id = next((id, csim) for id, csim in csims 
-                                          if abs(csim - max_csim) < 1e-10)
+                spec_id = sorted(
+                    ((id, csim) for id, csim in csims 
+                        #if (abs(csim - max_csim) < 1e-10 and csim > min_csim)),
+                        if csim > min_csim),
+                    key = operator.itemgetter(1)
+                )
                 if convert_numbers:
                     numbers = [ util.convert_to_number(num) for num in numbers ]
-                identified_records.append(
+                ident_records.append(
                     (spec_id, numbers, rows_indices)
                 )
 
         # Remove duplicates/Choose the row with the higest csims
-        data = list(record[0] + (index, ) 
-                for index, record in enumerate(identified_records))
-        unique_rows = list()
-        for k, g in itertools.groupby(
-                sorted(data, key=lambda item: item[0], reverse=True), 
-                lambda item: item[0]
-            ):
-            unique_rows.append(max(g, key=operator.itemgetter(2))[2])
+        taken_keys = set()
+        final_records = list()
 
-        return sorted(
-            list(operator.itemgetter(*unique_rows)(identified_records)),
-            key=lambda item: item[2][0], reverse=False
-        )
+        while True:
+            data = list(
+                (label.pop(), numbers, index, row_no) 
+                for row_no, (label, numbers, index) in enumerate(ident_records)
+                    if label and label[-1][0] not in taken_keys
+            )  
+            if not data:
+                break
+
+            for k, g in itertools.groupby(
+                    sorted(data, key=lambda item: item[0][0], reverse=True), 
+                    lambda item: item[0][0]
+                ):
+                selected_record = max(g, key=operator.itemgetter(1))
+                final_records.append(selected_record[:-1])
+                taken_keys.add(k)
+
+
+        return sorted(final_records, key=lambda item: item[2][0], reverse=False)
 
     def _fix_white_spaces(self, rows, recspec):
         '''
