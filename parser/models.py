@@ -66,7 +66,7 @@ class Document:
 
 class SelfSearchingPage:
 
-    min_probe_rate = 0.5 # coefficient for filtiring adjecant pages to page
+    min_probe_rate = 0.25 # coefficient for filtiring adjecant pages to page
     # with highest probability
 
     def __init__(self, modelpath, storage_name = None, use_number_ngram=True, 
@@ -115,9 +115,10 @@ class SelfSearchingPage:
         # financial report's type.
         if getattr(doc, "consolidated", False):
             for index, ngrams_page in enumerate(ngrams_by_pages):
-                if NGram("jednostkowe", "sprawozdanie") in ngrams_page \
-                   or NGram("finansowe", "jednostkowe") in ngrams_page:
-                    prob_by_pages[index] = 0
+                if any("jednostkowe" in ngram or "jednostkowy" in ngram 
+                       for ngram in ngrams_page):
+                    # decrease the probabilty
+                    prob_by_pages[index] = prob_by_pages[index] * 0.5
 
         page_with_max_prob = prob_by_pages.argmax()
         max_prob = prob_by_pages.max()
@@ -161,7 +162,9 @@ class RecordsExtractor:
     ) 
 
     def __init__(self, text, recspec, require_numbers=True, 
-                 remove_non_ascii=True, min_csim=0.8, fix_white_spaces=True):
+                 remove_non_ascii=True, min_csim=0.85, fix_white_spaces=True,
+                 voc=None):
+        self.voc = voc # used by _fix_white_spaces
         if remove_non_ascii:
             text = util.remove_non_ascii(text)
         temp_rows = self._extract_rows(text)
@@ -325,8 +328,9 @@ class RecordsExtractor:
                     (spec_id, numbers, rows_indices)
                 )
 
-        # Remove duplicates/Choose the row with the higest csims
+        # Remove duplicates/Choose the row with the highest csims
         taken_keys = set()
+        taken_rows = list()
         final_records = list()
 
         while True:
@@ -334,6 +338,7 @@ class RecordsExtractor:
                 (label.pop(), numbers, index, row_no) 
                 for row_no, (label, numbers, index) in enumerate(ident_records)
                     if label and label[-1][0] not in taken_keys
+                       and not any(set(index) & rows for rows in taken_rows)
             )  
             if not data:
                 break
@@ -342,10 +347,10 @@ class RecordsExtractor:
                     sorted(data, key=lambda item: item[0][0], reverse=True), 
                     lambda item: item[0][0]
                 ):
-                selected_record = max(g, key=operator.itemgetter(1))
+                selected_record = max(g, key=lambda item: item[0][1])
                 final_records.append(selected_record[:-1])
                 taken_keys.add(k)
-
+                taken_rows.append(set(selected_record[2]))
 
         return sorted(final_records, key=lambda item: item[2][0], reverse=False)
 
@@ -356,7 +361,7 @@ class RecordsExtractor:
         into tokens.
         '''
         # Create vocabulary from specification
-        voc = set( 
+        voc = set(self.voc or tuple()) | set( 
             map(str, reduce(
                 operator.add, 
                 map(operator.itemgetter("ngrams"), recspec)

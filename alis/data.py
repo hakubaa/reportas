@@ -132,6 +132,10 @@ reports = [
         "doc": FinancialReport("reports/lpp_2016_q1.pdf"), "ticker": "lpp",
         "statements": { "balance": (3,4), "nls": (5,), "cfs": (7, 8) }
     },
+    {
+        "doc": FinancialReport("reports/gri_2016_y.pdf"), "ticker": "gri",
+        "statements": { "balance": (46, 47), "nls": (45,), "cfs": (48, 49) }
+    }
 ]
 
 Document.verbose = False
