@@ -156,11 +156,14 @@ class RecordsExtractor:
     re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
     re_rows_separators = re.compile(r"\n")
     re_alphabetic_chars = re.compile(r"[A-Za-zżźćńółęąśŻŹĆĄŚĘŁÓŃ]")
+    #re_leading_number = re.compile(
+    #    r"^(?:Nota)?(?:\s)*([A-Za-z]|(\d+)(?:\.\d+)*|(M{0,4}(CM|CD|D?C{0,3})"
+    #    r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})))(\.|\)| )(?:\s)*"
+    #) 
     re_leading_number = re.compile(
-        r"^(?:Nota)?(?:\s)*([A-Za-z]|(\d+)(?:\.\d+)*|(M{0,4}(CM|CD|D?C{0,3})"
+        r"^(?:Nota)?(?:\s)*(c(\d+)(?:\.\d+)*|(M{0,4}(CM|CD|D?C{0,3})"
         r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})))(\.|\)| )(?:\s)*"
     ) 
-
     def __init__(self, text, recspec, require_numbers=True, 
                  remove_non_ascii=True, min_csim=0.85, fix_white_spaces=True,
                  voc=None):
@@ -170,7 +173,7 @@ class RecordsExtractor:
         temp_rows = self._extract_rows(text)
         self.input_rows = self._preprocess_labels(temp_rows)
         if fix_white_spaces:
-             self.input_rows = self._fix_white_spaces(self.input_rows, recspec)
+            self.input_rows = self._fix_white_spaces(self.input_rows, recspec)
         self.rows = self._identify_records(
             self.input_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
@@ -301,8 +304,11 @@ class RecordsExtractor:
                     # numbers without preceeding labels - ignore them
                     pass
                 else:
-                    if s_label and not s_numbers:
-                        stack.append((s_label, numbers, s_csims, 
+                    if s_label:
+                        # probably the id of the note
+                        if s_numbers and len(s_numbers) == 1:
+                            s_numbers.extend(numbers)
+                        stack.append((s_label, s_numbers, s_csims, 
                                       s_index + (index,)))
                     else: # numbers without preceeding labels - ignore them
                         stack.append((s_label, s_numbers, s_csims, s_index))

@@ -15,7 +15,7 @@ finrecords = [
 # CASH FLOW STATEMENT - CFS
 ################################################################################
     {
-        "statement": "cfs", "name": "CFS#CFNETTO", 
+        "statement": "cfs", "name": "CFS#TOTALNETCASHFLOWS", 
         "repr": [
             {
                 "lang": "PL",
@@ -37,7 +37,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CASHSTART", 
+        "statement": "cfs", "name": "CFS#CASHOPENINGBALANCE", 
         "repr": [
             {
                 "lang": "PL",
@@ -54,7 +54,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CASHEND", 
+        "statement": "cfs", "name": "CFS#CLOSINGBALANCEOFCASH", 
         "repr": [
             {
                 "lang": "PL",
@@ -71,7 +71,7 @@ finrecords = [
         ]
     },
     { 
-        "statement": "cfs", "name": "CFS#CFFO", 
+        "statement": "cfs", "name": "CFS#NETCFFROMOPERATINGACTIVITIES", 
         "repr": [ 
             { 
                 "lang": "PL", 
@@ -88,7 +88,7 @@ finrecords = [
         ] 
     }, 
     { 
-        "statement": "cfs", "name": "CFS#CFFI", 
+        "statement": "cfs", "name": "CFS#NETCFFROMINVESTMENTACTIVITIES", 
         "repr": [ 
             { 
                 "lang": "PL", 
@@ -117,7 +117,7 @@ finrecords = [
         ] 
     }, 
     { 
-        "statement": "cfs", "name": "CFS#CFFF", 
+        "statement": "cfs", "name": "CFS#NETCFFROMFINANCIALACTIVITIES", 
         "repr": [ 
             { 
                 "lang": "PL", 
@@ -134,7 +134,7 @@ finrecords = [
         ] 
     },
     {
-        "statement": "cfs", "name": "CFS#ZSZOB",
+        "statement": "cfs", "name": "CFS#CHANGEINSHORTTERMLIABILITIES",
         "repr": [
             {
                 "lang": "PL",
@@ -167,7 +167,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSKO",
+        "statement": "cfs", "name": "CFS#CHANGEINCURRENTASSETS",
         "repr": [
             {
                 "lang": "PL",
@@ -176,7 +176,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSRM",
+        "statement": "cfs", "name": "CFS#CHANGEINPREPAYMENTS",
         "repr": [
             {
                 "lang": "PL",
@@ -185,7 +185,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSATPO",
+        "statement": "cfs", "name": "CFS#CHANGEINTAX",
         "repr": [
             {
                 "lang": "PL",
@@ -194,7 +194,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSN",
+        "statement": "cfs", "name": "CFS#NETPROFIT",
         "repr": [
             {
                 "lang": "PL",
@@ -215,7 +215,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#UZSN",
+        "statement": "cfs", "name": "CFS#NETPROFITONRELATEDENTITIES",
         "repr": [
             {
                 "lang": "PL",
@@ -225,7 +225,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSB",
+        "statement": "cfs", "name": "CFS#GROSSPROFIT",
         "repr": [
             {
                 "lang": "PL",
@@ -242,7 +242,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#AMORTST",
+        "statement": "cfs", "name": "CFS#AMORTISATIONONFIXEDASSETS",
         "repr": [
             {
                 "lang": "PL", "value": "Amortyzacja środków trwałych"
@@ -253,7 +253,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#AMORTWN",
+        "statement": "cfs", "name": "CFS#AMORTISATIONONINTANGIBLEASSETS",
         "repr": [
             {
                 "lang": "PL", "value": "Amortyzacja wartości niematerialnych"
@@ -261,7 +261,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#AMORT",
+        "statement": "cfs", "name": "CFS#AMORTISATION",
         "repr": [
             {
                 "lang": "PL", "value": "Amortyzacja"
@@ -277,7 +277,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#WSSTWN",
+        "statement": "cfs", "name": "CFS#DISPOSALOFFIXEDASSETS",
         "repr": [
             {
                 "lang": "PL", 
@@ -303,7 +303,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#WNRATWN",
+        "statement": "cfs", "name": "CFS#PURCHASEOFFIXEDASSETS",
         "repr": [
             {
                 "lang": "PL", 
@@ -332,7 +332,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#WNAF",
+        "statement": "cfs", "name": "CFS#PURCHASEOFFINANCIALASSETS",
         "repr": [
             {
                 "lang": "PL", 
@@ -349,7 +349,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#PZAF",
+        "statement": "cfs", "name": "CFS#REVENEUSFROMSALEOFFINANCIALASSETS",
         "repr": [
             {
                 "lang": "PL",
@@ -384,7 +384,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSTDI",
+        "statement": "cfs", "name": "CFS#PROFITONINVESTMENTACTIVITIES",
         "repr": [
             {
                 "lang": "PL",
@@ -393,11 +393,19 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "(Zysk) strata z działalności inwestycyjnej"
+            },
+            {
+                "lang": "PL",
+                "value": "(Zyski)/Straty z tytułu działalności inwestycyjnej"
+            },
+            {
+                "lang": "PL",
+                "value": "Zyski / strata na działalności inwestycyjnej"
             }
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSR",
+        "statement": "cfs", "name": "CFS#CHANGEINPROVISIONS",
         "repr": [
             {
                 "lang": "PL",
@@ -406,7 +414,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSZ",
+        "statement": "cfs", "name": "CFS#CHANGEININVETORY",
         "repr": [
             {
                 "lang": "PL",
@@ -427,7 +435,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSNAL",
+        "statement": "cfs", "name": "CFS#CHANGEINRECEIVABLES",
         "repr": [
             {
                 "lang": "PL",
@@ -456,7 +464,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSNRMC",
+        "statement": "cfs", "name": "CFS#CHANGEINRECEIVABLESANDPREPAYAMENTS",
         "repr": [
             {
                 "lang": "PL",
@@ -474,7 +482,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#WKP",
+        "statement": "cfs", "name": "CFS#INFLOWSFROMCREDITSANDLOANS",
         "repr": [
             {
                 "lang": "PL",
@@ -511,7 +519,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#SKP",
+        "statement": "cfs", "name": "CFS#REPAYMENTOFCREDITSANDLOANS",
         "repr": [
             {
                 "lang": "PL",
@@ -579,7 +587,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSTRK",
+        "statement": "cfs", "name": "CFS#EXCHANGEGAINS",
         "repr": [
             {
                 "lang": "PL",
@@ -588,7 +596,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#TAXUCRRENT",
+        "statement": "cfs", "name": "CFS#CURRENTINCOMETAX",
         "repr": [
             {
                 "lang": "PL",
@@ -635,24 +643,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#ZSDI",
-        "repr": [
-            {
-                "lang": "PL",
-                "value": "Zyski/straty z działalności inwestycyjnej"
-            },
-            {
-                "lang": "PL",
-                "value": "(Zyski)/Straty z tytułu działalności inwestycyjnej"
-            },
-            {
-                "lang": "PL",
-                "value": "Zyski / strata na działalności inwestycyjnej"
-            }
-        ]        
-    },
-    {
-        "statement": "cfs", "name": "CFS#TAXPAID",
+        "statement": "cfs", "name": "CFS#INCOMETAXPAID",
         "repr": [
             {
                 "lang": "PL",
@@ -690,7 +681,7 @@ finrecords = [
         ]        
     },
     {
-        "statement": "cfs", "name": "CFS#NAW",
+        "statement": "cfs", "name": "CFS#PURCHASEOFOWNSHARES",
         "repr": [
             {
                 "lang": "PL",
@@ -740,7 +731,7 @@ finrecords = [
 # ursus_2016_y.pdf
 
     {
-        "statement": "nls", "name": "NLS#INCOMESALE",
+        "statement": "nls", "name": "NLS#REVENUESFROMSALE",
         "repr": [
             {
                 "lang": "PL",
@@ -766,7 +757,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#INCOMESALEPRODS",
+        "statement": "nls", "name": "NLS#REVENUESFROMSALESOFPRODUCTS",
         "repr": [
             {
                 "lang": "PL",
@@ -783,7 +774,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#INCOMESALESERVICES",
+        "statement": "nls", "name": "NLS#REVENUESFROMSALESOFSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -792,7 +783,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#INCOMESALEPGOODS",
+        "statement": "nls", "name": "NLS#REVENUESFROMSALEOFGOODS",
         "repr": [
             {
                 "lang": "PL",
@@ -809,7 +800,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#INCOMESALEPRODSANDSERVICES",
+        "statement": "nls", "name": "NLS#REVENESFROMSALESOFPRODUCTSANDSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -851,7 +842,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTMATERIALS",
+        "statement": "nls", "name": "NLS#COSTOFMATERIALS",
         "repr": [
             {
                 "lang": "PL",
@@ -860,7 +851,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTGOODS",
+        "statement": "nls", "name": "NLS#COSTOFGOODS",
         "repr": [
             {
                 "lang": "PL",
@@ -869,7 +860,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTGOODSANDMATERIALS",
+        "statement": "nls", "name": "NLS#COSTOFGOODSANDMATERIALS",
         "repr": [
             {
                 "lang": "PL",
@@ -886,7 +877,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTPRODUCTS",
+        "statement": "nls", "name": "NLS#COSTOFPRODUCTS",
         "repr": [
             {
                 "lang": "PL",
@@ -899,7 +890,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTSERVICES",
+        "statement": "nls", "name": "NLS#COSTOFSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -908,7 +899,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTPRODUCTSANDSERVICES",
+        "statement": "nls", "name": "NLS#COSTPOFRODUCTSANDSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -921,7 +912,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#NETSALEBRUTTO",
+        "statement": "nls", "name": "NLS#GROSSPROFITONSALES",
         "repr": [
             {
                 "lang": "PL",
@@ -938,7 +929,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTSELLING",
+        "statement": "nls", "name": "NLS#SELLINGCOSTS",
         "repr": [
             {
                 "lang": "PL",
@@ -951,7 +942,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTOFMANAGEMENT",
+        "statement": "nls", "name": "NLS#ADMINISTRATIVECOSTS",
         "repr": [
             {
                 "lang": "PL",
@@ -964,7 +955,7 @@ finrecords = [
         ]
     },
     { # NLS#COSTSELLING + NLS#COSTOFMANAGEMENT"
-        "statement": "nls", "name": "NLS#COSTSELLINGANDMANAGEMENT",
+        "statement": "nls", "name": "NLS#SELLINGANDADMINISTRATIVECOSTS",
         "repr": [
             {
                 "lang": "PL",
@@ -973,7 +964,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#NETSALENETTO",
+        "statement": "nls", "name": "NLS#NETPROFITONSALE",
         "repr": [
             {
                 "lang": "PL",
@@ -994,7 +985,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#INCOMEOP",
+        "statement": "nls", "name": "NLS#OPERATINGREVENUES",
         "repr": [
             {
                 "lang": "PL",
@@ -1003,7 +994,7 @@ finrecords = [
         ]
     },  
     {
-        "statement": "nls", "name": "NLS#COSTOP",
+        "statement": "nls", "name": "NLS#OPERATINGEXPENSES",
         "repr": [
             {
                 "lang": "PL",
@@ -1012,7 +1003,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "nls", "name": "NLS#NETOP",
+        "statement": "nls", "name": "NLS#PROFITONOPERATINGACTIVITIES",
         "repr": [
             {
                 "lang": "PL",
@@ -1025,7 +1016,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "nls", "name": "NLS#INCOMEFIN",
+        "statement": "nls", "name": "NLS#FINANCIALREVENUES",
         "repr": [
             {
                 "lang": "PL",
@@ -1034,7 +1025,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#COSTFIN",
+        "statement": "nls", "name": "NLS#FINANCIALEXPENSES",
         "repr": [
             {
                 "lang": "PL",
@@ -1043,7 +1034,7 @@ finrecords = [
         ]
     },   
     {
-        "statement": "nls", "name": "NLS#UZJSWP",
+        "statement": "nls", "name": "NLS#PROFITONRELATEDPARTIES",
         "repr": [
             {
                 "lang": "PL",
@@ -1089,7 +1080,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#NETBRUTTO",
+        "statement": "nls", "name": "NLS#GROSSPROFIT",
         "repr": [
             {
                 "lang": "PL",
@@ -1110,7 +1101,7 @@ finrecords = [
         ]
     },  
     {
-        "statement": "nls", "name": "NLS#TAX",
+        "statement": "nls", "name": "NLS#INCOMETAX",
         "repr": [
             {
                 "lang": "PL",
@@ -1127,7 +1118,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "nls", "name": "NLS#NETNETTO",
+        "statement": "nls", "name": "NLS#NETPROFIT",
         "repr": [
             {
                 "lang": "PL",
@@ -1152,7 +1143,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#NETNETTOCONT",
+        "statement": "nls", "name": "NLS#NETPROFITCONT",
         "repr": [
             {
                 "lang": "PL",
@@ -1169,7 +1160,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#NETNETTOOWNERS",
+        "statement": "nls", "name": "NLS#NETPROFITTOOWNERS",
         "repr": [
             {
                 "lang": "PL",
@@ -1190,7 +1181,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#NETNETTOMINOR",
+        "statement": "nls", "name": "NLS#NETPROFITTONONOWNERS",
         "repr": [
             {
                 "lang": "PL",
@@ -1238,5 +1229,840 @@ finrecords = [
                 "value": "Średnia ważona ilość akcji (w sztukach)"
             }
         ]
-    }
+    },
+    {
+        "statement": "nls", "name": "NLS#EXTRAORDINARYGAINS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zyski nadzwyczajne"
+            }
+        ]
+    },
+    {
+        "statement": "nls", "name": "NLS#EXTRAORDINARYLOSSES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Straty nadzwyczajne"
+            }
+        ]
+    },
+    {
+        "statement": "nls", "name": "NLS#RESULTONEXTRAORDINARYEVENTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Wynik zdarzeń nadzwyczajnych"
+            }
+        ]
+    },
+################################################################################
+# BALANCE SHEET
+################################################################################
+# acp_2010_q1.pdf
+# ambra_2008_y.pdf
+# bdx_2012_y.pdf
+# cng_2016_y.pdf 
+# decora_2016_q1.pdf 
+# wieleton_2016_y.pdf
+# tpe_2016_y.pdf 
+# kst_2016_y.pdf 
+# helio_2016_m2.pdf
+# obl_2016_y.pdf
+# ursus_2016_y.pdf
+
+    {
+        "statement": "bls", "name": "BLS#INTANGIBLEASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Wartości niematerialne i prawne"
+            },
+            {
+                "lang": "PL",
+                "value": "Wartości niematerialne"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#RDEXPENSES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Koszty zakończonych prac rozwojowych"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#GOODWILL",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Wartość firmy"
+            },
+            {
+                "lang": "PL",
+                "value": "Wartość firmy z konsolidacji"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#OTHERINTANGIBLEASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Inne wartości niematerialne i prawne"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#ADVANCESINTANGIBLEASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zaliczki na wartości niematerialne i prawne"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#TANGIBLEFIXEDASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Rzeczowe aktywa trwałe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#TANGIBLEFIXEDASSETSINUSE",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Środki trwałe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#TANGIBLEFIXEDASSETSUNDERCONSTRUCTION",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Środki trwałe w budowie"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#ADVANCESFORTANGIBLEFIXEDASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zaliczki na środki trwałe w budowie"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LONGTERMRECEIVABLES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Należności długoterminowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LONGTERMINVESTMENTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Inwestycje długoterminowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#REALPROPERTY",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Nieruchomości"
+            },
+            {
+                "lang": "PL",
+                "value": "Nieruchomości inwestycyjne"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LONGTERMFINANCIALASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Długoterminowe aktywa finansowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#OTHERLONGTERMINVESTMENTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Inne inwestycje długoterminowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LONGTERMPREPAYMENTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Długoterminowe rozliczenia międzyokresowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#FIXEDASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Aktywa trwałe"
+            },
+            {
+                "lang": "PL",
+                "value": "Aktywa trwałe razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Aktywa trwałe (długoterminowe) ogółem"
+            },
+            {
+                "lang": "PL",
+                "value": "Aktywa trwałe ogółem"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#CURRENTASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Aktywa obrotowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Aktywa obrotowe razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Aktywa obrotowe (krótkoterminowe) ogółem"
+            },
+            {
+                "lang": "PL",
+                "value": "Aktywa obrotowe ogółem"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#INVENTORY",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zapasy"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#MATERIALS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Materiały"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SEMIFINISHEDPRODUCTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Półprodukty i produkty w toku"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#FINISHEDPRODUCTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Produkty gotowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#GOODS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Towary"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#ADVANCESFORDELIVIERIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zaliczki na dostawy i usługi"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHORTTERMRECEIVABLES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Należności krótkoterminowe"
+            },
+            { # SPLIT WHEN REQUIRED
+                "lang": "PL",
+                "value": "Należności z tytułu dostaw i usług"
+            },
+            {
+                "lang": "PL",
+                "value": "Należności handlowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Należności handlowe oraz pozostałe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHORTTERMINVESTMENTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Inwestycje krótkoterminowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHORTTERMFINANCIALASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Krótkoterminowe aktywa finansowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#CASHINHAND",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "środki pieniężne i inne aktywa pieniężne"
+            },
+            {
+                "lang": "PL",
+                "value": "Środki pieniężne i depozyty krótkoterminowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Środki pieniężne i ich ekwiwalenty"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#OTHERSHORTTERMINVESTMENTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Inne inwestycje krótkoterminowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHORTTERMPREPAYMENTS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Krótkoterminowe rozliczenia międzyokresowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Rozliczenia międzyokresowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#TOTALASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Aktywa razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Suma aktywów"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#DEFERREDTAXASSETS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Aktywa z tytułu podatku odroczonego"
+            },
+            {
+                "lang": "PL",
+                "value": "Aktywa z tytułu odroczonego podatku dochodowego"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#EQUITY",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Kapitał (fundusz) własny"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał własny"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitały własne"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał własny ogółem"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitały własne ogółem"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał własny razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitały własne razem"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#EQUITYOWNERS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Kapitał własny (przypisany akcjonariuszom Jednostki Dominującej)"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał własny akcjonariuszy jednostki dominującej"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitały przypisane akcjonariuszom jednostki dominującej"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał własny przypadający akcjonariuszom jednostki dominującej"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#EQUITYNOTOWNERS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Udziały mniejszości"
+            },
+            {
+                "lang": "PL",
+                "value": "Udziały niedające kontroli"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał przypadający udziałom niedającym kontroli"
+            },
+            {
+                "lang": "PL",
+                "value": "Udziały niekontroluj1ce"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitały przypadające akcjonariuszom mniejszościowym"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SURPLUSFROMSOLDSHARES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Nadwyżka ze sprzedaży akcji powyżej ich wartości nominalnej"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał z emisji akcji powyżej ich wartości nominalnej"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał ze sprzedaży akcji powyżej ich wartości nominalnej"
+            },
+            {
+                "lang": "PL",
+                "value": "Nadwyżka ze sprzedaży akcji"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#OWNSHARES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Akcje własne"
+            },
+            {
+                "lang": "PL",
+                "value": "Udziały (akcje) własne (wielkość ujemna)"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHARECAPITAL",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Kapitał (fundusz) podstawowy"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał podstawowy"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał akcyjny"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał zakładowy"
+            },
+            {
+                "lang": "PL",
+                "value": "Wyemitowany kapitał akcyjny"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SUPPLEMENTARYCAPITAL",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Kapitał (fundusz) zapasowy"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał zapasowy"
+            },
+            {
+                "lang": "PL",
+                "value": "Pozostałe kapitały zapasowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#REVALUATIONRESERVE",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Kapitał (fundusz) z aktualizacji wyceny"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitał z aktualizacji wyceny"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#OTHERRESERVECAPITALS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Pozostałe kapitały (fundusze) rezerwowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Pozostałe kapitały rezerwowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#RESERVECAPITALS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Kapitał rezerwowy"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#PREVIOUSYEARSPROFIT",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) z lat ubiegłych"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#NETPROFIT",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) netto"
+            },
+          {
+                "lang": "PL",
+                "value": "Zysk/(strata) netto roku bieżącego"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#PREVIOUSANDCURRENTNETPROFIT",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zyski (straty) z lat ubiegłych i wynik okresu bieżącego"
+            },
+            {
+                "lang": "PL",
+                "value": "Zyski (straty) zatrzymane"
+            },
+            {
+                "lang": "PL",
+                "value": "Zyski zatrzymane"
+            }
+        ]
+    },
+
+    {
+        "statement": "bls", "name": "BLS#WRITEOFFNETPROFIT",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Odpisy z zysku netto w ciągu roku obrotowego (wielkość ujemna)"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LIABILITIESANDPROVISIONS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zobowiązania i rezerwy na zobowiązania"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#PROVISIONSFORLIABILITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Rezerwy na zobowiązania"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#PROVISIONSFORTAX",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Rezerwy na podatek dochodowy"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LONGTERMLIABILITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zobowiązania długoterminowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązanie długoterminowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania długoterminowe razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania długoterminowe ogółem"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#TRADELIABILITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zobowiązania z tytułu dostaw i usług"
+            },
+            {
+                "lang": "PL",
+                "value": "Długoterminowe zobowiązania handlowe i pozostałe od pozostałych jednostek"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LONGTERMCREDITSANDLOANS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Długoterminowe zobowiązania z tytułu kredytów, pożyczek oraz innych instrumentów dłużnych"
+            },
+            {
+                "lang": "PL",
+                "value": "Długoterminowe kredyty, pożyczki i inne zewnętrzne źródła finansowania"
+            },
+            {
+                "lang": "PL",
+                "value": "Długoterminowe kredyty, pożyczki i wyemitowane papiery dłużne"
+            },
+            {
+                "lang": "PL",
+                "value": "Długoterminowe kredyty, pożyczki i inner instrumenty dłużne"
+            },
+            {
+                "lang": "PL",
+                "value": "Długoterminowe kredyty bankowe i pożyczki"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHORTTERMCREDITSANDLOANS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Krótkoterminowe zobowiązania z tytułu kredytów, pożyczek oraz innych instrumentów dłużnych"
+            },
+            {
+                "lang": "PL",
+                "value": "Krótkoterminowe kredyty, pożyczki i inne zewnętrzne źródła finansowania"
+            },
+            {
+                "lang": "PL",
+                "value": "Krótkoterminowe kredyty bankowe i pożyczki"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#DEBTSECURITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "z tytułu emisji dłużnych papierów wartościowych"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHORTTERMLIABILITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Zobowiązania krótkoterminowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania krótkoterminowe razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania krótkoterminowe ogółem"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#SHORTTERMTRADELIABILITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Krótkoterminowe zobowiązania handlowe"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania handlowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#ACCRUALS",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Rozliczenia międzyokresowe"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#NEGATIVEGOODWILL",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Ujemna wartość firmy"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#TOTALLIABILITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Pasywa razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Suma pasywów"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#LONGANDSHORTERMLIABILITIES",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "SUMA ZOBOWIĄZAŃ"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania ogółem"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania razem"
+            },
+            {
+                "lang": "PL",
+                "value": "Zobowiązania i rezerwy na zobowiązania razem"
+            }
+        ]
+    },
+    {
+        "statement": "bls", "name": "BLS#FIXEDASSETSFORSALE",
+        "repr": [
+            {
+                "lang": "PL",
+                "value": "Aktywa trwałe przeznaczone do sprzedaży"
+            },           
+            {
+                "lang": "PL",
+                "value": "Aktywa przeznaczone do sprzedaży"
+            }
+        ]
+    }  
 ]
