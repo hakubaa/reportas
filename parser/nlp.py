@@ -35,6 +35,8 @@ class NGram:
         return reduce(operator.xor, hashes)
 
     def __eq__(self, other):
+        if isinstance(other, str):
+            other = (other,)
         if len(self) != len(other):
             return False
         return tuple(self) == tuple(other)
@@ -73,7 +75,8 @@ class NGram:
 
 
 def find_ngrams(text, n, min_len=0, remove_non_alphabetic=False, 
-                remove_stop_words=True, remove_dates=True):
+                remove_stop_words=True, remove_dates=True,
+                return_tuples=False):
     '''Find all n-grams in th text and return list of tuples.'''
     tokens = [token.lower() for token in nltk.tokenize.wordpunct_tokenize(text)]
     tokens = [token for token in tokens 
@@ -85,7 +88,9 @@ def find_ngrams(text, n, min_len=0, remove_non_alphabetic=False,
     if remove_non_alphabetic:
         regex = re.compile(r"[^a-zA-Z]")
         tokens = filter(bool, (re.sub(regex, "", token) for token in tokens))
-    ngrams = [ NGram(*tokens) for tokens in nltk.ngrams(tokens, n) ]
+    ngrams = list(nltk.ngrams(tokens, n))
+    if not return_tuples:
+        ngrams = [ NGram(*tokens) for tokens in ngrams ]
     return ngrams
 
 

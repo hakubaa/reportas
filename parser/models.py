@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*
 
 from functools import reduce
-from collections import Counter
+from collections import Counter, UserDict, OrderedDict
+from datetime import datetime
+from calendar import monthrange
 import operator
 import itertools
 import reprlib
@@ -39,6 +41,7 @@ class Document:
         self.pages = self.raw_text.split(pgbrk)
         if Document.verbose:
             print("DONE")
+        self.info, errors = util.pdfinfo(docpath)
 
     def __len__(self):
         return len(self.pages)
@@ -139,19 +142,9 @@ class SelfSearchingPage:
         doc.__dict__[self.storage_name] = page_numbers
 
         return page_numbers
- 
-
-class FinancialReport(Document):
-    net_and_loss = SelfSearchingPage("parser/cls/nls.pkl", "net_and_loss")
-    balance = SelfSearchingPage("parser/cls/balance.pkl", "balance")
-    cash_flows = SelfSearchingPage("parser/cls/cfs.pkl", "cash_flows")
-
-    def __init__(self, *args, consolidated=True, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.consolidated = consolidated
 
 
-class RecordsExtractor:
+class RecordsExtractor(UserDict):
 
     re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
     re_rows_separators = re.compile(r"\n")
@@ -178,18 +171,9 @@ class RecordsExtractor:
             self.input_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
         )
-
-    def __len__(self):
-        return len(self.rows)
-
-    def __getitem__(self, index):
-        try:
-            return self.rows[index]
-        except IndexError:
-            raise IndexError("row number out of range")
-
-    def __iter__(self):
-        return iter(self.rows)
+        self.data = OrderedDict()
+        for row in self.rows:
+            self.data[row[0][0]] = row[1]
 
     def _split_row_into_fields(self, row):
         '''Split text into separate fields.'''
@@ -444,3 +428,211 @@ class RecordsExtractor:
                     stack.append((tokens, sentence))
 
         return results
+
+
+class TimeRange(Enum):
+    ANNUAL = 1,
+    QUARTERLY = 2,
+    SEMIANNUAL = 3
+
+
+class FinancialReport(Document):
+    nls_pages = SelfSearchingPage("parser/cls/nls.pkl", "nls_pages")
+    bls_pages = SelfSearchingPage("parser/cls/balance.pkl", "bls_pages")
+    cfs_pages = SelfSearchingPage("parser/cls/cfs.pkl", "cfs_pages")
+
+    def __init__(self, *args, consolidated=True, timestamp=None, 
+                 timerange=None, spec = None, voc=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.consolidated = consolidated
+        self.timerange = timerange or self._recognize_timerange()
+        self.timestamp = timestamp or self._recognize_timestamp()
+        self.spec = spec or dict()
+        self.voc = voc
+
+    @property 
+    def cfs(self):
+        if not hasattr(self, "_cfs"):
+            self._cfs = self._extract_records(
+                self.cfs_pages, self.spec["cfs"], self.voc
+            )
+        return self._cfs
+
+    @property
+    def nls(self):
+        if not hasattr(self, "_nls"):
+            self._nls = self._extract_records(
+                self.nls_pages, self.spec["nls"], self.voc
+            )
+        return self._nls
+
+    @property
+    def bls(self):
+        if not hasattr(self, "_bls"):
+            self._bls = self._extract_records(
+                self.bls_pages, self.spec["bls"], self.voc
+            )
+        return self._bls
+
+    def _recognize_timerange(self):
+        '''Recognize timerange of financial report.'''
+        sa_tokens = util.remove_non_ascii("półroczny półroczne").split()
+        qr_tokens = util.remove_non_ascii(
+                        "kwartalny kwartał kwartały kwartalne").split()
+        # semiannual if not quarterly
+        sa2_tokens = util.remove_non_ascii("śródroczne").split()
+
+        # Make decision on the base of the first three pages
+        tokens = set(map(operator.itemgetter(0), find_ngrams(
+            '\n'.join(self[0:3]), n=1, remove_non_alphabetic=True,
+            min_len=min(map(len, itertools.chain(qr_tokens, sa_tokens))),
+            return_tuples=True
+        )))
+
+        if set(sa_tokens) & tokens:
+            return TimeRange.SEMIANNUAL
+
+        if set(qr_tokens) & tokens:
+            return TimeRange.QUARTERLY
+
+        if set(sa2_tokens) & tokens:
+            return TimeRange.SEMIANNUAL
+
+        return TimeRange.ANNUAL
+
+    def _recognize_timestamp(self, max_pages=None):
+        '''Recognize timestamp of financial report.'''
+
+        quarters = {"i": 3, "ii": 6, "iii": 9, "iv": 12}
+        months = {"stycznia": 1, "lutego": 2, "marca": 3, "kwietnia": 4, 
+                  "maja": 5, "czerwca": 6, "lipca": 7, "sierpnia": 8,
+                  "wrzenia": 9, "padziernika": 10, "listopada": 11,
+                  "grudnia": 12}
+
+        re_date_with_full_month = re.compile(
+            r"(28|29|30|31) (stycznia|lutego|marca|kwietnia|maja|czerwca|"
+             "lipca|sierpnia|wrzenia|padziernika|listopada|grudnia) "
+             "((?:19|20)\d{2})", flags = re.IGNORECASE
+        )
+        re_quarter = re.compile(
+            r"(I|II|III|IV) kwarta(?:y)? (\d+)", flags=re.IGNORECASE
+        )
+        re_date_day_month_year = re.compile(
+            r"(28|29|30|31).(0?[1-9]|1[0-2]).((?:19|20)\d{2})"
+        )
+        re_date_year_month_year = re.compile(
+            r"((?:19|20)\d{2}).(0?[1-9]|1[0-2]).(28|29|30|31)"
+        )
+        re_year = re.compile(r"((?:19|20)\d{2})")
+
+        text = util.remove_non_ascii('\n'.join(self))
+        timestamps = list()
+
+        # Match [za] I/II/III/IV kwartał 2016 [roku]
+        match_dates = re.findall(re_quarter, text)
+        if match_dates:
+            for quarter, year in match_dates:
+                try:
+                    timestamps.append(datetime(
+                        int(year), quarters[quarter.lower()], 
+                        monthrange(int(year), quarters[quarter.lower()])[-1]
+                    ))
+                except ValueError:
+                    pass # ignore erros in dates
+
+        # Match '30 września 2016 roku'
+        match_dates = re.findall(re_date_with_full_month, text)
+        if match_dates:
+            for day, month, year in match_dates:
+                try:
+                    timestamps.append(datetime(
+                        int(year), months[month.lower()], int(day)
+                    ))
+                except ValueError:
+                    pass # ignore errors in dates
+
+        # Match 30.06.2016
+        match_dates = re.findall(re_date_day_month_year, text)
+        if match_dates:
+            for day, month, year in match_dates:
+                try:
+                    timestamps.append(datetime(int(year), int(month), int(day)))
+                except ValueError:
+                    pass # ignore errors in dates
+
+        # Match 2016-03-31
+        match_dates = re.findall(re_date_year_month_year, text)
+        if match_dates:
+            for year, month, day in match_dates:
+                try:
+                    timestamps.append(datetime(int(year), int(month), int(day)))
+                except ValueError:
+                    pass # ignore errors in dates
+
+        if not timestamps: # check for availability of timestamps
+            return None
+
+        # Remove timestamps from years different than the most frequent year
+        # appearing in the report.
+        years = list()
+        match_years = re.findall(re_year, text)
+        if match_years:
+            for year in match_years:
+                years.append(int(year))
+        report_year = Counter(years).most_common(1)[0][0]
+
+        timestamps = [ timestamp for timestamp in timestamps
+                                 if timestamp.year == report_year ]
+        
+        if not timestamps: # check for availability of timestamps
+            return None
+
+        # Remove timestamps older than creation date
+        creation_date = self.info.get("CreationDate", None) \
+                            or self.info.get("ModDate", None)
+        if creation_date: 
+            creation_date = datetime( # get rid of hours, minutes and seconds
+                creation_date.year, creation_date.month, creation_date.day
+            )
+
+            timestamps = [ timestamp for timestamp in timestamps
+                                     if timestamp < creation_date ]
+
+        if not timestamps: # check for availability of timestamps
+            return None
+
+        # Select the most common timestamp
+        report_timestamp = Counter(timestamps).most_common(1)[0][0]
+        return report_timestamp
+
+    def _extract_records(self, pages, spec, voc):
+        if len(pages) == 1:
+            text = self[pages[0]]
+        else:
+            text = '\n'.join(operator.itemgetter(*pages)(self))
+        records = RecordsExtractor(text, spec, voc=voc) 
+        cols_number = self._find_number_of_columns(records) 
+        return records
+
+    def _find_number_of_columns(self, rows):
+        '''
+        Identify number of columns with valid numbers. Very often the first 
+        number in the rows is a note identification.
+        '''
+        # Calculate full rows coefficient and concentration coefficient
+        max_items_in_row = max(map(len, rows))
+        full_rows = [row for row in rows if len(row) == max_items_in_row]
+        coef_full = len(full_rows) / len(rows)
+        number_of_rows_with_min_at_first_position = sum(
+            1 for item in map(lambda row: np.array(row).argmin(), full_rows)
+            if item == 0
+        )
+        coef_conc = number_of_rows_with_min_at_first_position / len(full_rows)
+
+        # Decision rule
+        # full rows & min numbers at first position > 85%
+        # not full rows & min_numbers_at_first_position > 60%
+        if ((abs(coef_full - 1.0) < 1e-10 and coef_conc > 0.9) or 
+            (abs(coef_full - 1.0) > 1e-10 and coef_conc > 0.7)):
+            return max_items_in_row - 1
+        return max_items_in_row

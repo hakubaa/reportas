@@ -28,6 +28,34 @@ def pdftotext(path, layout=True, first_page=None, last_page=None,
     return outs, errs
 
 
+def pdfinfo(path, encoding="utf-8", convert_dates=True):
+    '''Run pdfinfo command and intercept output & errors.''' 
+    args = ["pdfinfo", path]
+    if encoding: args.extend(("-enc", encoding))
+
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    output, errors = proc.communicate()
+
+    info = dict()
+    if output:
+        rows = str(output, encoding=encoding).split("\n")
+        for row in rows:
+            try:
+                key, value = row.split(":", 1)
+            except ValueError:
+                pass # ignore invalid fields
+            else:
+                info[key] = value.lstrip()
+
+        if convert_dates:
+            if "CreationDate" in info:
+                info["CreationDate"] = parse(info["CreationDate"])
+            if "ModDate" in info:
+                info["ModDate"] = parse(info["ModDate"])
+
+    return info, errors
+
+
 def is_date(string):
     '''Determine whether string represents date.'''
     try: 

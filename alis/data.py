@@ -24,7 +24,7 @@ reports = [
         "statements": { "balance": (4,), "nls": (3,), "cfs": (6,) }
     },
     {
-        "doc": FinancialReport("reports/wieleton 2016_y.pdf"), "ticker": "wlt",
+        "doc": FinancialReport("reports/wieleton_2016_y.pdf"), "ticker": "wlt",
         "statements": { "balance": (3, 4), "nls": (5,), "cfs": (9, 10)}
     },
     {
@@ -168,3 +168,9 @@ if __name__ == "__main__":
     print(" - balance: %d (%.2f%%)" % (balance_tp, 100*balance_tp/len(reports)))
     print(" - nls: %d (%.2f%%)" % (nls_tp, 100*nls_tp/len(reports)))
     print(" - cfs: %d (%.2f%%)" % (cfs_tp, 100*cfs_tp/len(reports)))
+
+
+
+for report in reports:
+    doc = report["doc"]
+    print(doc, " -> ", doc.timerange, " - ", doc.timestamp)
