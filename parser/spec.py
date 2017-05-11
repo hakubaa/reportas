@@ -112,6 +112,10 @@ finrecords = [
             },
             {
                 "lang": "PL",
+                "value": "Środki pieniężne netto z działalności inwest."
+            },
+            {
+                "lang": "PL",
                 "value": "Przepływy pieniężne netto z działalności inwest."
             }
         ] 
@@ -211,6 +215,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Zysk (strata) netto przypadająca akcjonariuszom jednostki dominującej"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk netto za okres"
             }
         ]
     },
@@ -238,6 +246,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Zysk/(strata) brutto"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk brutto za okres"
             }
         ]
     },
@@ -753,6 +765,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Przychody ze sprzedaży towarów i produktów"
+            }, 
+            {
+                "lang": "PL",
+                "value": "Przychody ze sprzedaży usług, produktów, towarów i materiałów"
             }
         ]
     },

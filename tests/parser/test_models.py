@@ -7,7 +7,7 @@ import unittest
 import unittest.mock as mock
 
 from parser.models import (
-    Document, SelfSearchingPage, FinancialReport, TimeRange
+    Document, SelfSearchingPage, FinancialReport
 )
 from parser.nlp import NGram
 
@@ -79,46 +79,46 @@ class NGramTest(unittest.TestCase):
             return_value=(b"Page 1\n\x0cPage2\n\x0cPage3", None))
 class FinancialReportTest(unittest.TestCase):
     
-    def test_find_number_of_columns_ignores_columns_with_notes(
-        self, mock_pdf, mock_info
-    ):
-        doc = FinancialReport("fake.pdf", timestamp=datetime(2015, 3, 31),
-                              timerange=TimeRange.QUARTERLY)
-        rows = [
-            [1.0, 100.0, 200.0],
-            [2.0, 50.0, 10.0],
-            [80.0, 90.0]
-        ]
-        output = doc._find_number_of_columns(rows)
-        self.assertEqual(output, 2)
+    # def test_find_number_of_columns_ignores_columns_with_notes(
+    #     self, mock_pdf, mock_info
+    # ):
+    #     doc = FinancialReport("fake.pdf", timestamp=datetime(2015, 3, 31),
+    #                           timerange=3)
+    #     rows = [
+    #         [1.0, 100.0, 200.0],
+    #         [2.0, 50.0, 10.0],
+    #         [80.0, 90.0]
+    #     ]
+    #     output = doc._find_number_of_columns(rows)
+    #     self.assertEqual(output, 2)
 
-    def test_find_number_of_columns_hanldes_one_row_with_note(
-        self, mock_pdf, mock_info
-    ):
-        doc = FinancialReport("fake.pdf", timestamp=datetime(2015, 3, 31),
-                              timerange=TimeRange.QUARTERLY)
-        rows = [
-            [100.0, 200.0],
-            [2.0, 50.0, 10.0],
-            [80.0, 90.0],
-            [1200.0, 5000.0]
-        ]
-        output = doc._find_number_of_columns(rows)
-        self.assertEqual(output, 2)
+    # def test_find_number_of_columns_hanldes_one_row_with_note(
+    #     self, mock_pdf, mock_info
+    # ):
+    #     doc = FinancialReport("fake.pdf", timestamp=datetime(2015, 3, 31),
+    #                           timerange=3)
+    #     rows = [
+    #         [100.0, 200.0],
+    #         [2.0, 50.0, 10.0],
+    #         [80.0, 90.0],
+    #         [1200.0, 5000.0]
+    #     ]
+    #     output = doc._find_number_of_columns(rows)
+    #     self.assertEqual(output, 2)
 
-    def test_find_number_of_columns_for_rows_with_equal_len(
-        self, mock_pdf, mock_info
-    ):
-        doc = FinancialReport("fake.pdf", timestamp=datetime(2015, 3, 31),
-                              timerange=TimeRange.QUARTERLY)
-        rows = [
-            [100.0, 200.0],
-            [50.0, 10.0],
-            [80.0, 90.0],
-            [1200.0, 5000.0]
-        ]
-        output = doc._find_number_of_columns(rows)
-        self.assertEqual(output, 2)
+    # def test_find_number_of_columns_for_rows_with_equal_len(
+    #     self, mock_pdf, mock_info
+    # ):
+    #     doc = FinancialReport("fake.pdf", timestamp=datetime(2015, 3, 31),
+    #                           timerange=3)
+    #     rows = [
+    #         [100.0, 200.0],
+    #         [50.0, 10.0],
+    #         [80.0, 90.0],
+    #         [1200.0, 5000.0]
+    #     ]
+    #     output = doc._find_number_of_columns(rows)
+    #     self.assertEqual(output, 2)
 
     def test_recognize_timerange_matches_quarter(
         self, mock_pdf, mock_info
@@ -182,6 +182,15 @@ class FinancialReportTest(unittest.TestCase):
         doc = FinancialReport("fake.pdf", timestamp=datetime(999, 1, 1))
         output = doc._recognize_timestamp()
         self.assertEqual(output, datetime(2016, 6, 30)) 
+
+    def test_recognize_timerange_matches_quarter_shortcut(
+        self, mock_pdf, mock_info
+    ):
+        mock_pdf.return_value = (bytes("JAGO ZA I KW. 2010 ROKU.", 
+                                       encoding="utf-8"), None)
+        doc = FinancialReport("fake.pdf", timestamp=datetime(999, 1, 1))
+        output = doc._recognize_timestamp()
+        self.assertEqual(output, datetime(2010, 3, 31))
 
 
 # class ASCITableTest(unittest.TestCase):

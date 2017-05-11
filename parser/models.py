@@ -3,7 +3,7 @@
 from functools import reduce
 from collections import Counter, UserDict, OrderedDict
 from datetime import datetime
-from calendar import monthrange
+
 import operator
 import itertools
 import reprlib
@@ -12,10 +12,12 @@ import pickle
 import re
 from enum import Enum
 import warnings
+from copy import deepcopy
 
 import nltk
 import pandas as pd
 import numpy as np
+from dateutil.relativedelta import relativedelta
 
 from parser.nlp import NGram, find_ngrams, cos_similarity
 import parser.util as util
@@ -163,17 +165,26 @@ class RecordsExtractor(UserDict):
         self.voc = voc # used by _fix_white_spaces
         if remove_non_ascii:
             text = util.remove_non_ascii(text)
-        temp_rows = self._extract_rows(text)
-        self.input_rows = self._preprocess_labels(temp_rows)
+        self.input_rows = self._extract_rows(text)
+        temp_rows = self._preprocess_labels(deepcopy(self.input_rows))
         if fix_white_spaces:
-            self.input_rows = self._fix_white_spaces(self.input_rows, recspec)
+            temp_rows = self._fix_white_spaces(temp_rows, recspec)
         self.rows = self._identify_records(
-            self.input_rows, recspec, require_numbers = require_numbers,
+            temp_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
         )
         self.data = OrderedDict()
         for row in self.rows:
             self.data[row[0][0]] = row[1]
+        self._names = list()
+
+    @property
+    def names(self):
+        return self._names
+
+    @names.setter
+    def names(self, val):
+        self._names = val
 
     def _split_row_into_fields(self, row):
         '''Split text into separate fields.'''
@@ -268,7 +279,9 @@ class RecordsExtractor(UserDict):
                         max_s_csims = max(s_csims, key=item_selector)[1]
                         max_csims = max(csims, key=item_selector)[1]
 
-                        if (max_ext_csims > max_s_csims
+
+                        if ((max_ext_csims > max_s_csims or 
+                                abs(max_ext_csims - max_s_csims) < 1e-10)
                                 and max_ext_csims > max_csims
                                 # preceeding label has to be driving force 
                                 and max_s_csims > max_csims): 
@@ -290,8 +303,12 @@ class RecordsExtractor(UserDict):
                 else:
                     if s_label:
                         # probably the id of the note
-                        if s_numbers and len(s_numbers) == 1:
+                        if not s_numbers:
+                            s_numbers = numbers
+                        elif len(s_numbers) == 1:
                             s_numbers.extend(numbers)
+                        else: # some lost numbers - ignore
+                            pass 
                         stack.append((s_label, s_numbers, s_csims, 
                                       s_index + (index,)))
                     else: # numbers without preceeding labels - ignore them
@@ -429,11 +446,38 @@ class RecordsExtractor(UserDict):
 
         return results
 
+    @property
+    def ncols(self):
+        '''
+        Identify number of columns with valid numbers. Very often the first 
+        number in the rows is a note identification.
+        '''
+        rows = list() 
+        for key, value in self.items():
+            rows.append(value)
 
-class TimeRange(Enum):
-    ANNUAL = 1,
-    QUARTERLY = 2,
-    SEMIANNUAL = 3
+        # Calculate full rows coefficient and concentration coefficient
+        max_items_in_row = max(map(len, rows))
+        full_rows = [row for row in rows if len(row) == max_items_in_row]
+        full_rows = [[ item if item > 0 else float("inf") for item in row ] 
+                     for row in full_rows] # get rid of negative numbers
+
+        coef_full = len(full_rows) / len(rows)
+        number_of_rows_with_min_at_first_position = sum(
+            1 for item in map(lambda row: np.array(row).argmin(), full_rows)
+            if item == 0
+        )
+        coef_conc = number_of_rows_with_min_at_first_position / len(full_rows)
+
+        # Decision rule
+        # full rows & min numbers at first position > 85%
+        # not full rows & min_numbers_at_first_position > 60%
+        if ignore_note_column:
+            if ((abs(coef_full - 1.0) < 1e-10 and coef_conc > 0.9) or 
+                (abs(coef_full - 1.0) > 1e-10 and coef_conc > 0.7)):
+                return max_items_in_row - 1
+
+        return max_items_in_row   
 
 
 class FinancialReport(Document):
@@ -445,8 +489,8 @@ class FinancialReport(Document):
                  timerange=None, spec = None, voc=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.consolidated = consolidated
-        self.timerange = timerange or self._recognize_timerange()
         self.timestamp = timestamp or self._recognize_timestamp()
+        self.timerange = timerange or self._recognize_timerange()
         self.spec = spec or dict()
         self.voc = voc
 
@@ -490,90 +534,32 @@ class FinancialReport(Document):
         )))
 
         if set(sa_tokens) & tokens:
-            return TimeRange.SEMIANNUAL
+            return 6
 
         if set(qr_tokens) & tokens:
-            return TimeRange.QUARTERLY
+            return 3
 
         if set(sa2_tokens) & tokens:
-            return TimeRange.SEMIANNUAL
+            return 6
 
-        return TimeRange.ANNUAL
+        return 12
 
-    def _recognize_timestamp(self, max_pages=None):
+    def _recognize_timestamp(self):
         '''Recognize timestamp of financial report.'''
-
-        quarters = {"i": 3, "ii": 6, "iii": 9, "iv": 12}
-        months = {"stycznia": 1, "lutego": 2, "marca": 3, "kwietnia": 4, 
-                  "maja": 5, "czerwca": 6, "lipca": 7, "sierpnia": 8,
-                  "wrzenia": 9, "padziernika": 10, "listopada": 11,
-                  "grudnia": 12}
-
-        re_date_with_full_month = re.compile(
-            r"(28|29|30|31) (stycznia|lutego|marca|kwietnia|maja|czerwca|"
-             "lipca|sierpnia|wrzenia|padziernika|listopada|grudnia) "
-             "((?:19|20)\d{2})", flags = re.IGNORECASE
-        )
-        re_quarter = re.compile(
-            r"(I|II|III|IV) kwarta(?:y)? (\d+)", flags=re.IGNORECASE
-        )
-        re_date_day_month_year = re.compile(
-            r"(28|29|30|31).(0?[1-9]|1[0-2]).((?:19|20)\d{2})"
-        )
-        re_date_year_month_year = re.compile(
-            r"((?:19|20)\d{2}).(0?[1-9]|1[0-2]).(28|29|30|31)"
-        )
-        re_year = re.compile(r"((?:19|20)\d{2})")
-
         text = util.remove_non_ascii('\n'.join(self))
         timestamps = list()
-
-        # Match [za] I/II/III/IV kwartał 2016 [roku]
-        match_dates = re.findall(re_quarter, text)
-        if match_dates:
-            for quarter, year in match_dates:
-                try:
-                    timestamps.append(datetime(
-                        int(year), quarters[quarter.lower()], 
-                        monthrange(int(year), quarters[quarter.lower()])[-1]
-                    ))
-                except ValueError:
-                    pass # ignore erros in dates
-
-        # Match '30 września 2016 roku'
-        match_dates = re.findall(re_date_with_full_month, text)
-        if match_dates:
-            for day, month, year in match_dates:
-                try:
-                    timestamps.append(datetime(
-                        int(year), months[month.lower()], int(day)
-                    ))
-                except ValueError:
-                    pass # ignore errors in dates
-
-        # Match 30.06.2016
-        match_dates = re.findall(re_date_day_month_year, text)
-        if match_dates:
-            for day, month, year in match_dates:
-                try:
-                    timestamps.append(datetime(int(year), int(month), int(day)))
-                except ValueError:
-                    pass # ignore errors in dates
-
-        # Match 2016-03-31
-        match_dates = re.findall(re_date_year_month_year, text)
-        if match_dates:
-            for year, month, day in match_dates:
-                try:
-                    timestamps.append(datetime(int(year), int(month), int(day)))
-                except ValueError:
-                    pass # ignore errors in dates
+        for timestamp in map(operator.itemgetter(0), util.find_dates(text)):
+            timestamps.append(datetime(
+                year=timestamp[0], month=timestamp[1], day=timestamp[2]
+            ))
 
         if not timestamps: # check for availability of timestamps
             return None
 
         # Remove timestamps from years different than the most frequent year
         # appearing in the report.
+        re_year = re.compile(r"((?:19|20)\d{2})")
+
         years = list()
         match_years = re.findall(re_year, text)
         if match_years:
@@ -611,28 +597,145 @@ class FinancialReport(Document):
         else:
             text = '\n'.join(operator.itemgetter(*pages)(self))
         records = RecordsExtractor(text, spec, voc=voc) 
-        cols_number = self._find_number_of_columns(records) 
+        records.timeranges = self._identify_timerange_for_columns(
+             text, records.ncols
+        )
         return records
 
-    def _find_number_of_columns(self, rows):
-        '''
-        Identify number of columns with valid numbers. Very often the first 
-        number in the rows is a note identification.
-        '''
-        # Calculate full rows coefficient and concentration coefficient
-        max_items_in_row = max(map(len, rows))
-        full_rows = [row for row in rows if len(row) == max_items_in_row]
-        coef_full = len(full_rows) / len(rows)
-        number_of_rows_with_min_at_first_position = sum(
-            1 for item in map(lambda row: np.array(row).argmin(), full_rows)
-            if item == 0
-        )
-        coef_conc = number_of_rows_with_min_at_first_position / len(full_rows)
+    def _identify_timerange_for_columns(self, text, ncols):
+        '''Identify timerange for columns.'''
 
-        # Decision rule
-        # full rows & min numbers at first position > 85%
-        # not full rows & min_numbers_at_first_position > 60%
-        if ((abs(coef_full - 1.0) < 1e-10 and coef_conc > 0.9) or 
-            (abs(coef_full - 1.0) > 1e-10 and coef_conc > 0.7)):
-            return max_items_in_row - 1
-        return max_items_in_row
+        cols = util.split_text_into_columns(text)
+        cols = [ re.sub(" + ", " ", ' '.join(col)) for col in cols ]
+
+        # Find timeranges and timestamps
+        tranges = list(map(
+            operator.itemgetter(-1), 
+            [[None] + tr for tr in map(util.determine_timerange, cols)]
+        ))[-ncols:]
+        dates = list(map(
+            lambda item: item[-1][0], 
+            [[[None]] + dt for dt in map(util.find_dates, cols)]
+        ))[-ncols:]
+
+        # check for two dates in every column
+
+        coltrs = list()
+        for trange, timestamp in zip(tranges, dates):
+            if not trange:
+                trange = self.timerange
+            if not all(map(bool, timestamp)):
+                year, month, day = timestamp
+                if not year:
+                    year = self.timestamp.year
+                if not month and not day:
+                    month = 12
+                    day = 31
+                timestamp = (year, month, day)
+            coltrs.append((trange, timestamp))
+
+        return coltrs
+
+
+
+        # # Concatenate rows if required
+        # stack = list()
+        # for index, dates in rows_with_dates:
+        #     full_dates = all(map(operator.itemgetter(-1), dates))
+        #     try:
+        #         s_index, s_dates, s_full_dates = stack.pop()
+        #     except IndexError:
+        #         stack.append((index, dates, full_dates))
+        #     else:        
+        #         # try to combine partial dates 
+        #         if (not full_dates and not s_full_dates 
+        #                 and len(dates) == len(s_dates)
+        #                 and abs(index - s_index) < 3):
+
+        #             new_dates = list()
+        #             for item1, item2 in zip(dates, s_dates):
+        #                 dates_compliance = not any(map(
+        #                     lambda x: bool(x[0]) and bool(x[1]), 
+        #                     zip(item1[0], item2[0]) # zip dates
+        #                 ))
+
+        #                 if dates_compliance:
+        #                     new_date = tuple(map(
+        #                         lambda x: x[0] or x[1], 
+        #                         zip(item1[0], item2[0]) # zip dates
+        #                     ))    
+        #                     pos_max = max(itertools.chain(item1[1], item2[1]))
+        #                     pos_min = min(itertools.chain(item1[1], item2[1]))
+        #                     new_dates.append((
+        #                         new_date, (pos_min, pos_max), 
+        #                         int(bool(all(new_date))) # full_dates ?
+        #                     ))
+        #                 else: # some dates are not compliant, nothing can be done
+        #                     stack.append((s_index, s_dates, s_full_dates))
+        #                     stack.append((index, dates, full_dates))                     
+        #                     break
+        #             else:
+        #                 stack.append((
+        #                     index, new_dates, 
+        #                     all(map(operator.itemgetter(-1), new_dates)) 
+        #                 ))  
+        #         # full dates but not long enough, combine with previous row
+        #         elif (full_dates and s_full_dates 
+        #                 and len(dates) + len(s_dates) <= ncols 
+        #                 and abs(index - s_index) < 3):
+        #             temp_dates = s_dates + dates
+        #             stack.append(
+        #                 (index, sorted(temp_dates, key=lambda item: item[1][0]), 
+        #                  True)
+        #             )
+        #         else: # do nothing, just put on stack
+        #             stack.append((s_index, s_dates, s_full_dates))
+        #             stack.append((index, dates, full_dates))
+
+        # rows_with_dates = list()
+        # for index, dates, full_dates in stack:
+        #     rows_with_dates.append(
+        #         (index, list(map(operator.itemgetter(0), dates)))
+        #     )
+
+
+
+
+        # # match: okres 3 miesięcy zakończony okres 9 miesięcy zakończony
+        # re_periods = re.compile("(0?[1-9]|1[0-2]) miesi(?:ę)?cy")
+
+        # rows = text.split("\n")
+        # rows_with_dates = list(
+        #     filter(lambda x: x[1], enumerate(map(util.find_dates, rows)))
+        # )
+
+
+        # periods = list(set(filter(
+        #     lambda x: len(x) == 1 or len(x)*2 == ncols or len(x) == ncols, 
+        #     (tuple(map(int, re.findall(re_periods, row))) for row in rows)
+        # )))
+
+        # if periods:
+        #     periods = periods[0] # take the first one, ignore others
+        #     if len(periods) != ncols:
+        #         periods2cols = int(ncols/len(periods))
+        #         periods = tuple(itertools.chain.from_iterable(
+        #             itertools.repeat(x, periods2cols) for x in periods
+        #         ))
+
+        #     for index, row in rows_with_dates:
+        #         if len(row) == ncols: # different dates in one row
+        #             return list(zip(periods, row))
+
+        # # test different dates
+        # for index, row in rows_with_dates:
+        #     if len(set(row)) == ncols: # different dates in one row
+        #         return list(itertools.product((self.timerange,), row))
+
+        # if ncols == 2: # this and previous year, use default values
+        #     return [
+        #         (self.timerange, self.timestamp), 
+        #         (self.timerange, self.timestamp - relativedelta(years=1))
+        #     ]
+
+        # return None
