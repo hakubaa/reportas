@@ -2,7 +2,50 @@ import unittest
 import unittest.mock as mock
 from datetime import datetime
 
-from parser.util import convert_to_number, pdfinfo
+from parser.util import convert_to_number, pdfinfo, determine_timerange
+
+
+class DetermineTimerangeTest(unittest.TestCase):
+
+	def test_determine_timerange_1(self):
+		text = "01.01.2016 - 31.09.2016"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 9)
+
+	def test_determine_timerange_2(self):
+		text = "01.01 - 31.12.2016"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 12)		
+
+	def test_determine_timerange_3(self):
+		text = "01.01.2016 - 31.12"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 12)				
+
+	def test_determine_timerange_4(self):
+		text = "Od 01.01.2016 do 31.12.2017"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 24)			
+
+	def test_determine_timerange_5(self):
+		text = "Za okres 7 miesięcy zakończony 31 marca 2015"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 7)
+
+	def test_determine_timerange_6(self):
+		text = "I kwartał 2015"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 3)			
+
+	def test_determine_timerange_7(self):
+		text = "I półrocze 2015"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 6)	
+
+	def test_determine_timerange_8(self):
+		text = "Rok zakończony 31.12.2016"
+		output = determine_timerange(text)
+		self.assertEqual(output[0], 12)			
 
 
 @mock.patch("parser.util.subprocess.Popen")

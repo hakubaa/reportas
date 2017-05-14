@@ -19,7 +19,7 @@ import pandas as pd
 import numpy as np
 from dateutil.relativedelta import relativedelta
 
-from parser.nlp import NGram, find_ngrams, cos_similarity
+from parser.nlp import NGram, find_ngrams, cos_similarity, STOP_WORDS
 import parser.util as util
 
 
@@ -165,16 +165,26 @@ class RecordsExtractor(UserDict):
         self.voc = voc # used by _fix_white_spaces
         if remove_non_ascii:
             text = util.remove_non_ascii(text)
+        self.text = text
         self.input_rows = self._extract_rows(text)
-        temp_rows = self._preprocess_labels(deepcopy(self.input_rows))
+        temp_rows = [row[1] for row in deepcopy(self.input_rows)]
+        temp_rows = self._preprocess_labels(temp_rows)
         if fix_white_spaces:
             temp_rows = self._fix_white_spaces(temp_rows, recspec)
-        self.rows = self._identify_records(
+        self.records = self._identify_records(
             temp_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
         )
+        # Update input rows - add marker for rows with identified records
+        vip_rows = reduce(
+            operator.add, 
+            itertools.chain(map(operator.itemgetter(-1), self.records))
+        )
+        for i, row in enumerate(self.input_rows):
+            self.input_rows[i] = row + (int(i in vip_rows),)
+
         self.data = OrderedDict()
-        for row in self.rows:
+        for row in self.records:
             self.data[row[0][0]] = row[1]
         self._names = list()
 
@@ -186,6 +196,48 @@ class RecordsExtractor(UserDict):
     def names(self, val):
         self._names = val
 
+    def update_names(self, timerange=None, timestamp=None):
+        '''
+        Update names. Takes into account additional information like 
+        timerange and timestamp of the report.
+        '''
+        vip_rows = [index for index, _, flag in self.input_rows if flag == 1]
+        min_vip_rows = max(min(vip_rows) - 10, 0)
+        vip_rows.extend(range(min_vip_rows, min(vip_rows)))
+        text_rows = self._split_text_into_rows(self.text)
+        text = '\n'.join(row for index, row in text_rows if index in vip_rows)
+
+        cols = util.split_text_into_columns(text)
+        cols = [ re.sub(" + ", " ", ' '.join(col)) for col in cols ]
+
+        # Find timeranges and timestamps
+        tranges = list(map(
+            operator.itemgetter(-1), 
+            [[None] + tr for tr in map(util.determine_timerange, cols)]
+        ))[-self.ncols:]
+        dates = list(map(
+            lambda item: item and max(item, key=operator.itemgetter(0))[0],
+            [dt for dt in map(util.find_dates, cols)]
+        ))[-self.ncols:]
+
+        # check for two dates in every column
+        coltrs = list()
+        for trange, timestamp in zip(tranges, dates):
+            if not trange:
+                trange = timerange
+            if not all(map(bool, timestamp)):
+                year, month, day = timestamp
+                if not year:
+                    year = timestamp.year
+                if not month and not day:
+                    month = 12
+                    day = 31
+                timestamp = (year, month, day)
+            coltrs.append((trange, timestamp))
+
+        if coltrs:
+            self._names = coltrs
+
     def _split_row_into_fields(self, row):
         '''Split text into separate fields.'''
         return list(filter( # use filter to remove empty fields ('')
@@ -195,14 +247,14 @@ class RecordsExtractor(UserDict):
     def _split_text_into_rows(self, text):
         '''Split text into rows. Remove empty rows.'''
         rows = re.split(RecordsExtractor.re_rows_separators, text)
-        rows = [ row for row in rows if not row.isspace() ]
+        rows = [ (i, row) for i, row in enumerate(rows) if not row.isspace() ]
         return rows
 
     def _extract_rows(self, text):
         '''Create simple table. Each row as separate list of fields.'''
-        table = [self._split_row_into_fields(row) 
+        table = [ (row[0], self._split_row_into_fields(row[1]))
                  for row in self._split_text_into_rows(text)]
-        table = [ row for row in table if row ] # remove empty rows
+        table = [ row for row in table if row[1] ] # remove empty rows
         return table
 
     def _preprocess_labels(self, input_rows):
@@ -275,16 +327,30 @@ class RecordsExtractor(UserDict):
                         ))
 
                         item_selector = operator.itemgetter(1)
-                        max_ext_csims = max(ext_csims, key=item_selector)[1]
-                        max_s_csims = max(s_csims, key=item_selector)[1]
+
                         max_csims = max(csims, key=item_selector)[1]
+                        #pot_labels = set(
+                        #    label for label, sim in csims 
+                        #    if abs(sim-max_csims) < 1e-10
+                        #)
 
+                        max_s_csims = max(s_csims, key=item_selector)[1]
+                        #s_pot_labels = set(
+                        #    label for label, sim in s_csims 
+                        #    if abs(sim-max_s_csims) < 1e-10
+                        #)
 
+                        max_ext_csims = max(ext_csims, key=item_selector)[1]
+                        
                         if ((max_ext_csims > max_s_csims or 
                                 abs(max_ext_csims - max_s_csims) < 1e-10)
                                 and max_ext_csims > max_csims
                                 # preceeding label has to be driving force 
-                                and max_s_csims > max_csims): 
+                                and (
+                                    max_s_csims > max_csims 
+                                    or abs(max_s_csims - max_csims) < 1e-10
+                                    #or bool(pot_labels & s_pot_labels)
+                                )): 
                             numbers = numbers or s_numbers
                             stack.append((ext_label, numbers, ext_csims, 
                                           s_index + (index,)))
@@ -383,6 +449,11 @@ class RecordsExtractor(UserDict):
         bigrams = set()
         for item in zip_ngrams:
             bigrams.update(map(lambda ngram: ngram[0] + ngram[1], item))
+            # bigrams.update(
+            #     ngram[0] + ngram[1] 
+            #     for ngram in item 
+            #     if not bool(set(ngram[0]) & set(ngram[1]) & STOP_WORDS)
+            # )
 
         # Fix labels
         for row in rows:
@@ -472,10 +543,9 @@ class RecordsExtractor(UserDict):
         # Decision rule
         # full rows & min numbers at first position > 85%
         # not full rows & min_numbers_at_first_position > 60%
-        if ignore_note_column:
-            if ((abs(coef_full - 1.0) < 1e-10 and coef_conc > 0.9) or 
-                (abs(coef_full - 1.0) > 1e-10 and coef_conc > 0.7)):
-                return max_items_in_row - 1
+        if ((abs(coef_full - 1.0) < 1e-10 and coef_conc > 0.9) or 
+            (abs(coef_full - 1.0) > 1e-10 and coef_conc > 0.7)):
+            return max_items_in_row - 1
 
         return max_items_in_row   
 
@@ -548,9 +618,11 @@ class FinancialReport(Document):
         '''Recognize timestamp of financial report.'''
         text = util.remove_non_ascii('\n'.join(self))
         timestamps = list()
-        for timestamp in map(operator.itemgetter(0), util.find_dates(text)):
-            timestamps.append(datetime(
-                year=timestamp[0], month=timestamp[1], day=timestamp[2]
+
+        for timestamp, _, flag in util.find_dates(text):
+            if flag:    
+                timestamps.append(datetime(
+                    year=timestamp[0], month=timestamp[1], day=timestamp[2]
             ))
 
         if not timestamps: # check for availability of timestamps
@@ -596,146 +668,6 @@ class FinancialReport(Document):
             text = self[pages[0]]
         else:
             text = '\n'.join(operator.itemgetter(*pages)(self))
-        records = RecordsExtractor(text, spec, voc=voc) 
-        records.timeranges = self._identify_timerange_for_columns(
-             text, records.ncols
-        )
+        records = RecordsExtractor(text, spec, voc=voc)
+        records.update_names(self.timerange, self.timestamp)
         return records
-
-    def _identify_timerange_for_columns(self, text, ncols):
-        '''Identify timerange for columns.'''
-
-        cols = util.split_text_into_columns(text)
-        cols = [ re.sub(" + ", " ", ' '.join(col)) for col in cols ]
-
-        # Find timeranges and timestamps
-        tranges = list(map(
-            operator.itemgetter(-1), 
-            [[None] + tr for tr in map(util.determine_timerange, cols)]
-        ))[-ncols:]
-        dates = list(map(
-            lambda item: item[-1][0], 
-            [[[None]] + dt for dt in map(util.find_dates, cols)]
-        ))[-ncols:]
-
-        # check for two dates in every column
-
-        coltrs = list()
-        for trange, timestamp in zip(tranges, dates):
-            if not trange:
-                trange = self.timerange
-            if not all(map(bool, timestamp)):
-                year, month, day = timestamp
-                if not year:
-                    year = self.timestamp.year
-                if not month and not day:
-                    month = 12
-                    day = 31
-                timestamp = (year, month, day)
-            coltrs.append((trange, timestamp))
-
-        return coltrs
-
-
-
-        # # Concatenate rows if required
-        # stack = list()
-        # for index, dates in rows_with_dates:
-        #     full_dates = all(map(operator.itemgetter(-1), dates))
-        #     try:
-        #         s_index, s_dates, s_full_dates = stack.pop()
-        #     except IndexError:
-        #         stack.append((index, dates, full_dates))
-        #     else:        
-        #         # try to combine partial dates 
-        #         if (not full_dates and not s_full_dates 
-        #                 and len(dates) == len(s_dates)
-        #                 and abs(index - s_index) < 3):
-
-        #             new_dates = list()
-        #             for item1, item2 in zip(dates, s_dates):
-        #                 dates_compliance = not any(map(
-        #                     lambda x: bool(x[0]) and bool(x[1]), 
-        #                     zip(item1[0], item2[0]) # zip dates
-        #                 ))
-
-        #                 if dates_compliance:
-        #                     new_date = tuple(map(
-        #                         lambda x: x[0] or x[1], 
-        #                         zip(item1[0], item2[0]) # zip dates
-        #                     ))    
-        #                     pos_max = max(itertools.chain(item1[1], item2[1]))
-        #                     pos_min = min(itertools.chain(item1[1], item2[1]))
-        #                     new_dates.append((
-        #                         new_date, (pos_min, pos_max), 
-        #                         int(bool(all(new_date))) # full_dates ?
-        #                     ))
-        #                 else: # some dates are not compliant, nothing can be done
-        #                     stack.append((s_index, s_dates, s_full_dates))
-        #                     stack.append((index, dates, full_dates))                     
-        #                     break
-        #             else:
-        #                 stack.append((
-        #                     index, new_dates, 
-        #                     all(map(operator.itemgetter(-1), new_dates)) 
-        #                 ))  
-        #         # full dates but not long enough, combine with previous row
-        #         elif (full_dates and s_full_dates 
-        #                 and len(dates) + len(s_dates) <= ncols 
-        #                 and abs(index - s_index) < 3):
-        #             temp_dates = s_dates + dates
-        #             stack.append(
-        #                 (index, sorted(temp_dates, key=lambda item: item[1][0]), 
-        #                  True)
-        #             )
-        #         else: # do nothing, just put on stack
-        #             stack.append((s_index, s_dates, s_full_dates))
-        #             stack.append((index, dates, full_dates))
-
-        # rows_with_dates = list()
-        # for index, dates, full_dates in stack:
-        #     rows_with_dates.append(
-        #         (index, list(map(operator.itemgetter(0), dates)))
-        #     )
-
-
-
-
-        # # match: okres 3 miesięcy zakończony okres 9 miesięcy zakończony
-        # re_periods = re.compile("(0?[1-9]|1[0-2]) miesi(?:ę)?cy")
-
-        # rows = text.split("\n")
-        # rows_with_dates = list(
-        #     filter(lambda x: x[1], enumerate(map(util.find_dates, rows)))
-        # )
-
-
-        # periods = list(set(filter(
-        #     lambda x: len(x) == 1 or len(x)*2 == ncols or len(x) == ncols, 
-        #     (tuple(map(int, re.findall(re_periods, row))) for row in rows)
-        # )))
-
-        # if periods:
-        #     periods = periods[0] # take the first one, ignore others
-        #     if len(periods) != ncols:
-        #         periods2cols = int(ncols/len(periods))
-        #         periods = tuple(itertools.chain.from_iterable(
-        #             itertools.repeat(x, periods2cols) for x in periods
-        #         ))
-
-        #     for index, row in rows_with_dates:
-        #         if len(row) == ncols: # different dates in one row
-        #             return list(zip(periods, row))
-
-        # # test different dates
-        # for index, row in rows_with_dates:
-        #     if len(set(row)) == ncols: # different dates in one row
-        #         return list(itertools.product((self.timerange,), row))
-
-        # if ncols == 2: # this and previous year, use default values
-        #     return [
-        #         (self.timerange, self.timestamp), 
-        #         (self.timerange, self.timestamp - relativedelta(years=1))
-        #     ]
-
-        # return None

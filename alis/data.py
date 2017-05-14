@@ -5,7 +5,8 @@ Document.verbose = True
 reports = [
     {
         "doc": FinancialReport("reports/cng_2016_y.pdf"), "ticker": "cng",
-        "statements": { "balance": (3, 4), "nls": (2, ), "cfs": (5, 6) }
+        "statements": { "balance": (3, 4), "nls": (2, ), "cfs": (5, 6) },
+        "tables": [ (1, []) ]
     },
     {
         "doc": FinancialReport("reports/ambra_2016_m2.pdf"), "ticker": "amb",

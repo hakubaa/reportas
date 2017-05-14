@@ -50,6 +50,11 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Środki pieniężne i ich ekwiwalenty na początku okresu"
+            },
+            {
+                "lang": "PL",
+                "value": "Środki pieniężne, ekwiwalenty środków pieniężnych "
+                         "oraz kredyty w rachunku bieżącym na początek okresu"
             }
         ]
     },
@@ -67,6 +72,12 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Środki pieniężne i ich ekwiwalenty na koniec okresu"
+            },
+            {
+                "lang": "PL",
+                "value": "Środki pieniężne, ekwiwalenty środków "
+                         "pieniężnych oraz kredyty w rachunku bieżącym na "
+                         "koniec okresu"
             }
         ]
     },
@@ -250,6 +261,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Zysk brutto za okres"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk przed opodatkowaniem"
             }
         ]
     },
