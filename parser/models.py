@@ -151,10 +151,6 @@ class RecordsExtractor(UserDict):
     re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
     re_rows_separators = re.compile(r"\n")
     re_alphabetic_chars = re.compile(r"[A-Za-zżźćńółęąśŻŹĆĄŚĘŁÓŃ]")
-    #re_leading_number = re.compile(
-    #    r"^(?:Nota)?(?:\s)*([A-Za-z]|(\d+)(?:\.\d+)*|(M{0,4}(CM|CD|D?C{0,3})"
-    #    r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})))(\.|\)| )(?:\s)*"
-    #) 
     re_leading_number = re.compile(
         r"^(?:Nota)?(?:\s)*(c(\d+)(?:\.\d+)*|(M{0,4}(CM|CD|D?C{0,3})"
         r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})))(\.|\)| )(?:\s)*"
@@ -171,6 +167,7 @@ class RecordsExtractor(UserDict):
         temp_rows = self._preprocess_labels(temp_rows)
         if fix_white_spaces:
             temp_rows = self._fix_white_spaces(temp_rows, recspec)
+        temp_rows = self._remove_column_with_note_reference(temp_rows)
         self.records = self._identify_records(
             temp_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
@@ -186,15 +183,7 @@ class RecordsExtractor(UserDict):
         self.data = OrderedDict()
         for row in self.records:
             self.data[row[0][0]] = row[1]
-        self._names = list()
-
-    @property
-    def names(self):
-        return self._names
-
-    @names.setter
-    def names(self, val):
-        self._names = val
+        self.names = list()
 
     def update_names(self, timerange=None, timestamp=None):
         '''
@@ -203,22 +192,77 @@ class RecordsExtractor(UserDict):
         '''
         vip_rows = [index for index, _, flag in self.input_rows if flag == 1]
         min_vip_rows = max(min(vip_rows) - 10, 0)
-        vip_rows.extend(range(min_vip_rows, min(vip_rows)))
+        rows_with_labels = list(range(min_vip_rows, min(vip_rows)))
         text_rows = self._split_text_into_rows(self.text)
-        text = '\n'.join(row for index, row in text_rows if index in vip_rows)
 
-        cols = util.split_text_into_columns(text)
-        cols = [ re.sub(" + ", " ", ' '.join(col)) for col in cols ]
+        text_labels = '\n'.join(
+            row for index, row in text_rows if index in rows_with_labels
+        )
+        text_numbers = '\n'.join(
+            row for index, row in text_rows if index in vip_rows
+        )
 
-        # Find timeranges and timestamps
+        cols = util.split_text_into_columns(text_labels + "\n" + text_numbers)
+        cols = [ 
+            re.sub(" + ", " ", ' '.join(col[0:len(rows_with_labels)])) 
+            for col in cols if col 
+        ]
+
+        # Find timeranges and timestamps by columns
         tranges = list(map(
             operator.itemgetter(-1), 
             [[None] + tr for tr in map(util.determine_timerange, cols)]
         ))[-self.ncols:]
+
         dates = list(map(
-            lambda item: item and max(item, key=operator.itemgetter(0))[0],
-            [dt for dt in map(util.find_dates, cols)]
+            lambda item: item[-1][0],
+            [dt for dt in map(util.find_dates, cols) if dt]
         ))[-self.ncols:]
+
+        # Find timeranges and timestamps by rows if search by columns
+        # have failed
+        if not (all(map(bool, tranges)) and all(map(bool, dates))):
+            rows = text_labels.split("\n")
+            rows_tranges = next(
+                filter(bool, map(util.determine_timerange, reversed(rows))), []
+            )[-self.ncols:]
+
+            rows_dates = list(map(
+                operator.itemgetter(0), 
+                next(filter(bool, map(util.find_dates, reversed(rows))), [])
+            ))
+
+            if (all(map(bool, rows_tranges)) and all(map(bool, rows_dates))
+                    and len(rows_dates) == len(rows_tranges) 
+                    and len(rows_dates) == self.ncols):
+                tranges = rows_tranges
+                dates = rows_dates
+            else:
+                # timestamps in rows seem to be more reliable
+                if (len(rows_dates) == self.ncols 
+                    and all(map(bool, rows_dates))
+                    and (
+                        not all(map(bool, dates)) 
+                        or len(dates) != self.ncols
+                        or (
+                            all(all(map(bool, date)) for date in rows_dates)
+                            and not all(all(map(bool, date)) for date in dates)
+                        )
+                        or len(set(rows_dates)) > len(set(dates))
+                    )
+                ):
+                    dates = rows_dates
+
+                # information about timeragne is above the table
+                if not all(map(bool, tranges)) and any(map(bool, rows_tranges)):
+                    # tranges = (rows_tranges * len(dates))[0:len(dates)]
+                    trange_for_dates = int(len(dates) / len(rows_tranges))
+                    tranges = list(
+                        itertools.chain.from_iterable(
+                            itertools.repeat(x, trange_for_dates)
+                            for x in rows_tranges
+                        )
+                    )[0:len(dates)]
 
         # check for two dates in every column
         coltrs = list()
@@ -236,7 +280,7 @@ class RecordsExtractor(UserDict):
             coltrs.append((trange, timestamp))
 
         if coltrs:
-            self._names = coltrs
+            self.names = coltrs
 
     def _split_row_into_fields(self, row):
         '''Split text into separate fields.'''
@@ -517,37 +561,106 @@ class RecordsExtractor(UserDict):
 
         return results
 
-    @property
-    def ncols(self):
-        '''
-        Identify number of columns with valid numbers. Very often the first 
-        number in the rows is a note identification.
-        '''
-        rows = list() 
-        for key, value in self.items():
-            rows.append(value)
+    def _remove_column_with_note_reference(self, rows):
+        '''Remove column with note reference.'''
+        small_number_threshold = 100 # numbers below 100 are small
 
-        # Calculate full rows coefficient and concentration coefficient
+        note_column = None # init value 
+
+        # Select rows with maximal items
         max_items_in_row = max(map(len, rows))
         full_rows = [row for row in rows if len(row) == max_items_in_row]
-        full_rows = [[ item if item > 0 else float("inf") for item in row ] 
-                     for row in full_rows] # get rid of negative numbers
+        notfull_rows = [row for row in rows if len(row) >= max_items_in_row - 1]
 
-        coef_full = len(full_rows) / len(rows)
-        number_of_rows_with_min_at_first_position = sum(
-            1 for item in map(lambda row: np.array(row).argmin(), full_rows)
-            if item == 0
-        )
-        coef_conc = number_of_rows_with_min_at_first_position / len(full_rows)
+        # Convert items to numbers (excluding first column - labels)
+        numerical_rows = [ 
+            [util.convert_to_number(item) for item in row[1:] ] 
+            for row in full_rows 
+        ]
+        last_col_index = next(map(len, numerical_rows)) - 1
 
-        # Decision rule
-        # full rows & min numbers at first position > 85%
-        # not full rows & min_numbers_at_first_position > 60%
-        if ((abs(coef_full - 1.0) < 1e-10 and coef_conc > 0.9) or 
-            (abs(coef_full - 1.0) > 1e-10 and coef_conc > 0.7)):
-            return max_items_in_row - 1
+        # Is there any column with more None than numbers ?
+        temp = [
+            [ 1 if item is None else 0 for item in row ]
+            for row in numerical_rows
+        ]
+        sum_of_nones = list(reduce(lambda x, y: map(operator.add, x, y), temp))
+        max_sum = max(enumerate(sum_of_nones), key=operator.itemgetter(1))
+        if max_sum[1] > len(temp)*0.5:
+            # note column have to be one of the marginal columns
+            if max_sum[0] == 0 or max_sum[0] == last_col_index:
+                note_column = max_sum[0]
 
-        return max_items_in_row   
+        # No, there is not. Try something different.
+        if not note_column:  
+            # Change negative numbers to +inf, and None to -inf
+            mod_rows = [
+                [ (not item and -float("inf")) # python is awesome
+                   or (item if item > 0 else float("inf")) for item in row ] 
+                for row in numerical_rows
+            ]
+
+            # Search for min numbers at first positions.
+            number_of_rows_with_min_at_first_position = sum(
+                1 for item in map(lambda row: np.array(row).argmin(), mod_rows)
+                if item == 0
+            )
+
+            # Search for min numbers at last postions.
+            number_of_rows_with_min_at_last_position = sum(
+                1 for item in map(lambda row: np.array(row).argmin(), mod_rows)
+                if item == last_col_index
+            )
+
+            # Calculate coefficients to make final decision.
+            smallness_coef_first_col = sum(
+                1 for row in mod_rows if row[0] < small_number_threshold
+            )/len(mod_rows)
+
+            conc_coef_first_col = \
+                number_of_rows_with_min_at_first_position / len(mod_rows)
+
+            smallness_coef_last_col = sum(
+                1 for row in mod_rows 
+                if row[last_col_index] < small_number_threshold
+            )/len(mod_rows)
+
+            conc_coef_last_col = \
+                number_of_rows_with_min_at_last_position / len(mod_rows)
+
+            # Decision Rule
+            if conc_coef_first_col > 0.7 and smallness_coef_first_col > 0.9:
+                note_column = 0
+            elif conc_coef_last_col > 0.7 and smallness_coef_last_col > 0.9:
+                note_column = last_col_index
+
+        if note_column is not None: # There is a column with note reference.
+            output_rows = list()
+            ncols = (max_items_in_row-2)
+            if note_column == 0:
+                for row in rows:
+                    # first item is number ? => there is no label 
+                    if util.is_number(row[0]):
+                        label = []
+                    else:
+                        label = row[0:1] 
+                    output_rows.append(
+                        (label if len(row) > ncols else []) +  row[-ncols:]
+                    )
+            else:
+                for row in rows:
+                    # first item is number ? => there is no label 
+                    if util.is_number(row[0]):
+                        output_rows.append(row[0:ncols])
+                    else:
+                        output_rows.append(row[0:1] + row[1:(ncols+1)])
+            return output_rows
+        else:
+            return rows # No column with note reference.
+
+    @property
+    def ncols(self):
+        return max(map(len, self.values()))
 
 
 class FinancialReport(Document):
@@ -669,5 +782,10 @@ class FinancialReport(Document):
         else:
             text = '\n'.join(operator.itemgetter(*pages)(self))
         records = RecordsExtractor(text, spec, voc=voc)
-        records.update_names(self.timerange, self.timestamp)
+        try:
+            records.update_names(self.timerange, self.timestamp)
+        except Exception: # not vital feature, ignore and show warning
+            warnings.warn(
+                "Unabel to determine names of columns: '{!r}'".format(self)
+            )
         return records

@@ -139,7 +139,7 @@ def find_dates(text, all_days=False):
 
     re_days = r"(01|1|28|29|30|31)"
     if all_days:
-        re_days = r"\d{1,2}"
+        re_days = r"\d{1,2}" #(0[1-9]|[12]\d|3[01])
 
     quarters = {"i": 3, "ii": 6, "iii": 9, "iv": 12}
     months = {"stycznia": 1, "lutego": 2, "marca": 3, "kwietnia": 4, 
@@ -149,26 +149,31 @@ def find_dates(text, all_days=False):
 
     re_date_with_full_month = re.compile(
         re_days + r" (stycznia|lutego|marca|kwietnia|maja|czerwca|"
-         "lipca|sierpnia|wrze(?:ś)?nia|pa(?:ź)?dziernika|listopada|grudnia) "
-         "((?:19|20)\d{2})", flags = re.IGNORECASE
+         r"lipca|sierpnia|wrze(?:ś)?nia|pa(?:ź)?dziernika|listopada|grudnia) "
+         r"((?:19|20)\d{2})\b", flags = re.IGNORECASE
     )
     re_quarter = re.compile(
-        r"(I|II|III|IV) kw(?:\.|arta)?(?:ł)?(?:y)? (\d+)", flags=re.IGNORECASE
+        r"(I|II|III|IV) kw(?:\.|arta)?(?:ł)?(?:y)? (\d+)\b", flags=re.IGNORECASE
     )
     re_date_day_month_year = re.compile(
-        re_days + r"(?:\.|-)(1[0-2]|0?[1-9])(?:\.|-)((?:19|20)\d{2})"
+        re_days + r"(?:\.|-)(1[0-2]|0[1-9])(?:\.|-)((?:19|20)\d{2})\b"
     )
     re_date_year_month_day = re.compile(
-        r"((?:19|20)\d{2})(?:\.|-){1}(1[0-2]|0?[1-9])(?:\.|-){1}" + re_days
+        r"((?:19|20)\d{2})(?:\.|-){1}(1[0-2]|0[1-9])(?:\.|-){1}\b" + re_days
     )
-
     re_day_and_full_month = re.compile(
         re_days + r" (stycznia|lutego|marca|kwietnia|maja|czerwca|"
-         "lipca|sierpnia|wrze(?:ś)?nia|pa(?:ź)?dziernika|listopada|grudnia)", 
+         r"lipca|sierpnia|wrze(?:ś)?nia|pa(?:ź)?dziernika|listopada|grudnia)\b", 
          flags = re.IGNORECASE
     )
-    re_day_and_month = re.compile(re_days + r"(?:\.|-)(1[0-2]|0?[1-9])")
-    re_year = re.compile(r"((?:19|20)\d{2})")
+    re_full_month_and_year = re.compile(
+        r" (stycznia|lutego|marca|kwietnia|maja|czerwca|"
+        r"lipca|sierpnia|wrze(?:ś)?nia|pa(?:ź)?dziernika|listopada|grudnia) "
+        r"((?:19|20)\d{2})\b", flags = re.IGNORECASE
+    )
+    re_day_and_month = re.compile(re_days + r"(?:\.|-)(1[0-2]|0[1-9])\b")
+    re_month_and_year = re.compile(r"(1[0-2]|0[1-9])(?:\.|-)((?:19|20)\d{2})\b")
+    re_year = re.compile(r"((?:19|20)\d{2})\b")
 
     timestamps = list()
 
@@ -254,6 +259,33 @@ def find_dates(text, all_days=False):
     else:
         text = re.sub(re_day_and_month, "", text) # remove from text
 
+    # Match 'czerwca 2016'
+    match_dates = re.finditer(re_full_month_and_year, text)
+    for match_date in match_dates:
+        month, year = match_date.groups()
+        try:
+            timestamps.append((
+                (int(year), months[month.lower()], None), match_date.span(), 0)
+            )
+        except ValueError:
+            pass # ignore errors in dates
+    else:
+        text = re.sub(re_full_month_and_year, "", text) # remove from text
+
+
+    # Match 01.2001 (month - year)
+    match_dates = re.finditer(re_month_and_year, text)
+    for match_date in match_dates:
+        month, year = match_date.groups()
+        try:
+            timestamps.append((
+                (int(year), int(month), None), match_date.span(), 0)
+            )
+        except ValueError:
+            pass # ignore errors in dates
+    else:
+        text = re.sub(re_month_and_year, "", text) # remove from text
+
     # Match '2016'
     match_dates = re.finditer(re_year, text)
     for match_date in match_dates:
@@ -267,7 +299,8 @@ def find_dates(text, all_days=False):
     else:
         text = re.sub(re_year, "", text) # remove from text
 
-    return timestamps
+    # Return timestams in order compliant with their occurence.
+    return sorted(timestamps, key=lambda item: item[1][0])
 
 
 def determine_timerange(text):
@@ -281,7 +314,7 @@ def determine_timerange(text):
 
     # Match IV kwartały
     re_quarters = re.compile(
-        r"(I|II|III|IV|1|2|3|4) *kwarta(?:ł)?y *(?:(?:19|20)\d{2})", 
+        r"(I|II|III|IV|1|2|3|4) +kwarta(?:ł)?y +(?:(?:19|20)\d{2})", 
         flags=re.IGNORECASE
     )
 
@@ -292,7 +325,7 @@ def determine_timerange(text):
 
     # Match IV kwartał
     re_quarter = re.compile(
-        r"(I|II|III|IV|1|2|3|4) *kw(?:\.|arta)?(?:ł)?", 
+        r"(I|II|III|IV|1|2|3|4) +kw(?:\.|arta)?(?:ł)?", 
         flags=re.IGNORECASE
     )
     tranges.extend(3 for _ in re.findall(re_quarter, text))
@@ -311,7 +344,7 @@ def determine_timerange(text):
     )
     tranges.extend(6 for _ in re.findall(re_midyear, text))
 
-    re_months = re.compile("(0?[1-9]|1[0-2]) miesi(?:ę)?cy", 
+    re_months = re.compile("(0?[1-9]|1[0-2]) miesi(?:ę|ą)?c(?:y|e)", 
                                 flags=re.IGNORECASE)
     tranges.extend(int(month) for month in re.findall(re_months, text))
 
@@ -320,8 +353,9 @@ def determine_timerange(text):
 
     # Match 01.01.2016 - 31.12.2016
     re_timerange = re.compile(
-        r"(?:\d+(?:\.|-))?\d+(?:\.|-)\d+(?:(?:\.|-)\d+)? *(?:do|-) *"
-        r"\d+(?:\.|-)\d+(?:(?:\.|-)\d+)?",
+        r"(?:(0[1-9]|[12]\d|3[01])(?:\.|-))?(0[1-9]|1[0-2])"
+        r"(?:(?:\.|-)((?:19|20)\d{2}))? *(?:roku)? *(?:do|-) *(0[1-9]|[12]\d|3[01])"
+        r"(?:\.|-)(0[1-9]|1[0-2])(?:(?:\.|-)((?:19|20)\d{2}))? *(?:roku)?",
         flags=re.IGNORECASE
     )
 
@@ -330,8 +364,12 @@ def determine_timerange(text):
         dt1, dt2 = map(operator.itemgetter(0), find_dates(text_part))
         diff_years = 0
         if dt1[0] is not None and dt2[0] is not None:
-            diff_years = abs(dt2[0] - dt1[0])
-        diff_months = 1 + abs(dt2[1] - dt1[1])    
+            if dt1[0] > dt2[0]: # sth is wrong - first date should be earlier
+                continue
+            diff_years = dt2[0] - dt1[0]
+        if diff_years == 0 and dt1[1] > dt2[2]: # sth is wroing - the same year
+            continue                            # but first date is earlier
+        diff_months = 1 + dt2[1] - dt1[1]
         tranges.append(12*diff_years + diff_months)
 
     return tranges
