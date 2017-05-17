@@ -15,7 +15,8 @@ from calendar import monthrange
 from dateutil.parser import parse
 
 
-RE_NUMBER = re.compile(r"(?:\+|-|\()?(?: )?\d+(?:[,. ]\d+)*(?:\))?")
+# RE_NUMBER = re.compile(r"(?:\+|-|\()?(?: )?\d+(?:[,. ]\d+)*(?:\))?")
+RE_NUMBER = re.compile(r"^(?:\+|-|\()?(?: )?\d+(?: \d+)*(?:[,\.]\d+)?(?:\))?$")
 
 
 def pdftotext(path, layout=True, first_page=None, last_page=None,
@@ -134,10 +135,9 @@ def load_module(name, attach = False, force_reload = True):
     return module
 
 
-def find_dates(text, all_days=False):
+def find_dates(text, re_days=r"(01|1|28|29|30|31)", all_days=False):
     '''Find all dates in the text.'''
 
-    re_days = r"(01|1|28|29|30|31)"
     if all_days:
         re_days = r"\d{1,2}" #(0[1-9]|[12]\d|3[01])
 
@@ -375,8 +375,9 @@ def determine_timerange(text):
     return tranges
 
 
-def split_text_into_columns(text, ncols=None):
+def split_text_into_columns(text):
     '''Split multiline text into columns.'''
+    # rows4split = list(filter(bool, text.split("\n")))
     rows4split = list(filter(bool, text.split("\n")))
 
     width = Counter(map(len, rows4split)).most_common(1)[0][0]
@@ -396,14 +397,22 @@ def split_text_into_columns(text, ncols=None):
             series.append([(ws, wsdist[ws])])
         prev_ws = ws
 
-    series = [ sr for sr in series if len(sr) > 1 ]
+    series = [ sr for sr in series if len(sr) > 2 ]
 
     wsbreaks = list()
     for sr in series:
         max_ws = max(map(operator.itemgetter(1), sr))
-        mval = sr[round(len(sr)/2)][0]
-        msr = [ (abs(val - mval), val) for val, ws in sr if ws == max_ws ]
-        wsbreaks.append(min(msr, key=operator.itemgetter(0))[1])
+        # mval = sr[round(len(sr)/2)][0]
+        # msr = [ (abs(val - mval), val) for val, ws in sr if max_ws - ws < 2 ]
+        # wsbreaks.append(min(msr, key=operator.itemgetter(0))[1])
+        msr = [ index for index, (pos, ws) in enumerate(sr) if max_ws - ws < 2 ]
+        index = max([
+            (index, (sr[index-1][1] if index > 1 else sr[index][1]) + 
+            sr[index][1] + 
+            (sr[index+1][1] if index+1 < len(sr) else sr[index][1]))
+            for index in msr
+        ], key=operator.itemgetter(1))[0]
+        wsbreaks.append(operator.itemgetter(index)(sr)[0])
 
     joincols = [[] for _ in range(len(wsbreaks)+1)]
     for row in rows4split:

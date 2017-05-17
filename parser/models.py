@@ -196,10 +196,10 @@ class RecordsExtractor(UserDict):
         text_rows = self._split_text_into_rows(self.text)
 
         text_labels = '\n'.join(
-            row for index, row in text_rows if index in rows_with_labels
+            row for index, row in text_rows if index in rows_with_labels if row
         )
         text_numbers = '\n'.join(
-            row for index, row in text_rows if index in vip_rows
+            row for index, row in text_rows if index in vip_rows if row
         )
 
         cols = util.split_text_into_columns(text_labels + "\n" + text_numbers)
@@ -221,12 +221,18 @@ class RecordsExtractor(UserDict):
 
         # Find timeranges and timestamps by rows if search by columns
         # have failed
-        if not (all(map(bool, tranges)) and all(map(bool, dates))):
-            rows = text_labels.split("\n")
-            rows_tranges = next(
-                filter(bool, map(util.determine_timerange, reversed(rows))), []
-            )[-self.ncols:]
 
+        if not (all(map(bool, tranges)) and all(map(bool, dates)) 
+                and all(map(lambda date: all(map(bool, date)), dates))):
+            rows = text_labels.split("\n")
+            temp_tranges = (
+                [ item for item in trange if item > 2] 
+                for trange in filter(
+                    bool, map(util.determine_timerange, reversed(rows))
+                )
+            )
+            rows_tranges = next(temp_tranges, [])[-self.ncols:]
+  
             rows_dates = list(map(
                 operator.itemgetter(0), 
                 next(filter(bool, map(util.find_dates, reversed(rows))), [])
@@ -266,18 +272,28 @@ class RecordsExtractor(UserDict):
 
         # check for two dates in every column
         coltrs = list()
-        for trange, timestamp in zip(tranges, dates):
+        for trange, tms in zip(tranges, dates):
             if not trange:
                 trange = timerange
-            if not all(map(bool, timestamp)):
-                year, month, day = timestamp
+            if not all(map(bool, tms)):
+                year, month, day = tms
                 if not year:
                     year = timestamp.year
                 if not month and not day:
-                    month = 12
-                    day = 31
-                timestamp = (year, month, day)
-            coltrs.append((trange, timestamp))
+                    if timestamp:
+                        month = timestamp.month
+                        day = timestamp.day
+                    else:
+                        month = 12
+                        day = 31
+                if not day:
+                    days_in_month = {
+                        1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30,
+                        7: 31, 8: 31, 9:30, 10: 31, 11: 30, 12:31
+                    }
+                    day = days_in_month[month]
+                tms = (year, month, day)
+            coltrs.append((trange, tms))
 
         if coltrs:
             self.names = coltrs
@@ -373,17 +389,7 @@ class RecordsExtractor(UserDict):
                         item_selector = operator.itemgetter(1)
 
                         max_csims = max(csims, key=item_selector)[1]
-                        #pot_labels = set(
-                        #    label for label, sim in csims 
-                        #    if abs(sim-max_csims) < 1e-10
-                        #)
-
                         max_s_csims = max(s_csims, key=item_selector)[1]
-                        #s_pot_labels = set(
-                        #    label for label, sim in s_csims 
-                        #    if abs(sim-max_s_csims) < 1e-10
-                        #)
-
                         max_ext_csims = max(ext_csims, key=item_selector)[1]
                         
                         if ((max_ext_csims > max_s_csims or 
@@ -393,7 +399,6 @@ class RecordsExtractor(UserDict):
                                 and (
                                     max_s_csims > max_csims 
                                     or abs(max_s_csims - max_csims) < 1e-10
-                                    #or bool(pot_labels & s_pot_labels)
                                 )): 
                             numbers = numbers or s_numbers
                             stack.append((ext_label, numbers, ext_csims, 
@@ -445,6 +450,12 @@ class RecordsExtractor(UserDict):
                     (spec_id, numbers, rows_indices)
                 )
 
+        # Distirbution of rows
+        rows_dist = reduce(
+            operator.add, map(operator.itemgetter(-1), ident_records)
+        )
+        rows_dist_q50 = float(np.percentile(np.array(rows_dist), 50))
+
         # Remove duplicates/Choose the row with the highest csims
         taken_keys = set()
         taken_rows = list()
@@ -463,8 +474,13 @@ class RecordsExtractor(UserDict):
             for k, g in itertools.groupby(
                     sorted(data, key=lambda item: item[0][0], reverse=True), 
                     lambda item: item[0][0]
-                ):
-                selected_record = max(g, key=lambda item: item[0][1])
+            ):
+                group = list(g)
+                max_sim = max(list(map(lambda x: x[0][1], group)))
+                selected_record = sorted([ 
+                    (abs(record[2][0] - rows_dist_q50),) + record 
+                    for record in group if abs(record[0][1] - max_sim) < 1e-10 
+                ], key=operator.itemgetter(0))[0][1:]
                 final_records.append(selected_record[:-1])
                 taken_keys.add(k)
                 taken_rows.append(set(selected_record[2]))
@@ -595,7 +611,7 @@ class RecordsExtractor(UserDict):
         if not note_column:  
             # Change negative numbers to +inf, and None to -inf
             mod_rows = [
-                [ (not item and -float("inf")) # python is awesome
+                [ (item is None and -float("inf")) # python is awesome
                    or (item if item > 0 else float("inf")) for item in row ] 
                 for row in numerical_rows
             ]
@@ -629,9 +645,11 @@ class RecordsExtractor(UserDict):
                 number_of_rows_with_min_at_last_position / len(mod_rows)
 
             # Decision Rule
-            if conc_coef_first_col > 0.7 and smallness_coef_first_col > 0.9:
+            if ((conc_coef_first_col > 0.6 and smallness_coef_first_col > 0.8)
+                    or conc_coef_first_col > 0.9):
                 note_column = 0
-            elif conc_coef_last_col > 0.7 and smallness_coef_last_col > 0.9:
+            elif ((conc_coef_last_col > 0.6 and smallness_coef_last_col > 0.8)
+                    or conc_coef_last_col > 0.9):
                 note_column = last_col_index
 
         if note_column is not None: # There is a column with note reference.
@@ -732,11 +750,14 @@ class FinancialReport(Document):
         text = util.remove_non_ascii('\n'.join(self))
         timestamps = list()
 
-        for timestamp, _, flag in util.find_dates(text):
+        for timestamp, _, flag in util.find_dates(text, re_days=r"(28|29|30|31)"):
             if flag:    
-                timestamps.append(datetime(
-                    year=timestamp[0], month=timestamp[1], day=timestamp[2]
-            ))
+                try:
+                    timestamps.append(datetime(
+                        year=timestamp[0], month=timestamp[1], day=timestamp[2]
+                    ))
+                except ValueError:
+                    pass # ignore cray dates
 
         if not timestamps: # check for availability of timestamps
             return None

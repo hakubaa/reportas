@@ -56,9 +56,9 @@ class RecordsExtractorTest(unittest.TestCase):
             n = 1, min_len=2, remove_non_alphabetic=True
         )))
         cls.voc.update(
-            remove_non_ascii(word) for word in ("podstawowy", "obrotowy", 
-                "rozwodniony", "połączeń", "konsolidacji", "należne", "wpłaty")
-        )
+            remove_non_ascii(word) 
+            for word in ("podstawowy", "obrotowy", "rozwodniony", "połączeń", 
+                         "konsolidacji", "należne", "wpłaty", "gazu", "ropy"))
 
         # Create specification for identifying records
         cls.spec = dict(
@@ -110,7 +110,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
-            [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
+            [(3, (2016, 3, 31)), (3, (2015, 12, 31))]
         )
 
     def test_update_names_decora_2016_q1_cfs(self):
@@ -249,6 +249,7 @@ class RecordsExtractorTest(unittest.TestCase):
         )
 
     ## reports/gri_2016_y.pdf
+    @unittest.skip
     def test_update_names_gri_2016_y_nls(self):
         doc = FinancialReport("reports/gri_2016_y.pdf", 
                               spec=self.spec, voc=self.voc)
@@ -257,6 +258,7 @@ class RecordsExtractorTest(unittest.TestCase):
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
+    @unittest.skip
     def test_update_names_gri_2016_y_bls(self):
         doc = FinancialReport("reports/gri_2016_y.pdf", 
                               spec=self.spec, voc=self.voc)
@@ -265,6 +267,7 @@ class RecordsExtractorTest(unittest.TestCase):
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
+    @unittest.skip
     def test_update_names_gri_2016_y_cfs(self):
         doc = FinancialReport("reports/gri_2016_y.pdf", 
                               spec=self.spec, voc=self.voc)
@@ -388,7 +391,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
-            [(6, (2015, 6, 30)), (6, (2015, 12, 31)), (6, (2014, 6, 30))]
+            [(6, (2015, 6, 30)), (6, (2014, 12, 31)), (6, (2014, 6, 30))]
         )
 
     def test_update_names_graal_2015_m1_cfs(self):
