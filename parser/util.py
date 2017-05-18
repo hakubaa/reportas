@@ -16,7 +16,7 @@ from dateutil.parser import parse
 
 
 # RE_NUMBER = re.compile(r"(?:\+|-|\()?(?: )?\d+(?:[,. ]\d+)*(?:\))?")
-RE_NUMBER = re.compile(r"^(?:\+|-|\()?(?: )?\d+(?: \d+)*(?:[,\.]\d+)?(?:\))?$")
+RE_NUMBER = re.compile(r"^(?:\+|-|\()?(?: )?\d+(?:(?: |\.)\d{3})*(?:[,]\d+)?(?:\))?$")
 
 
 def pdftotext(path, layout=True, first_page=None, last_page=None,
@@ -81,22 +81,24 @@ def is_number(string, special_zeros=" -"):
     return string in special_zeros or bool(re.match(RE_NUMBER, string))
 
 
-def convert_to_number(string, decimal_mark=",", special_zeros=" -"):
+def convert_to_number(text, decimal_mark=",", special_zeros=" -"):
     '''Convert string to number.'''
-    if isinstance(string, numbers.Number):
-        return string
+    if isinstance(text, numbers.Number):
+        return text
 
-    if not is_number(string):
+    if not is_number(text):
         return None
 
-    if string in special_zeros:
+    if text in special_zeros:
         return 0.0
 
     # Determine sign of the number
-    sign = -1 if re.match(r"^(-|\()", string) else 1
+    sign = -1 if re.match(r"^(-|\()", text) else 1
 
     # Extract actual number
-    number = re.search("\d+(?:[,. ]\d+)*", string)
+    number = re.search(
+        r"\d+(?:(?: |\.)\d{3})*(?:[" + decimal_mark + r"]\d+)?", text
+    )
     if not number:
         return ValueError("could not convert string to number: {!r}".
                           format(string))

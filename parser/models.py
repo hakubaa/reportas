@@ -125,8 +125,24 @@ class SelfSearchingPage:
                     # decrease the probabilty
                     prob_by_pages[index] = prob_by_pages[index] * 0.5
 
-        page_with_max_prob = prob_by_pages.argmax()
-        max_prob = prob_by_pages.max()
+        # Decrease the probability for pages containing selected set of 
+        # financial data.
+        for index, ngrams_page in enumerate(ngrams_by_pages):
+            if ((NGram("wybrane", "dane") in ngrams_page 
+                and NGram("dane", "finansowe") in ngrams_page) or
+                (NGram("wybrane", "skonsolidowane") in ngrams_page 
+                and NGram("skonsolidowane", "dane") in ngrams_page
+                and NGram("dane", "finansowe") in ngrams_page)
+            ):
+                # decrease the probabilty
+                prob_by_pages[index] = prob_by_pages[index] * 0.5
+
+        max_prob = max(prob_by_pages)
+        page_with_max_prob = min(
+            page for page, prob in enumerate(prob_by_pages) 
+                 if abs(prob-max_prob) < 0.01
+        )
+        # page_with_max_prob = prob_by_pages.argmax()
 
         preceding_pages = len(list(itertools.takewhile(
             lambda prob: prob > max_prob * SelfSearchingPage.min_probe_rate,
@@ -509,11 +525,6 @@ class RecordsExtractor(UserDict):
         bigrams = set()
         for item in zip_ngrams:
             bigrams.update(map(lambda ngram: ngram[0] + ngram[1], item))
-            # bigrams.update(
-            #     ngram[0] + ngram[1] 
-            #     for ngram in item 
-            #     if not bool(set(ngram[0]) & set(ngram[1]) & STOP_WORDS)
-            # )
 
         # Fix labels
         for row in rows:
@@ -586,7 +597,6 @@ class RecordsExtractor(UserDict):
         # Select rows with maximal items
         max_items_in_row = max(map(len, rows))
         full_rows = [row for row in rows if len(row) == max_items_in_row]
-        notfull_rows = [row for row in rows if len(row) >= max_items_in_row - 1]
 
         # Convert items to numbers (excluding first column - labels)
         numerical_rows = [ 
@@ -616,15 +626,16 @@ class RecordsExtractor(UserDict):
                 for row in numerical_rows
             ]
 
-            # Search for min numbers at first positions.
+            # Count number of rows with min value at first/last postion
+
+            # rows with different values - make next steps simpler
+            umod_rows = list(filter(lambda x: len(set(x)) > 1, mod_rows))
             number_of_rows_with_min_at_first_position = sum(
-                1 for item in map(lambda row: np.array(row).argmin(), mod_rows)
+                1 for item in map(lambda row: np.array(row).argmin(), umod_rows)
                 if item == 0
             )
-
-            # Search for min numbers at last postions.
             number_of_rows_with_min_at_last_position = sum(
-                1 for item in map(lambda row: np.array(row).argmin(), mod_rows)
+                1 for item in map(lambda row: np.array(row).argmin(), umod_rows)
                 if item == last_col_index
             )
 
@@ -645,11 +656,11 @@ class RecordsExtractor(UserDict):
                 number_of_rows_with_min_at_last_position / len(mod_rows)
 
             # Decision Rule
-            if ((conc_coef_first_col > 0.6 and smallness_coef_first_col > 0.8)
-                    or conc_coef_first_col > 0.9):
+            if ((conc_coef_first_col > 0.6 and smallness_coef_first_col > 0.7)
+                    or conc_coef_first_col > 0.8):
                 note_column = 0
-            elif ((conc_coef_last_col > 0.6 and smallness_coef_last_col > 0.8)
-                    or conc_coef_last_col > 0.9):
+            elif ((conc_coef_last_col > 0.6 and smallness_coef_last_col > 0.7)
+                    or conc_coef_last_col > 0.8):
                 note_column = last_col_index
 
         if note_column is not None: # There is a column with note reference.
