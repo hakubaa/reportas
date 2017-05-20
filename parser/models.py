@@ -140,7 +140,7 @@ class SelfSearchingPage:
         max_prob = max(prob_by_pages)
         page_with_max_prob = min(
             page for page, prob in enumerate(prob_by_pages) 
-                 if abs(prob-max_prob) < 0.01
+                 if abs(prob-max_prob) < 0.02
         )
         # page_with_max_prob = prob_by_pages.argmax()
 
@@ -183,11 +183,12 @@ class RecordsExtractor(UserDict):
         temp_rows = self._preprocess_labels(temp_rows)
         if fix_white_spaces:
             temp_rows = self._fix_white_spaces(temp_rows, recspec)
-        temp_rows = self._remove_column_with_note_reference(temp_rows)
-        self.records = self._identify_records(
+        # temp_rows = self._remove_column_with_note_reference(temp_rows)
+        records = self._identify_records(
             temp_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
         )
+        self.records = self._remove_column_with_note_reference(records)
         # Update input rows - add marker for rows with identified records
         vip_rows = reduce(
             operator.add, 
@@ -232,14 +233,16 @@ class RecordsExtractor(UserDict):
 
         dates = list(map(
             lambda item: item[-1][0],
-            [dt for dt in map(util.find_dates, cols) if dt]
+            [dt for dt in map(util.find_dates, cols) 
+                if dt and dt[-1][0][2] in (28, 29, 30, 31)] # last day of the month
         ))[-self.ncols:]
 
         # Find timeranges and timestamps by rows if search by columns
         # have failed
 
         if not (all(map(bool, tranges)) and all(map(bool, dates)) 
-                and all(map(lambda date: all(map(bool, date)), dates))):
+                and all(map(lambda date: all(map(bool, date)), dates))
+                and len(tranges) == self.ncols and len(dates) == self.ncols):
             rows = text_labels.split("\n")
             temp_tranges = (
                 [ item for item in trange if item > 2] 
@@ -253,6 +256,10 @@ class RecordsExtractor(UserDict):
                 operator.itemgetter(0), 
                 next(filter(bool, map(util.find_dates, reversed(rows))), [])
             ))
+            rows_dates = [ 
+                date for date in rows_dates 
+                if date[2] is None or date[2] in (28, 29, 30, 31) 
+            ]
 
             if (all(map(bool, rows_tranges)) and all(map(bool, rows_dates))
                     and len(rows_dates) == len(rows_tranges) 
@@ -282,7 +289,10 @@ class RecordsExtractor(UserDict):
                     tranges = list(
                         itertools.chain.from_iterable(
                             itertools.repeat(x, trange_for_dates)
-                            for x in rows_tranges
+                            for x in rows_tranges * len(dates) # extend 
+                            # rows_tranges by factor of len(dates), it is 
+                            # required in situation when number of datas
+                            # is odd and number of tranges is even
                         )
                     )[0:len(dates)]
 
@@ -588,27 +598,29 @@ class RecordsExtractor(UserDict):
 
         return results
 
-    def _remove_column_with_note_reference(self, rows):
+    def _remove_column_with_note_reference(self, records):
         '''Remove column with note reference.'''
-        small_number_threshold = 100 # numbers below 100 are small
-
         note_column = None # init value 
+        
+        # Select numbers from records
+        rows = list(map(operator.itemgetter(1), records))
 
-        # Select rows with maximal items
-        max_items_in_row = max(map(len, rows))
-        full_rows = [row for row in rows if len(row) == max_items_in_row]
+        # Select rows 
+        max_freq = max(map(len, rows))
+        mode_freq = Counter(map(len, rows)).most_common(1)[0][0]
 
-        # Convert items to numbers (excluding first column - labels)
-        numerical_rows = [ 
-            [util.convert_to_number(item) for item in row[1:] ] 
-            for row in full_rows 
-        ]
-        last_col_index = next(map(len, numerical_rows)) - 1
+        if max_freq < 3: # there are always at least two columns
+            return records
+
+        full_rows = [row for row in rows if len(row) == max_freq]
+        mode_rows = [row for row in rows if len(row) == mode_freq]
+
+        last_col_index = next(map(len, full_rows)) - 1
 
         # Is there any column with more None than numbers ?
         temp = [
             [ 1 if item is None else 0 for item in row ]
-            for row in numerical_rows
+            for row in full_rows
         ]
         sum_of_nones = list(reduce(lambda x, y: map(operator.add, x, y), temp))
         max_sum = max(enumerate(sum_of_nones), key=operator.itemgetter(1))
@@ -619,73 +631,63 @@ class RecordsExtractor(UserDict):
 
         # No, there is not. Try something different.
         if not note_column:  
-            # Change negative numbers to +inf, and None to -inf
-            mod_rows = [
-                [ (item is None and -float("inf")) # python is awesome
-                   or (item if item > 0 else float("inf")) for item in row ] 
-                for row in numerical_rows
-            ]
 
-            # Count number of rows with min value at first/last postion
+            if len(full_rows) > 5:
 
-            # rows with different values - make next steps simpler
-            umod_rows = list(filter(lambda x: len(set(x)) > 1, mod_rows))
-            number_of_rows_with_min_at_first_position = sum(
-                1 for item in map(lambda row: np.array(row).argmin(), umod_rows)
-                if item == 0
-            )
-            number_of_rows_with_min_at_last_position = sum(
-                1 for item in map(lambda row: np.array(row).argmin(), umod_rows)
-                if item == last_col_index
-            )
+                data = np.array([ 
+                    row for row in full_rows 
+                    if all(item is not None for item in row) 
+                ])
 
-            # Calculate coefficients to make final decision.
-            smallness_coef_first_col = sum(
-                1 for row in mod_rows if row[0] < small_number_threshold
-            )/len(mod_rows)
+                sv_cols = [ #single value columns
+                    index for index, col in enumerate(data.T.tolist()) 
+                    if len(set(col)) == 1 
+                ]
 
-            conc_coef_first_col = \
-                number_of_rows_with_min_at_first_position / len(mod_rows)
+                if sv_cols and (sv_cols[0] == 0 or sv_cols[0] == last_col_index):
+                    note_column = sv_coll
+                else: 
+                    #make decision on the base of correlation
+                    corr = np.corrcoef(data, rowvar=0)
+                    corr_mean_first_col = np.mean(corr[1:,0])
+                    corr_mean_last_col = np.mean(corr[:-1,-1])
 
-            smallness_coef_last_col = sum(
-                1 for row in mod_rows 
-                if row[last_col_index] < small_number_threshold
-            )/len(mod_rows)
+                    # Decision Rule
+                    if corr_mean_first_col < 0.25:
+                        note_column = 0
+                    elif corr_mean_last_col < 0.25:
+                        note_column = last_col_index
 
-            conc_coef_last_col = \
-                number_of_rows_with_min_at_last_position / len(mod_rows)
+            elif max_freq != mode_freq: # small number of full rows
+                # concatenate full rows and mode rows
+                data_left = np.array(
+                    mode_rows + list(map(lambda x: x[0:mode_freq], full_rows))
+                )
+                data_right = np.array(
+                    mode_rows + list(map(lambda x: x[-mode_freq:], full_rows))
+                )
 
-            # Decision Rule
-            if ((conc_coef_first_col > 0.6 and smallness_coef_first_col > 0.7)
-                    or conc_coef_first_col > 0.8):
-                note_column = 0
-            elif ((conc_coef_last_col > 0.6 and smallness_coef_last_col > 0.7)
-                    or conc_coef_last_col > 0.8):
-                note_column = last_col_index
+                corr_left = np.corrcoef(data_left, rowvar=0)[0,1]
+                corr_right = np.corrcoef(data_right, rowvar=0)[0,1]
+
+                if corr_left < corr_right:
+                    note_column = 0
+                else:
+                    note_column = last_col_index
+
 
         if note_column is not None: # There is a column with note reference.
-            output_rows = list()
-            ncols = (max_items_in_row-2)
+            ncols = max_freq - 1
+            new_records = list()
             if note_column == 0:
-                for row in rows:
-                    # first item is number ? => there is no label 
-                    if util.is_number(row[0]):
-                        label = []
-                    else:
-                        label = row[0:1] 
-                    output_rows.append(
-                        (label if len(row) > ncols else []) +  row[-ncols:]
-                    )
+                for item, nums, page in records:
+                    new_records.append((item, nums[-ncols:], page))
             else:
-                for row in rows:
-                    # first item is number ? => there is no label 
-                    if util.is_number(row[0]):
-                        output_rows.append(row[0:ncols])
-                    else:
-                        output_rows.append(row[0:1] + row[1:(ncols+1)])
-            return output_rows
-        else:
-            return rows # No column with note reference.
+                for item, nums, page in records:
+                    new_records.append((item, nums[0:ncols], page))
+            records = new_records
+
+        return records
 
     @property
     def ncols(self):

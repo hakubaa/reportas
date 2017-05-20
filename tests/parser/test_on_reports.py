@@ -162,7 +162,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
-            [(3, (2016, 9, 30)), (3, (2015, 9, 30))]
+            [(9, (2016, 9, 30)), (3, (2015, 12, 31))]
         )
 
     def test_update_names_bdx_2016_q3_cfs(self):
@@ -212,7 +212,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
-            [(3, (2016, 3, 31)), (3, (2015, 12, 31)), (3, (2015, 3, 31))]
+            [(6, (2016, 3, 31)), (6, (2015, 12, 31)), (6, (2015, 3, 31))]
         )
 
     def test_update_names_ltx_2016_q1_cfs(self):
@@ -358,7 +358,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.nls.names, 
-            [(6, (2016, 6, 30)), (6, (2015, 6, 30))]
+            [(6, (2016, 12, 31)), (6, (2015, 12, 31))]
         )
 
     def test_update_names_helio_2016_m2_bls(self):
@@ -366,7 +366,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
-            [(6, (2016, 6, 30)), (6, (2015, 12, 31)), (6, (2015, 6, 30))]
+            [(6, (2016, 12, 31)), (6, (2015, 12, 31)), (6, (2015, 12, 31))]
         )
 
     def test_update_names_helio_2016_m2_cfs(self):
@@ -374,7 +374,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
-            [(6, (2016, 6, 30)), (6, (2015, 6, 30))]
+            [(6, (2016, 12, 31)), (6, (2015, 12, 31))]
         )
 
     ## reports/graal_2015_m1.pdf
@@ -546,7 +546,7 @@ class RecordsExtractorTest(unittest.TestCase):
                               spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
-            [(6, (2016, 6, 30)), (6, (2015, 6, 30))]
+            [(6, (2016, 6, 30)), (6, (2015, 12, 31))]
         )
 
     def test_update_names_lotos_2016_m2_cfs(self):
