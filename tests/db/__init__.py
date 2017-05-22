@@ -2,6 +2,8 @@ import unittest
 
 from db import SQLAlchemy
 
+from db.models import FinRecord
+
 
 class DbTestCase(unittest.TestCase):
 
@@ -11,4 +13,3 @@ class DbTestCase(unittest.TestCase):
 
 	def tearDown(self):
 		self.db.drop_all()
-	

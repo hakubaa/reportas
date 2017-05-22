@@ -183,7 +183,6 @@ class RecordsExtractor(UserDict):
         temp_rows = self._preprocess_labels(temp_rows)
         if fix_white_spaces:
             temp_rows = self._fix_white_spaces(temp_rows, recspec)
-        # temp_rows = self._remove_column_with_note_reference(temp_rows)
         records = self._identify_records(
             temp_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim

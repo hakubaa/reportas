@@ -1,5 +1,8 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float
+from sqlalchemy import (
+	Column, Integer, String, DateTime, Boolean, Float,
+	UniqueConstraint
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 
@@ -15,7 +18,8 @@ class Company(Base):
 	full_name = Column(String)
 	ticker = Column(String)
 
-	reports = relationship("Report", back_populates="company")
+	reports = relationship("FinReport", back_populates="company")
+
 
 	def __init__(self, name, full_name=None, ticker=None):
 		self.name = name
@@ -26,45 +30,35 @@ class Company(Base):
 		return "<Company({!r})>".format(self.name)
 
 
-class Report(Base):
+class FinReport(Base):
 	__tablename__ = "reports"
 
 	id = Column(Integer, primary_key=True)
 	timestamp = Column(DateTime, nullable=False)
+	timerange = Column(Integer, nullable=False)
 	consolidated = Column(Boolean, default=True)
 
 	company_id = Column(Integer, ForeignKey("companies.id"))
 	company = relationship("Company", back_populates="reports")
 
-	rtype_id = Column(Integer, ForeignKey("reporttypes.id"))
-	rtype = relationship("ReportType", back_populates="reports")
-
 	records = relationship("FinRecord", back_populates="report")
 
-	def __init__(self, rtype, timestamp, consolidated=True):
-		self.rtype = rtype
+	__table_args__ = (
+    	UniqueConstraint("timestamp", "timerange", "company_id", 
+    		             name='_timestamp_timerange_company'),
+    )
+
+	def __init__(self, timestamp, timerange, company=None, consolidated=True):
 		self.timestamp = timestamp
+		self.timerange = timerange
 		self.consolidated = consolidated
+		self.company = company
 
 	def __repr__(self):
-		return "<Report({!r}, {!r})>".format(self.rtype, self.timestamp)
+		return "<FinReport({!r}, {!r})>".format(self.timestamp, self.timerange)
 
 	def add_record(self, record):
 		self.records.append(record)
-
-
-class ReportType(Base):
-	__tablename__ = "reporttypes"
-
-	id = Column(Integer, primary_key=True)
-	reports = relationship("Report", back_populates="rtype")
-	value = Column(String(1), nullable=False)
-
-	def __init__(self, value):
-		self.value = value
-
-	def __repr__(self):
-		return "<ReportType({!r})>".format(self.value)
 
 
 class FinRecord(Base):
@@ -73,13 +67,18 @@ class FinRecord(Base):
 	id = Column(Integer, primary_key=True)
 	value = Column(Float, nullable=False)
 	timestamp = Column(DateTime, nullable=False)
-	timerange = Column(String, nullable=False)
+	timerange = Column(Integer, nullable=False)
 
 	rtype_id = Column(Integer, ForeignKey("finrecords_dict.id"))
 	rtype = relationship("FinRecordType", back_populates="records")
 
 	report_id = Column(Integer, ForeignKey("reports.id"))
-	report = relationship("Report", back_populates="records")
+	report = relationship("FinReport", back_populates="records")
+
+	__table_args__ = (
+    	UniqueConstraint("timestamp", "timerange", "rtype_id", 
+    		             name='_timestamp_timerange_rtype'),
+    )
 
 	def __init__(self, rtype, value, timestamp, timerange, report=None):
 		self.rtype = rtype
