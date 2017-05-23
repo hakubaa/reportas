@@ -1,8 +1,6 @@
 import unittest
 
-from db import SQLAlchemy
-
-from db.models import FinRecord
+from db.core import SQLAlchemy
 
 
 class DbTestCase(unittest.TestCase):

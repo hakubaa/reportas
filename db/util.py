@@ -3,9 +3,11 @@ from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
 
+
 from db.models import FinReport, FinRecordType, FinRecordTypeRepr, FinRecord
 from parser.nlp import find_ngrams
 from parser.util import remove_non_ascii
+
 
 
 def upload_record(db, **kwargs):

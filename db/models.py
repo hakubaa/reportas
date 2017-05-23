@@ -1,4 +1,3 @@
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
 	Column, Integer, String, DateTime, Boolean, Float,
 	UniqueConstraint
@@ -6,8 +5,22 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 
+from db.core import Base
 
-Base = declarative_base()
+# import db.util as util
+
+
+# class Model(Base):
+# 	'''Extension of base model by additional methods.'''
+
+# 	@classmethod
+# 	def get_or_create(cls, session, defaults=None, **kwargs):
+# 		obj, _ = util.get_or_create(session, cls, defaults, **kwargs)
+# 		return obj
+
+# 	@classmethod
+# 	def create(cls, session, defaults=None, **kwargs):
+# 		return util.create(session, cls, defaults, **kwargs)
 
 
 class Company(Base):

@@ -2,8 +2,7 @@ import unittest
 
 from sqlalchemy import Column, Integer
 
-from db import SQLAlchemy
-from db.models import Base
+from db.core import SQLAlchemy, Base
 
 
 # Clear all tables objects from metadata
