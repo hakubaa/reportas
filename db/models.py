@@ -17,12 +17,14 @@ class Company(Model):
 	full_name = Column(String)
 	ticker = Column(String)
 
-	reports = relationship("FinReport", back_populates="company")
-
+	reports = relationship("FinReport", cascade="all,delete",
+		                   back_populates="company")
+	data = relationship("FinRecord", cascade="all,delete", 
+		                back_populates="company")
 
 	def __init__(self, name, full_name=None, ticker=None):
 		self.name = name
-		self.short_name = short_name
+		self.full_name = full_name
 		self.ticker = ticker
 
 	def __repr__(self):
@@ -40,14 +42,15 @@ class FinReport(Model):
 	company_id = Column(Integer, ForeignKey("companies.id"))
 	company = relationship("Company", back_populates="reports")
 
-	records = relationship("FinRecord", back_populates="report")
+	data = relationship("FinRecord", cascade="all,delete", 
+		                back_populates="report")
 
 	__table_args__ = (
     	UniqueConstraint("timestamp", "timerange", "company_id", 
     		             name='_timestamp_timerange_company'),
     )
 
-	def __init__(self, timestamp, timerange, company=None, consolidated=True):
+	def __init__(self, timestamp, timerange, company, consolidated=True):
 		self.timestamp = timestamp
 		self.timerange = timerange
 		self.consolidated = consolidated
@@ -57,7 +60,7 @@ class FinReport(Model):
 		return "<FinReport({!r}, {!r})>".format(self.timestamp, self.timerange)
 
 	def add_record(self, record):
-		self.records.append(record)
+		self.data.append(record)
 
 
 class FinRecord(Model):
@@ -72,24 +75,45 @@ class FinRecord(Model):
 	rtype = relationship("FinRecordType", back_populates="records")
 
 	report_id = Column(Integer, ForeignKey("reports.id"))
-	report = relationship("FinReport", back_populates="records")
+	report = relationship("FinReport", back_populates="data")
+
+	company_id = Column(Integer, ForeignKey("companies.id"))
+	company = relationship("Company", back_populates="data")
 
 	__table_args__ = (
-    	UniqueConstraint("timestamp", "timerange", "rtype_id", 
-    		             name='_timestamp_timerange_rtype'),
+    	UniqueConstraint("timestamp", "timerange", "rtype_id", "company_id", 
+    		             name='_timestamp_timerange_rtype_company'),
     )
 
-	def __init__(self, rtype, value, timestamp, timerange, report=None):
+	def __init__(self, rtype, value, timestamp, timerange, 
+				 company, report):
 		self.rtype = rtype
 		self.value = value
 		self.timestamp = timestamp
 		self.timerange = timerange
 		self.report = report
+		self.company = company
 
 	def __repr__(self):
 		return "<FinRecord({!r}, {!r}, {!r})>".format(
 			self.rtype, self.value, self.report
 		)
+
+	@classmethod
+	def create_or_update(cls, session, rtype, value, timestamp, timerange,
+			             report, company, defaults=None, override=False):
+		obj, newly_created = util.get_or_create(
+			session, cls, defaults={"value": value, "report": report},
+			rtype=rtype, timestamp=timestamp, timerange=timerange,
+			company=company
+		)
+		if ((override or report.timestamp > obj.report.timestamp)
+			and not newly_created
+		):
+			obj.report = report
+			obj.value = value
+
+		return obj
 
 
 class FinRecordType(Model):
@@ -103,11 +127,6 @@ class FinRecordType(Model):
 	def __init__(self, name, statement=None):
 		self.name = name
 		self.statement = statement
-
-	@staticmethod
-	def create(**kwargs):
-		return FinRecordType(name=kwargs["name"], 
-			                 statement=kwargs.get("statement", None))
 
 	def __repr__(self):
 		return "<FinRecordType('{!s}')>".format(self.name)
@@ -127,9 +146,3 @@ class FinRecordTypeRepr(Model):
 		self.rtype = rtype
 		self.lang = lang
 		self.value = value 
-
-	@staticmethod
-	def create(**kwargs):
-		obj = FinRecordTypeRepr(rtype=kwargs["rtype"], lang=kwargs["lang"],
-			                    value=kwargs["value"])
-		return obj

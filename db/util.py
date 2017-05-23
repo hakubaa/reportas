@@ -3,59 +3,64 @@ from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
 
-
-from db.models import FinReport, FinRecordType, FinRecordTypeRepr, FinRecord
+from db.models import (
+	FinReport, FinRecordType, FinRecordTypeRepr, FinRecord, Company
+)
 from parser.nlp import find_ngrams
 from parser.util import remove_non_ascii
 
 
-
-def upload_record(db, **kwargs):
-	'''Upload record to db.'''
-	pass
-	
-
-def upload_report(db, doc, bls=True, nls=True, cfs=True,
-	              update_records=True):
+def upload_report(session, doc, bls=True, nls=True, cfs=True,
+	              override=False):
 	'''Upload report to db.'''
-	report = FinReport(timestamp=doc.timestamp, timerange=doc.timerange)
-	db.session.add(report)
-	db.session.commit()
+	company = session.query(Company).filter_by(id=doc.company["id"]).one()
 
-	records_to_upload = list()
-	if bls: # upload records from balance sheet
+	if override: # override previous data
+		report = session.query(FinReport).filter_by(
+			timestamp=doc.timestamp, timerange=doc.timerange, company=company
+		).first()
+		if report:
+			session.delete(report)
+			session.commit()
+
+	report = FinReport.create(
+		session, timestamp=doc.timestamp, timerange=doc.timerange,
+		company=company
+	)
+
+	# collect data for uploading
+	data = []
+	if bls: data.append({"items": doc.bls.items(), "names": doc.bls.names})
+	if nls: data.append({"items": doc.nls.items(), "names": doc.nls.names})
+	if cfs: data.append({"items": doc.cfs.items(), "names": doc.cfs.names})
+
+	for record in data:
 		# get names of columns and convert to more convinent form
 		colnames = list(itertools.starmap( 
 			lambda tr, ts: {        
 				"timerange": tr, 
 				"timestamp": datetime(ts[0], ts[1], ts[2])
 			}, 
-			doc.bls.names
+			record["names"]
 		))
-		for key, values in doc.bls.items():
-			# find the record type in db
-			try:
-				rtype = db.session.query(FinRecordType).filter_by(name=key).one()
-			except Exception: # finish it later
-				raise
+		for key, values in record["items"]:
+			if len(values) != len(colnames): # skip incomplete records
+				warnings.warn(
+					"Different number of values and names for '{}' in "
+					"'{!r}'".format(key, doc)
+				)
+				continue
 
-			if len(values) != len(colnames): # finish it later
-				raise RuntimeException("different number of values and names")
+			rtype = FinRecordType.get_or_create(session, name=key)
 
 			for metadata, value in zip(colnames, values):
-				record = FinRecord(
-					rtype, value, timestamp=metadata["timestamp"], 
-					timerange=metadata["timerange"], report=report
+				FinRecord.create_or_update(
+					session, rtype=rtype, value=value, 
+					timestamp=metadata["timestamp"], 
+					timerange=metadata["timerange"], 
+					report=report, company=company, override=override
 				)
-				try:
-					db.session.add(record)
-					db.session.commit()
-				except IntegrityError:
-					import pdb; pdb.set_trace()
-				# records_to_upload.append(record)
 
-	# db.session.bulk_save_objects(records_to_upload)
-	db.session.commit()
 	return report
 
 
@@ -70,11 +75,13 @@ def upload_finrecords_spec(db, spec, commit=True):
 		spec = [spec]
 
 	for record_spec in spec:
-		rtype = FinRecordType.create(**record_spec)
-		db.session.add(rtype)
+		rtype = FinRecordType.get_or_create(
+			db.session, name=record_spec["name"],
+			statement=record_spec.get("statement", None)
+		)
 		for repr_spec in record_spec.get("repr", list()):
-			rtype_repr = FinRecordTypeRepr.create(rtype=rtype, **repr_spec)
-			db.session.add(rtype_repr)
+			repr_spec["rtype"] = rtype
+			rtype_repr = FinRecordTypeRepr.create(db.session, **repr_spec)
 	if commit:
 		db.session.commit()
 

@@ -1,7 +1,9 @@
 import unittest
 from datetime import datetime
 
-from db.models import FinReport, FinRecord, FinRecordType
+from sqlalchemy.exc import IntegrityError
+
+from db.models import FinReport, FinRecord, FinRecordType, Company
 from tests.db import DbTestCase
 
 
@@ -10,9 +12,8 @@ class FinRecordTypeTest(DbTestCase):
 	def test_for_uniqueness_of_names(self):
 		rtype = FinRecordType("TEST")
 		self.db.session.add(rtype)
-		self.db.session.commit()
 
-		with self.assertRaises(Exception):
+		with self.assertRaises(IntegrityError):
 			rtype = FinRecordType("TEST")
 			self.db.session.add(rtype)
 			self.db.session.commit()
@@ -21,11 +22,15 @@ class FinRecordTypeTest(DbTestCase):
 class FinRecordTest(DbTestCase):
 
 	def test_relationship_with_recordtype(self):
-		rtype = FinRecordType("FIXED_ASSETS")
-		self.db.session.add(rtype)
-		self.db.session.commit()
+		rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
+		company = Company.create(self.db.session, name="TEST")
+		report = FinReport.create(
+		    self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+		    company=company
+		)
 
-		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3)
+		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3,
+			               company=company, report=report)
 		self.db.session.add(record)
 		self.db.session.commit()
 
@@ -33,147 +38,152 @@ class FinRecordTest(DbTestCase):
 		self.assertEqual(rtype.records[0], record)
 
 	def test_for_raising_error_when_overriding_specific_record(self):
-		rtype = FinRecordType("FIXED_ASSETS")
-		self.db.session.add(rtype)
-		self.db.session.commit()
+		rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
+		company = Company.create(self.db.session, name="TEST")
+		company2 = Company.create(self.db.session, name="TEST2")
+		report = FinReport.create(
+		    self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+		    company=company
+		)
 
-		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3)
+		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3,
+			               company=company, report=report)
 		self.db.session.add(record)
 		self.db.session.commit()
 
-		with self.assertRaises(Exception):
-			record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3)
+		with self.assertRaises(IntegrityError):
+			record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3,
+				               company=company, report=report)
 			self.db.session.add(record)
 			self.db.session.commit()
 
-	# def test_for_creating_record_with_create_method(self):
-	# 	rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
-	# 	company = Company.create(self.db.session, name="TEST")
-	# 	report = FinReport.create(
-	# 		self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
-	# 	)
-	# 	self.db.session.commit()
-	# 	record = FinRecord.create(
-	# 		self.db.session, rtype=rtype, value=5,
-	# 		timestamp = datetime(2015, 3, 31), timerange=3,
-	# 		company=company, report=report
-	# 	)
-	# 	self.db.session.add(record)
-	# 	self.db.session.commit()
-	# 	self.assertEqual(self.db.session.query(FinRecord).count(), 1)
+	def test_for_creating_record_with_create_method(self):
+		rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
+		company = Company.create(self.db.session, name="TEST")
+		report = FinReport.create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
+		)
+		self.db.session.commit()
+		record = FinRecord.create(
+			self.db.session, rtype=rtype, value=5,
+			timestamp = datetime(2015, 3, 31), timerange=3,
+			company=company, report=report
+		)
+		self.db.session.add(record)
+		self.db.session.commit()
+		self.assertEqual(self.db.session.query(FinRecord).count(), 1)
         
-  #   def test_for_updating_record_with_create_method(self):
-  # 		rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
-		# company = Company.create(self.db.session, name="TEST")
-		# report = FinReport.create(
-		#     self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
-		# )
-		# report_new = FinReport.create(
-		#     self.db.session, timestamp=datetime(2016, 3, 31), timerange=3
-		# )
-		# self.db.session.commit()      
-	 #    record = FinRecord.create(
-	 #        self.db.session, rtype=rtype, value=5,
-	 #        timestamp = datetime(2015, 3, 31), timerange=3,
-	 #        company=company, report=report
-  #       )
-  #       self.db.session.add(record)
-  #       self.db.session.commit()
+	def test_for_updating_record_with_create_or_update_method(self):
+		rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
+		company = Company.create(self.db.session, name="TEST")
+		report = FinReport.create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
+		)
+		report_new = FinReport.create(
+			self.db.session, timestamp=datetime(2016, 3, 31), timerange=3,
+			company=company
+		)
+		record = FinRecord.create(
+			self.db.session, rtype=rtype, value=5,
+			timestamp = datetime(2015, 3, 31), timerange=3,
+			company=company, report=report
+		)
+		record_new = FinRecord.create_or_update(
+			self.db.session, rtype=rtype, value=10,
+			timestamp = datetime(2015, 3, 31), timerange=3,
+			company=company, report=report_new
+		)
+
+		record = self.db.session.query(FinRecord).first()
+		self.assertEqual(record.value, 10)
+		self.assertEqual(record.report, report_new)
         
-  #       record_new = FinRecord.create(
-	 #        self.db.session, rtype=rtype, value=10,
-	 #        timestamp = datetime(2015, 3, 31), timerange=3,
-	 #        company=company, report=report_new
-  #       )
-  #       self.db.session.add(record_new)
-  #       self.db.session.commit()
-        
-  #       record = self.db.session.query(FinRecord).first()
-  #       self.assertEqual(record.value, 10)
-  #       self.assertEqual(record.report, report_new)
-        
-  #   def test_create_raises_error_when_updating_with_old_data(self):
-  #       rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
-		# company = Company.create(self.db.session, name="TEST")
-		# report = FinReport.create(
-		#     self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
-		# )
-		# report_new = FinReport.create(
-		#     self.db.session, timestamp=datetime(2016, 3, 31), timerange=3
-		# )
-		# self.db.session.commit()      
-	 #    record = FinRecord.create(
-	 #        self.db.session, rtype=rtype, value=5,
-	 #        timestamp = datetime(2015, 3, 31), timerange=3,
-	 #        company=company, report=report
-  #       )
-  #       self.db.session.add(record)
-  #       self.db.session.commit()
-        
-  #       record_new = FinRecord.create(
-	 #        self.db.session, rtype=rtype, value=10,
-	 #        timestamp = datetime(2015, 3, 31), timerange=3,
-	 #        company=company, report=report_new
-  #       )
-  #       self.db.session.add(record_new)
-  #       with self.assertRaises(Exception):
-  #           self.db.session.commit()  
-            
-  #   def test_for_overriding_with_old_data(self):
-  #         rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
-		# company = Company.create(self.db.session, name="TEST")
-		# report = FinReport.create(
-		#     self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
-		# )
-		# report_old = FinReport.create(
-		#     self.db.session, timestamp=datetime(2014, 3, 31), timerange=3
-		# )
-		# self.db.session.commit()      
-	 #    record = FinRecord.create(
-	 #        self.db.session, rtype=rtype, value=5,
-	 #        timestamp = datetime(2014, 3, 31), timerange=3,
-	 #        company=company, report=report
-  #       )
-  #       self.db.session.add(record)
-  #       self.db.session.commit()
-        
-  #       record_new = FinRecord.create(
-	 #        self.db.session, rtype=rtype, value=10,
-	 #        timestamp = datetime(2014, 3, 31), timerange=3,
-	 #        company=company, report=report_old,
-	 #        override=True
-  #       )
-  #       self.db.session.add(record_new)
-  #       self.db.session.commit()
-        
-  #       record = self.db.session.query(FinRecord).first()
-  #       self.assertEqual(record.value, 10)
-  #       self.assertEqual(record.report, report_old)
-  #       self.assertEqual(record.report.timestamp, datetime(2014, 3, 31))			
+	def test_create_or_update_does_not_update_with_old_report(self):
+		rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
+		company = Company.create(self.db.session, name="TEST")
+		report = FinReport.create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
+		)
+		report_new = FinReport.create(
+			self.db.session, timestamp=datetime(2014, 3, 31), timerange=3,
+			company=company
+		)
+		record = FinRecord.create_or_update(
+			self.db.session, rtype=rtype, value=5,
+			timestamp = datetime(2014, 3, 31), timerange=3,
+			company=company, report=report
+		)
+		FinRecord.create_or_update(
+			self.db.session, rtype=rtype, value=10,
+			timestamp = datetime(2014, 3, 31), timerange=3,
+			company=company, report=report_new,
+			override=False
+		)
+		self.db.session.commit()  
+
+		record = self.db.session.query(FinRecord).first()
+		self.assertEqual(record.value, 5)
+		self.assertEqual(record.report, report)
+
+	def test_for_overriding_with_old_data(self):
+		rtype = FinRecordType.create(self.db.session, name="FIXED_ASSETS")
+		company = Company.create(self.db.session, name="TEST")
+		report = FinReport.create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
+		)
+		report_old = FinReport.create(
+			self.db.session, timestamp=datetime(2014, 3, 31), timerange=3,
+			company=company
+		)
+		record = FinRecord.create_or_update(
+			self.db.session, rtype=rtype, value=5,
+			timestamp = datetime(2014, 3, 31), timerange=3,
+			company=company, report=report
+		)
+		record_new = FinRecord.create_or_update(
+			self.db.session, rtype=rtype, value=10,
+			timestamp = datetime(2014, 3, 31), timerange=3,
+			company=company, report=report_old,
+			override=True
+		)
+		self.db.session.commit()
+
+		record = self.db.session.query(FinRecord).first()
+		self.assertEqual(record.value, 10)
+		self.assertEqual(record.report, report_old)
+		self.assertEqual(record.report.timestamp, datetime(2014, 3, 31))			
 			
 
 class ReportTest(DbTestCase):
 
 	def test_for_adding_record_to_report(self):
-		report = FinReport(datetime(2015, 3, 31, 0, 0, 0), 3)
-		self.db.session.add(report)
-		self.db.session.commit()
-
+		company = Company.create(self.db.session, name="TEST")
+		report = FinReport.create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
+		)
 		rtype = FinRecordType("FIXED_ASSETS")
 		self.db.session.add(rtype)
-		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 12)
+		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 12,
+			               company=company, report=report)
 		self.db.session.add(record)
 		self.db.session.commit()
 
 		report.add_record(record)
 		self.db.session.commit()
 
-		self.assertEqual(len(report.records), 1)
-		self.assertEqual(report.records[0], record)
+		self.assertEqual(len(report.data), 1)
+		self.assertEqual(report.data[0], record)
 
 	def test_for_creating_report_with_create_method(self):
+		company = Company.create(self.db.session, name="TEST")
 		FinReport.create(
-			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
 		)
 		self.db.session.commit()
 		report = self.db.session.query(FinReport).first()
@@ -181,8 +191,10 @@ class ReportTest(DbTestCase):
 		self.assertEqual(report.timerange, 3)
 
 	def test_get_or_create_creates_new_obj_if_not_exists(self):
+		company = Company.create(self.db.session, name="TEST")
 		record = FinReport.get_or_create(
-			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
 		)
 		self.db.session.commit()
 		report2 = self.db.session.query(FinReport).first()
@@ -190,10 +202,13 @@ class ReportTest(DbTestCase):
 		self.assertEqual(record.id, report2.id)
 
 	def test_get_or_create_gets_record_from_db(self):
-		record = FinReport(timestamp=datetime(2015, 3, 31), timerange=3)
+		company = Company.create(self.db.session, name="TEST")
+		record = FinReport(timestamp=datetime(2015, 3, 31), timerange=3,
+			               company=company)
 		self.db.session.add(record)
 		self.db.session.commit()
 		record2 = FinReport.get_or_create(
-			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
+			company=company
 		)
 		self.assertEqual(record.id, record2.id)
