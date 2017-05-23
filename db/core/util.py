@@ -13,7 +13,7 @@ def get_or_create(session, model, defaults=None, **kwargs):
 def create(session, model, defaults=None, **kwargs):
     '''Create object.'''
     params = dict(
-        (k, v) for k, v in kwargs.iteritems() 
+        (k, v) for k, v in kwargs.items() 
         if not isinstance(v, ClauseElement)
     )
     params.update(defaults or {})

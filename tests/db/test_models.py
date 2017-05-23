@@ -170,3 +170,30 @@ class ReportTest(DbTestCase):
 
 		self.assertEqual(len(report.records), 1)
 		self.assertEqual(report.records[0], record)
+
+	def test_for_creating_report_with_create_method(self):
+		FinReport.create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
+		)
+		self.db.session.commit()
+		report = self.db.session.query(FinReport).first()
+		self.assertEqual(report.timestamp, datetime(2015, 3, 31))
+		self.assertEqual(report.timerange, 3)
+
+	def test_get_or_create_creates_new_obj_if_not_exists(self):
+		record = FinReport.get_or_create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
+		)
+		self.db.session.commit()
+		report2 = self.db.session.query(FinReport).first()
+		self.assertEqual(self.db.session.query(FinReport).count(), 1)
+		self.assertEqual(record.id, report2.id)
+
+	def test_get_or_create_gets_record_from_db(self):
+		record = FinReport(timestamp=datetime(2015, 3, 31), timerange=3)
+		self.db.session.add(record)
+		self.db.session.commit()
+		record2 = FinReport.get_or_create(
+			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3
+		)
+		self.assertEqual(record.id, record2.id)

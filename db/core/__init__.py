@@ -2,8 +2,23 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
+from .util import get_or_create, create
 
 Base = declarative_base()
+
+
+class Model(Base):
+	'''Extension of base model by additional methods.'''
+	__abstract__ = True
+	
+	@classmethod
+	def get_or_create(cls, session, defaults=None, **kwargs):
+		obj, _ = get_or_create(session, cls, defaults, **kwargs)
+		return obj
+
+	@classmethod
+	def create(cls, session, defaults=None, **kwargs):
+		return create(session, cls, defaults, **kwargs)
 
 
 class SQLAlchemy:

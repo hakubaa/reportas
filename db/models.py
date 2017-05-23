@@ -5,25 +5,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 
-from db.core import Base
-
-# import db.util as util
-
-
-# class Model(Base):
-# 	'''Extension of base model by additional methods.'''
-
-# 	@classmethod
-# 	def get_or_create(cls, session, defaults=None, **kwargs):
-# 		obj, _ = util.get_or_create(session, cls, defaults, **kwargs)
-# 		return obj
-
-# 	@classmethod
-# 	def create(cls, session, defaults=None, **kwargs):
-# 		return util.create(session, cls, defaults, **kwargs)
+from db.core import Model
+import db.core.util as util
 
 
-class Company(Base):
+class Company(Model):
 	__tablename__ = "companies"
 
 	id = Column(Integer, primary_key=True)
@@ -43,7 +29,7 @@ class Company(Base):
 		return "<Company({!r})>".format(self.name)
 
 
-class FinReport(Base):
+class FinReport(Model):
 	__tablename__ = "reports"
 
 	id = Column(Integer, primary_key=True)
@@ -74,7 +60,7 @@ class FinReport(Base):
 		self.records.append(record)
 
 
-class FinRecord(Base):
+class FinRecord(Model):
 	__tablename__ = "finrecords"
 
 	id = Column(Integer, primary_key=True)
@@ -106,7 +92,7 @@ class FinRecord(Base):
 		)
 
 
-class FinRecordType(Base):
+class FinRecordType(Model):
 	__tablename__ = "finrecords_dict"
 
 	id = Column(Integer, primary_key=True)
@@ -127,7 +113,7 @@ class FinRecordType(Base):
 		return "<FinRecordType('{!s}')>".format(self.name)
 
 
-class FinRecordTypeRepr(Base):
+class FinRecordTypeRepr(Model):
 	__tablename__ = "finrecords_repr"
 
 	id = Column(Integer, primary_key=True)
