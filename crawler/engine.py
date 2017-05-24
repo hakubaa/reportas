@@ -36,7 +36,7 @@ class WebCrawler:
 
     def _search_urls(self, page):
         '''
-        Search webpage for emails and urls. Returns dict with found items.
+        Search webpage for urls. Returns list of urls.
         '''
         if not page.loaded:
             raise ValueError("empty WebPage object, reload required")
@@ -53,13 +53,6 @@ class WebCrawler:
         urls = self._search_urls(page)
         for url in urls:
             self.webgraph.add_page(url, parent=page)
-
-    @property
-    def emails(self):
-        return reduce(operator.or_, self._emails.values(), set())
-
-    def __getitem__(self, page):
-        return self._emails[page]
 
     def _submit_worker(self, page, executor):
         future = executor.submit(page.reload)
