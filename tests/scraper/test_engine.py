@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch, Mock
 
-from crawler.models import WebPage
-from crawler.engine import WebCrawler
+from scraper.models import WebPage
+from scraper.crawler import WebCrawler
 
 
 def patch_requests_get(pass_mock=False):

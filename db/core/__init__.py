@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql.expression import ClauseElement
 
 from .util import get_or_create, create
 
@@ -13,7 +14,16 @@ Base = declarative_base()
 class Model(Base):
 	'''Extension of base model by additional methods.'''
 	__abstract__ = True
-	
+
+	def __init__(self, **kwargs):
+		cls = self.__class__
+		valid_fields = cls.__mapper__.columns.keys() +\
+					   cls.__mapper__.relationships.keys()
+
+		for key, value in kwargs.items():
+			if not isinstance(value, ClauseElement) and key in valid_fields:
+				setattr(self, key, value)
+
 	@classmethod
 	def get_or_create(cls, session, defaults=None, **kwargs):
 		obj, _ = get_or_create(session, cls, defaults, **kwargs)

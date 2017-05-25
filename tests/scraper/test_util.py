@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 
 from bs4 import BeautifulSoup
 
-from crawler import util
+from scraper import util
 
 
 class FindWithReTest(unittest.TestCase):

@@ -9,9 +9,9 @@ def get_or_create(session, model, defaults=None, **kwargs):
     else:
         return create(session, model, defaults, **kwargs), True
         
-        
-def create(session, model, defaults=None, **kwargs):
-    '''Create object.'''
+
+def create_instance(model, **kwargs):
+    '''Create instace of the model.'''
     valid_fields = model.__mapper__.columns.keys() +\
                    model.__mapper__.relationships.keys()
 
@@ -19,11 +19,13 @@ def create(session, model, defaults=None, **kwargs):
         (k, v) for k, v in kwargs.items() 
         if not isinstance(v, ClauseElement) and k in valid_fields
     )
-    if defaults: # filter defaults
-        defaults = dict(
-            (k, v) for k, v in defaults.items() if k in valid_fields
-        )
-    params.update(defaults or {})
-    instance = model(**params)
+
+    return model(**params) 
+        
+
+def create(session, model, defaults=None, **kwargs):
+    '''Create object and add it to db.'''
+    kwargs.update(defaults or {})
+    instance = create_instance(model, **kwargs)
     session.add(instance)
     return instance

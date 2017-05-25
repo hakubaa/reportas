@@ -1,13 +1,30 @@
 import itertools
 from datetime import datetime
+from concurrent import futures
 
+import requests
 from sqlalchemy.exc import IntegrityError
+from bs4 import BeautifulSoup
 
 from db.models import (
 	FinReport, FinRecordType, FinRecordTypeRepr, FinRecord, Company
 )
 from parser.nlp import find_ngrams
 from parser.util import remove_non_ascii
+from scraper.util import get_companies
+
+
+def upload_companies(session, data):
+	'''Update companies in db.'''
+	for item in data:
+		instance = Company.get_or_create(
+			session, defaults=item, ticker=item["ticker"]
+		)
+		if instance.id:
+			for key, value in item.items():
+				setattr(instance, key, value)	
+		else:
+			session.add(instance)
 
 
 def upload_report(session, doc, bls=True, nls=True, cfs=True,

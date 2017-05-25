@@ -13,19 +13,23 @@ class Company(Model):
 	__tablename__ = "companies"
 
 	id = Column(Integer, primary_key=True)
-	name = Column(String)
-	full_name = Column(String)
-	ticker = Column(String)
+	
+	name = Column(String, unique=True)
+	fullname = Column(String)
+	ticker = Column(String, unique=True)
+	district = Column(String)
+	webpage = Column(String)
+	email = Column(String)
+	address = Column(String)
+	debut = Column(DateTime)
+	fax = Column(String)
+	telephone = Column(String)
+	sector = Column(String)
 
 	reports = relationship("FinReport", cascade="all,delete",
 		                   back_populates="company")
 	data = relationship("FinRecord", cascade="all,delete", 
 		                back_populates="company")
-
-	def __init__(self, name, full_name=None, ticker=None):
-		self.name = name
-		self.full_name = full_name
-		self.ticker = ticker
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)
@@ -50,17 +54,14 @@ class FinReport(Model):
     		             name='_timestamp_timerange_company'),
     )
 
-	def __init__(self, timestamp, timerange, company, consolidated=True):
-		self.timestamp = timestamp
-		self.timerange = timerange
-		self.consolidated = consolidated
-		self.company = company
-
 	def __repr__(self):
 		return "<FinReport({!r}, {!r})>".format(self.timestamp, self.timerange)
 
-	def add_record(self, record):
+	def add_record(self, record=None, **kwargs):
+		if not record:
+			record = FinRecord(**kwargs)
 		self.data.append(record)
+		return record
 
 
 class FinRecord(Model):
@@ -84,15 +85,6 @@ class FinRecord(Model):
     	UniqueConstraint("timestamp", "timerange", "rtype_id", "company_id", 
     		             name='_timestamp_timerange_rtype_company'),
     )
-
-	def __init__(self, rtype, value, timestamp, timerange, 
-				 company, report):
-		self.rtype = rtype
-		self.value = value
-		self.timestamp = timestamp
-		self.timerange = timerange
-		self.report = report
-		self.company = company
 
 	def __repr__(self):
 		return "<FinRecord({!r}, {!r}, {!r})>".format(
@@ -124,10 +116,6 @@ class FinRecordType(Model):
 	name = Column(String, unique=True)
 	statement = Column(String)
 
-	def __init__(self, name, statement=None):
-		self.name = name
-		self.statement = statement
-
 	def __repr__(self):
 		return "<FinRecordType('{!s}')>".format(self.name)
 
@@ -141,8 +129,3 @@ class FinRecordTypeRepr(Model):
 
 	rtype_id = Column(Integer, ForeignKey("finrecords_dict.id"))
 	rtype = relationship("FinRecordType")
-
-	def __init__(self, rtype, lang, value):
-		self.rtype = rtype
-		self.lang = lang
-		self.value = value 

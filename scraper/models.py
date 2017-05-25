@@ -1,14 +1,16 @@
 import requests
 
-import crawler.util as util
+import scraper.util as util
 
 
 class WebPage:
     '''Representation of webpage.'''
 
-    def __init__(self, url, load_page=True, params=None, **kwargs):
+    def __init__(self, url, load_page=True, params=None, method="GET", 
+                 **kwargs):
         self._url = util.normalize_url(url)
         self.loaded = False
+        self.method = method
         if load_page:
             self.reload(params=params, **kwargs)
 
@@ -29,10 +31,13 @@ class WebPage:
 
     def reload(self, params=None, head_request=False, **kwargs):
         '''Reload webpage and updates links & emails.'''
+        method = { "HEAD": requests.head, "GET": requests.get, 
+                   "POST": requests.post }[self.method]
         if head_request:
-            self._response = requests.head(self._url, params=params, **kwargs)
-        else:
-            self._response = requests.get(self._url, params=params, **kwargs)
+            method = requests.head
+
+        self._response = method(self._url, params=params, **kwargs)
+        if method != "HEAD":
             self.loaded = True
 
     def __getattr__(self, attr):

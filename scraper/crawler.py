@@ -8,8 +8,8 @@ from functools import reduce
 
 from requests.exceptions import RequestException
 
-from crawler.models import  WebPage, WebGraph
-from crawler.util import fmap, find_urls, update_netloc
+from scraper.models import  WebPage, WebGraph
+from scraper.util import fmap, find_urls, update_netloc
 
 
 class WebCrawler:

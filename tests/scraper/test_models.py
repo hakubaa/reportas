@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch, Mock
 
-from crawler.models import WebPage, WebGraph
-from crawler.util import find_urls, find_emails
+from scraper.models import WebPage, WebGraph
+from scraper.util import find_urls, find_emails
 
 
 def patch_requests_get(pass_mock=False):
@@ -77,7 +77,7 @@ class TestWebPage(unittest.TestCase):
         self.assertEqual(page.headers, {"Content-Type": "text/html"})
 
 
-@patch("crawler.models.requests.get")
+@patch("scraper.models.requests.get")
 class FindEmailsAndUrlsTest(unittest.TestCase):
 
     @patch_requests_get(True)

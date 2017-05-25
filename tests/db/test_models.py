@@ -10,11 +10,11 @@ from tests.db import DbTestCase
 class FinRecordTypeTest(DbTestCase):
 
 	def test_for_uniqueness_of_names(self):
-		rtype = FinRecordType("TEST")
+		rtype = FinRecordType(name="TEST")
 		self.db.session.add(rtype)
 
 		with self.assertRaises(IntegrityError):
-			rtype = FinRecordType("TEST")
+			rtype = FinRecordType(name="TEST")
 			self.db.session.add(rtype)
 			self.db.session.commit()
 	
@@ -29,7 +29,9 @@ class FinRecordTest(DbTestCase):
 		    company=company
 		)
 
-		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3,
+		record = FinRecord(rtype=rtype, value=10, 
+			               timestamp=datetime(2015, 1, 1, 0, 0, 0), 
+			               timerange=3,
 			               company=company, report=report)
 		self.db.session.add(record)
 		self.db.session.commit()
@@ -46,13 +48,17 @@ class FinRecordTest(DbTestCase):
 		    company=company
 		)
 
-		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3,
+		record = FinRecord(rtype=rtype, value=10, 
+			               timestamp=datetime(2015, 1, 1, 0, 0, 0), 
+			               timerange=3,
 			               company=company, report=report)
 		self.db.session.add(record)
 		self.db.session.commit()
 
 		with self.assertRaises(IntegrityError):
-			record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 3,
+			record = FinRecord(rtype=rtype, value=10, 
+				               timestamp=datetime(2015, 1, 1, 0, 0, 0), 
+				               timeragne=3,
 				               company=company, report=report)
 			self.db.session.add(record)
 			self.db.session.commit()
@@ -166,14 +172,14 @@ class ReportTest(DbTestCase):
 			self.db.session, timestamp=datetime(2015, 3, 31), timerange=3,
 			company=company
 		)
-		rtype = FinRecordType("FIXED_ASSETS")
+		rtype = FinRecordType(name="FIXED_ASSETS")
 		self.db.session.add(rtype)
-		record = FinRecord(rtype, 10, datetime(2015, 1, 1, 0, 0, 0), 12,
-			               company=company, report=report)
-		self.db.session.add(record)
-		self.db.session.commit()
-
-		report.add_record(record)
+		record = report.add_record(
+			rtype=rtype, value=10, 
+			timestamp=datetime(2015, 1, 1, 0, 0, 0), 
+			timerange=12,
+			company=company, report=report
+		)
 		self.db.session.commit()
 
 		self.assertEqual(len(report.data), 1)
