@@ -758,7 +758,7 @@ class FinancialReport(Document):
 
         return 12
 
-    def _recognize_company(self, cspec, max_page=None):
+    def _recognize_company(self, cspec, max_page=3, field="repr"):
         '''
         Recognize company of the report. The search is driven by full names
         and names of the companies. Choose the company which full name 
@@ -767,24 +767,30 @@ class FinancialReport(Document):
         if not cspec: # not spec => not able to recognize company
             return None
             
-        text = '\n'.join(self[0:max_page]).lower()
-        
-        # 1. Make decision on the base of fullname.
+        text = '\n'.join(self[0:max_page])
+        text = re.sub(r"\bS\.?A(?:\.|\b)", "SA", text, flags=re.IGNORECASE)
+
+        # 1. Make decision on the base of repr.
 
         cres = list() # list of tuples
         for comp in cspec:
+            cfield = re.sub(r"\bS\.?A(?:\.|\b)", "SA", comp[field], 
+                            flags=re.IGNORECASE).rstrip().lstrip()
             cres.append((
                 comp["isin"],
-                len(re.findall(comp["fullname"], text, flags=re.IGNORECASE)),
+                len(re.findall(cfield, text, flags=re.IGNORECASE)),
             ))
         cres = sorted(cres, key=lambda x: x[1], reverse=True)
 
-        if cres[0][1] > 3: # minimum number of matches
+        if cres[0][1] > 0: # any match
             isin = cres[0][0]
         else: # 2. Otherwise try modified version of TF-IDF
-            text_voc = Counter(find_ngrams(text, n=1))
+            text = '\n'.join(self)
+            text = re.sub(r"\bS\.?A(?:\.|\b)", "SA", text, flags=re.IGNORECASE)
+            text_voc = Counter(find_ngrams(text, n=1, min_len=2))
             names_ngrams = [
-                (company["isin"], find_ngrams(company["fullname"], n=1))
+                (company["isin"], 
+                 find_ngrams(company["repr"], n=1, min_len=2))
                 for company in cspec
             ]
             names_voc = Counter(
@@ -792,13 +798,13 @@ class FinancialReport(Document):
             )
 
             mtf = [
-                (name[0], sum(text_voc[ng]/names_voc[ng] for ng in name[1]))
+                (name[0], sum(text_voc[ng]/(names_voc[ng]**2) for ng in name[1]))
                 for name in names_ngrams
             ]
             isin = max(mtf, key=lambda x: x[1])[0]
 
         return next(filter(lambda cp: cp["isin"] == isin, cspec)) 
-        
+
     def _recognize_timestamp(self):
         '''Recognize timestamp of financial report.'''
         text = util.remove_non_ascii('\n'.join(self))

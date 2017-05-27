@@ -17,9 +17,16 @@ from parser.util import remove_non_ascii
 def upload_companies(session, data):
 	'''Update companies in db.'''
 	for item in data:
-		instance = Company.get_or_create(
-			session, defaults=item, isin=item["isin"]
-		)
+		try:
+			instance = Company.get_or_create(
+				session, defaults=item, isin=item.get("isin", item.get("ISIN"))
+			)
+		except KeyError:
+			warnings.warn(
+				"Record without ISIN number. Name: '{}'".
+					format(item.get("name", None))
+			)
+			continue
 		if instance.id:
 			for key, value in item.items():
 				setattr(instance, key, value)	

@@ -127,11 +127,12 @@ keys_mapper = {
     "Liczba wyemitowanych akcji": "shares",
     "Prezes Zarządu": "charmain",
     "Wartość rynkowa (mln zł)": "markevalue",
-    "Skrót": "ticker"
+    "Skrót": "ticker",
+    "ISIN": "isin"
 }
 
 
-def get_data_from_gpw(ISIN, start="infoTab"):
+def get_data_from_gpw(isin, start="infoTab"):
     '''Download data from gpw about selected company represented by ISIN.'''
     try:
         page = requests.post(
@@ -139,7 +140,7 @@ def get_data_from_gpw(ISIN, start="infoTab"):
             params = {
                 "action": "GPWListaSp",
                 "start": start,
-                "gls_isin": ISIN,
+                "gls_isin": isin,
                 "lang": "PL"
             }
         )
@@ -159,7 +160,7 @@ def get_data_from_gpw(ISIN, start="infoTab"):
         data.append(tuple(values))
 
     data = dict(data)
-    data["ISIN"] = ISIN
+    data["isin"] = isin
     return data
 
 
@@ -214,6 +215,6 @@ def get_info_about_companies(companies, verbose=True, max_workers=3):
                 data["debut"] = datetime(int(year), int(month), 1)
             cobjs.append(data)
             if verbose: 
-                print("{} result: {}".format(future, data["ISIN"]))
+                print("{} result: {}".format(future, data["isin"]))
 
     return cobjs

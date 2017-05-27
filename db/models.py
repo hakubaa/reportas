@@ -31,6 +31,8 @@ class Company(Model):
 		                   back_populates="company")
 	data = relationship("FinRecord", cascade="all,delete", 
 		                back_populates="company")
+	reprs = relationship("CompanyRepr", cascade="all,delete", 
+		                 back_populates="company")
 
 	__table_args__ = (
 		UniqueConstraint("isin", "ticker", name='_isin_ticker'),
@@ -38,6 +40,16 @@ class Company(Model):
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)
+
+
+class CompanyRepr(Model):
+	__tablename__ = "companyrepr"
+
+	id = Column(Integer, primary_key=True)
+	value = Column(String)
+
+	company_id = Column(Integer, ForeignKey("companies.id"))
+	company = relationship("Company", back_populates="reprs")
 
 
 class FinReport(Model):
