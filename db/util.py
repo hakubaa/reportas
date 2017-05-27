@@ -1,6 +1,7 @@
 import itertools
 from datetime import datetime
 from concurrent import futures
+import warnings
 
 import requests
 from sqlalchemy.exc import IntegrityError
@@ -11,14 +12,13 @@ from db.models import (
 )
 from parser.nlp import find_ngrams
 from parser.util import remove_non_ascii
-from scraper.util import get_companies
 
 
 def upload_companies(session, data):
 	'''Update companies in db.'''
 	for item in data:
 		instance = Company.get_or_create(
-			session, defaults=item, ticker=item["ticker"]
+			session, defaults=item, isin=item["isin"]
 		)
 		if instance.id:
 			for key, value in item.items():
@@ -30,7 +30,7 @@ def upload_companies(session, data):
 def upload_report(session, doc, bls=True, nls=True, cfs=True,
 	              override=False):
 	'''Upload report to db.'''
-	company = session.query(Company).filter_by(id=doc.company["id"]).one()
+	company = session.query(Company).filter_by(isin=doc.company["isin"]).one()
 
 	if override: # override previous data
 		report = session.query(FinReport).filter_by(

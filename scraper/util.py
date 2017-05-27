@@ -8,6 +8,7 @@ import ctypes
 import itertools
 from concurrent import futures
 from datetime import datetime
+from collections import Iterable
 
 import requests
 from bs4 import BeautifulSoup
@@ -132,15 +133,18 @@ keys_mapper = {
 
 def get_data_from_gpw(ISIN, start="infoTab"):
     '''Download data from gpw about selected company represented by ISIN.'''
-    page = requests.post(
-        "https://www.gpw.pl/ajaxindex.php", 
-        params = {
-            "action": "GPWListaSp",
-            "start": start,
-            "gls_isin": ISIN,
-            "lang": "PL"
-        }
-    )
+    try:
+        page = requests.post(
+            "https://www.gpw.pl/ajaxindex.php", 
+            params = {
+                "action": "GPWListaSp",
+                "start": start,
+                "gls_isin": ISIN,
+                "lang": "PL"
+            }
+        )
+    except requests.exceptions.RequestException as e:
+        return dict(error=e)
 
     soup = BeautifulSoup(page.content.decode("utf-8"), "lxml")
     rows = soup.find_all("tr")
@@ -154,7 +158,9 @@ def get_data_from_gpw(ISIN, start="infoTab"):
         values[0] = keys_mapper.get(values[0], values[0])
         data.append(tuple(values))
 
-    return dict(data)
+    data = dict(data)
+    data["ISIN"] = ISIN
+    return data
 
 
 def get_list_of_companies():
@@ -162,6 +168,7 @@ def get_list_of_companies():
     page = requests.get(
         "http://infostrefa.com/infostrefa/pl/spolki?market=mainMarket"
     )
+        
     soup = BeautifulSoup(page.content, "html.parser")
 
     # Locate table with companies (can change in the future) and extract data
@@ -180,36 +187,31 @@ def get_list_of_companies():
     return companies
 
 
-def get_companies(verbose=True, tickers=None, max_workers=3):
-    '''Update companies in db. Scrape data from the Internet.'''
+def get_info_about_companies(companies, verbose=True, max_workers=3):
+    '''
+    Load extra info about companies. The companies are search by ISIN code.
+    By setting max_workers one can control the level of concurrency.
+    '''
 
-    ## Get list of companies listed on WSE
-    companies = get_list_of_companies()
-    if tickers:
-        tickers = [ ticker.upper() for ticker in tickers ]
-        companies = filter(
-            lambda item: item["ticker"].upper() in tickers, companies
-        )
+    # make sure companies is iterable
+    if not isinstance(companies, Iterable) or isinstance(companies, str): 
+        companies = (companies,)
 
     ## Load more info from gpw.pl
     cobjs = list()
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         to_do = []
-        for company in companies:
-            future = executor.submit(get_data_from_gpw, company["ISIN"])
+        for isin in companies:
+            future = executor.submit(get_data_from_gpw, isin)
             to_do.append(future)
             if verbose:
-                print("Scheduled for {}: {}".format(company["ISIN"], future))
+                print("Scheduled for {}: {}".format(isin, future))
 
         for future in futures.as_completed(to_do):
-            res = future.result()
-            data = {  # 3.5 required
-                key: value for key, value in {**company, **res}.items()
-            }
+            data = dict(future.result())
             if "debut" in data:
                 month, year = data["debut"].split(".")
                 data["debut"] = datetime(int(year), int(month), 1)
-
             cobjs.append(data)
             if verbose: 
                 print("{} result: {}".format(future, data["ISIN"]))

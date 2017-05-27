@@ -14,9 +14,10 @@ class Company(Model):
 
 	id = Column(Integer, primary_key=True)
 	
-	name = Column(String, unique=True)
-	fullname = Column(String)
+	name = Column(String)
+	isin = Column(String, unique=True)
 	ticker = Column(String, unique=True)
+	fullname = Column(String)
 	district = Column(String)
 	webpage = Column(String)
 	email = Column(String)
@@ -30,6 +31,10 @@ class Company(Model):
 		                   back_populates="company")
 	data = relationship("FinRecord", cascade="all,delete", 
 		                back_populates="company")
+
+	__table_args__ = (
+		UniqueConstraint("isin", "ticker", name='_isin_ticker'),
+    )
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)

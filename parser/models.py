@@ -166,7 +166,7 @@ class RecordsExtractor(UserDict):
 
     re_fields_separators = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
     re_rows_separators = re.compile(r"\n")
-    re_alphabetic_chars = re.compile(r"[A-Za-zżźćńółęąśŻŹĆĄŚĘŁÓŃ]")
+    re_alphabetic_chars = re.compile(r"[A-Za-zĹĽĹşÄ‡Ĺ„ĂłĹ‚Ä™Ä…Ĺ›Ĺ»ĹąÄ†Ä„ĹšÄĹĂ“Ĺ]")
     re_leading_number = re.compile(
         r"^(?:Nota)?(?:\s)*(c(\d+)(?:\.\d+)*|(M{0,4}(CM|CD|D?C{0,3})"
         r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})))(\.|\)| )(?:\s)*"
@@ -699,13 +699,14 @@ class FinancialReport(Document):
     cfs_pages = SelfSearchingPage("parser/cls/cfs.pkl", "cfs_pages")
 
     def __init__(self, *args, consolidated=True, timestamp=None, 
-                 timerange=None, spec = None, voc=None, **kwargs):
+                 timerange=None, spec = None, voc=None, cspec=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.consolidated = consolidated
         self.timestamp = timestamp or self._recognize_timestamp()
         self.timerange = timerange or self._recognize_timerange()
         self.spec = spec or dict()
         self.voc = voc
+        self.company = self._recognize_company(cspec)
 
     @property 
     def cfs(self):
@@ -733,11 +734,11 @@ class FinancialReport(Document):
 
     def _recognize_timerange(self):
         '''Recognize timerange of financial report.'''
-        sa_tokens = util.remove_non_ascii("półroczny półroczne").split()
+        sa_tokens = util.remove_non_ascii("pĂłĹ‚roczny pĂłĹ‚roczne").split()
         qr_tokens = util.remove_non_ascii(
-                        "kwartalny kwartał kwartały kwartalne").split()
+                        "kwartalny kwartaĹ‚ kwartaĹ‚y kwartalne").split()
         # semiannual if not quarterly
-        sa2_tokens = util.remove_non_ascii("śródroczne").split()
+        sa2_tokens = util.remove_non_ascii("Ĺ›rĂłdroczne").split()
 
         # Make decision on the base of the first three pages
         tokens = set(map(operator.itemgetter(0), find_ngrams(
@@ -757,6 +758,47 @@ class FinancialReport(Document):
 
         return 12
 
+    def _recognize_company(self, cspec, max_page=None):
+        '''
+        Recognize company of the report. The search is driven by full names
+        and names of the companies. Choose the company which full name 
+        appears the most frequently in the report.
+        '''
+        if not cspec: # not spec => not able to recognize company
+            return None
+            
+        text = '\n'.join(self[0:max_page]).lower()
+        
+        # 1. Make decision on the base of fullname.
+
+        cres = list() # list of tuples
+        for comp in cspec:
+            cres.append((
+                comp["isin"],
+                len(re.findall(comp["fullname"], text, flags=re.IGNORECASE)),
+            ))
+        cres = sorted(cres, key=lambda x: x[1], reverse=True)
+
+        if cres[0][1] > 3: # minimum number of matches
+            isin = cres[0][0]
+        else: # 2. Otherwise try modified version of TF-IDF
+            text_voc = Counter(find_ngrams(text, n=1))
+            names_ngrams = [
+                (company["isin"], find_ngrams(company["fullname"], n=1))
+                for company in cspec
+            ]
+            names_voc = Counter(
+                reduce(operator.add, map(operator.itemgetter(1), names_ngrams))
+            )
+
+            mtf = [
+                (name[0], sum(text_voc[ng]/names_voc[ng] for ng in name[1]))
+                for name in names_ngrams
+            ]
+            isin = max(mtf, key=lambda x: x[1])[0]
+
+        return next(filter(lambda cp: cp["isin"] == isin, cspec)) 
+        
     def _recognize_timestamp(self):
         '''Recognize timestamp of financial report.'''
         text = util.remove_non_ascii('\n'.join(self))
@@ -810,6 +852,8 @@ class FinancialReport(Document):
         return report_timestamp
 
     def _extract_records(self, pages, spec, voc):
+        if not spec: # empty spec, nothing can be done
+            return None
         if len(pages) == 1:
             text = self[pages[0]]
         else:

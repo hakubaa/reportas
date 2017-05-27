@@ -7,3 +7,4 @@ htmlcov
 reports
 temp
 reportas.sublime-project
+*.db*
