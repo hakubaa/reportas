@@ -4,9 +4,9 @@ __pycache__
 *.sqlite
 *.sublime-workspace
 htmlcov
-migrations
 *.csv
 reports
 temp
 reportas.sublime-project
 *.db*
+migrations/versions

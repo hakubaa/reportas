@@ -1,10 +1,13 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 
+from app.patch.sqlalchemy import SQLAlchemy
 from config import config
+
+from db.core import Base
 
 
 db = SQLAlchemy()
+db.register_base(Base)
 
 
 def create_app(config_name):
