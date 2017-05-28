@@ -1,3 +1,4 @@
-- problem with empty position (white spaces)
-- restimate the models (optional)
-- specification for balance
+- recognition of unit money
+- check errors and warnings for reports listed in fields_identification.py
+- web-based interface for uploaindg report (validation)
+- web-crawler for searching pdf/zip files wtih financial reports

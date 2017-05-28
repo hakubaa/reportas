@@ -137,11 +137,11 @@ def load_module(name, attach = False, force_reload = True):
     return module
 
 
-def find_dates(text, re_days=r"(01|1|28|29|30|31)", all_days=False):
+def find_dates(text, re_days=r"\b(01|1|28|29|30|31)", all_days=False):
     '''Find all dates in the text.'''
 
     if all_days:
-        re_days = r"\d{1,2}" #(0[1-9]|[12]\d|3[01])
+        re_days = r"\b\d{1,2}" #(0[1-9]|[12]\d|3[01])
 
     quarters = {"i": 3, "ii": 6, "iii": 9, "iv": 12}
     months = {"stycznia": 1, "lutego": 2, "marca": 3, "kwietnia": 4, 
@@ -155,13 +155,13 @@ def find_dates(text, re_days=r"(01|1|28|29|30|31)", all_days=False):
          r"((?:19|20)\d{2})\b", flags = re.IGNORECASE
     )
     re_quarter = re.compile(
-        r"(I|II|III|IV) kw(?:\.|arta)?(?:ł)?(?:y)? (\d+)\b", flags=re.IGNORECASE
+        r"\b(I|II|III|IV) kw(?:\.|arta)?(?:ł)?(?:y)? (\d+)\b", flags=re.IGNORECASE
     )
     re_date_day_month_year = re.compile(
         re_days + r"(?:\.|-)(1[0-2]|0[1-9])(?:\.|-)((?:19|20)\d{2})\b"
     )
     re_date_year_month_day = re.compile(
-        r"((?:19|20)\d{2})(?:\.|-){1}(1[0-2]|0[1-9])(?:\.|-){1}\b" + re_days
+        r"\b((?:19|20)\d{2})(?:\.|-){1}(1[0-2]|0[1-9])(?:\.|-){1}\b" + re_days
     )
     re_day_and_full_month = re.compile(
         re_days + r" (stycznia|lutego|marca|kwietnia|maja|czerwca|"
@@ -169,12 +169,12 @@ def find_dates(text, re_days=r"(01|1|28|29|30|31)", all_days=False):
          flags = re.IGNORECASE
     )
     re_full_month_and_year = re.compile(
-        r" (stycznia|lutego|marca|kwietnia|maja|czerwca|"
+        r"\b(stycznia|lutego|marca|kwietnia|maja|czerwca|"
         r"lipca|sierpnia|wrze(?:ś)?nia|pa(?:ź)?dziernika|listopada|grudnia) "
         r"((?:19|20)\d{2})\b", flags = re.IGNORECASE
     )
     re_day_and_month = re.compile(re_days + r"(?:\.|-)(1[0-2]|0[1-9])\b")
-    re_month_and_year = re.compile(r"(1[0-2]|0[1-9])(?:\.|-)((?:19|20)\d{2})\b")
+    re_month_and_year = re.compile(r"\b(1[0-2]|0[1-9])(?:\.|-)((?:19|20)\d{2})\b")
     re_year = re.compile(r"((?:19|20)\d{2})\b")
 
     timestamps = list()
@@ -273,7 +273,6 @@ def find_dates(text, re_days=r"(01|1|28|29|30|31)", all_days=False):
             pass # ignore errors in dates
     else:
         text = re.sub(re_full_month_and_year, "", text) # remove from text
-
 
     # Match 01.2001 (month - year)
     match_dates = re.finditer(re_month_and_year, text)

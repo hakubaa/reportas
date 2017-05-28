@@ -230,11 +230,22 @@ class RecordsExtractor(UserDict):
             [[None] + tr for tr in map(util.determine_timerange, cols)]
         ))[-self.ncols:]
 
+
+        full_dates = [ 
+            list(filter(lambda x: x[-1], dt))
+            for dt in map(util.find_dates, cols) 
+        ]
         dates = list(map(
             lambda item: item[-1][0],
-            [dt for dt in map(util.find_dates, cols) 
-                if dt and dt[-1][0][2] in (28, 29, 30, 31)] # last day of the month
-        ))[-self.ncols:]
+            [dt for dt in full_dates if dt and dt[-1][0][2] in (28, 29, 30, 31)] 
+        ))
+
+        if not dates:
+            dates = list(map(
+                lambda item: item[-1][0],
+                [dt for dt in map(util.find_dates, cols) 
+                    if dt and dt[-1][0][2] in (28, 29, 30, 31)] 
+            ))[-self.ncols:]
 
         # Find timeranges and timestamps by rows if search by columns
         # have failed
