@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Companies{% endblock %}
+
+{% block body %}
+	<h1>Companies</h1>
+	<ul>
+		{% for company in data %}
+			<li><a href="{{ url_for('main.company', isin=company.isin) }}">
+				{{ company.fullname }}</a>
+			</li>
+		{% endfor %}
+	</ul>
+{% endblock %}
