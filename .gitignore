@@ -1,8 +1,10 @@
 venv
 __pycache__
 *.pyc
+*.sqlite
 *.sublime-workspace
 htmlcov
+migrations
 *.csv
 reports
 temp
