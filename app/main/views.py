@@ -1,4 +1,5 @@
-from flask import render_template
+from flask import render_template, abort
+from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
 from app.main import main
@@ -19,5 +20,9 @@ def companies():
 
 @main.route("/companies/<isin>", methods=["GET"])
 def company(isin):
-	data = db.session.query(Company).filter_by(isin=isin).one()
-	return render_template("main/company.html", data=data)
+	try:
+		data = db.session.query(Company).filter_by(isin=isin).one()
+	except NoResultFound:
+		abort(404)
+	else:
+		return render_template("main/company.html", data=data)

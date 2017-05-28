@@ -6,28 +6,22 @@
 	<dl>
 		<dt>Name</dt>
 		<dd>{{data.name}}</dd>
-
 		<dt>Ticker</dt>
 		<dd>{{data.ticker}}</dd>
-
 		<dt>Full Name</dt>
 		<dd>{{data.fullname}}</dd>
-
 		<dt>Address</dt>
 		<dd>{{data.address}}</dd>
-
 		<dt>District</dt>
 		<dd>{{data.distirct}}</dd>
-
 		<dt>Telephone</dt>
 		<dd>{{data.telephone}}</dd>
-
 		<dt>Fax</dt>
 		<dd>{{data.fax}}</dd>
-
-		<dt>Webpage</dt>
-		<dd><a href="{{'http://' + data.webpage}} ", target="_blank">{{data.webpage}}</a></dd>
-
+		{% if data.webpage %}
+			<dt>Webpage</dt>
+			<dd><a href="{{'http://' + data.webpage}} ", target="_blank">{{data.webpage}}</a></dd>
+		{% endif %}
 		<dt>E-Mail</dt>
 		<dd>{{data.email}}</dd>
 	</dl>
