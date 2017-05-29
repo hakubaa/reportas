@@ -20,4 +20,7 @@ def create_app(config_name):
 	from app.main import main as main_blueprint
 	app.register_blueprint(main_blueprint)
 
+	from app.reports import reports as reports_blueprint
+	app.register_blueprint(reports_blueprint, url_prefix = "/reports")
+
 	return app

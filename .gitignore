@@ -10,3 +10,4 @@ temp
 reportas.sublime-project
 *.db*
 migrations/versions
+uploads*

@@ -2,3 +2,8 @@
 - check errors and warnings for reports listed in fields_identification.py
 - web-based interface for uploaindg report (validation)
 - web-crawler for searching pdf/zip files wtih financial reports
+- reports blueprint:
+  - reports/ - reports browser - GET - show reports POST - upload report
+  - reports/<id> - report detail
+  - reports/parser - parsing new reports - user interaction
+  - reports/upload_file - upload new report (POST) or reports/ - POST

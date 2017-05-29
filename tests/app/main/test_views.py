@@ -1,6 +1,6 @@
 from tests.app import AppTestCase
 
-from app import create_app, db
+from app import  db
 
 from db.models import Company
 

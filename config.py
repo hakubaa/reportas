@@ -6,7 +6,9 @@ class Config:
 	FLASKY_ADMIN = os.environ.get("FLASKY_ADMIN")
 	SQLALCHEMY_COMMIT_ON_TEARDOWN = True
 	SQLALCHEMY_TRACK_MODIFICATIONS = False
-	
+	ALLOWED_EXTENSIONS = set(["txt", "pdf"])
+	MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB
+
 	@staticmethod
 	def init_app(app):
 		pass
@@ -18,6 +20,8 @@ class DevelopmentConfig(Config):
 		os.environ.get('DEV_DATABASE_URL') 
 		or 'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
 	)
+	UPLOAD_FOLDER = os.path.join(basedir, "uploads_dev")
+
 
 class TestingConfig(Config):
 	TESTING = True
@@ -25,6 +29,8 @@ class TestingConfig(Config):
 		os.environ.get('DEV_DATABASE_URL') 
 		or 'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
 	)
+	UPLOAD_FOLDER = os.path.join(basedir, "uploads_test")
+
 
 config = {
 	"development": DevelopmentConfig,
