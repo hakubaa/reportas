@@ -19,6 +19,7 @@ logger = logging.getLogger('alembic.env')
 # target_metadata = mymodel.Base.metadata
 from flask import current_app
 import db.models
+import app.models
 from db.core import Base
 
 config.set_main_option('sqlalchemy.url',

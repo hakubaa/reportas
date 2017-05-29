@@ -1,14 +1,18 @@
 import datetime
 
-from app import db
+from sqlalchemy import (
+	Column, Integer, String, DateTime, Boolean, Float,
+	UniqueConstraint
+)
 
+from db.core import Model
 
-class File(db.Model):
+class File(Model):
 	__tablename__ = "files"
 
-	id = db.Column(db.Integer, primary_key=True)
-	name = db.Column(db.String(), unique=True)
-	timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+	id = Column(Integer, primary_key=True)
+	name = Column(String(), unique=True)
+	timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 	def __repr__(self):
 		return "<File %r>" % self.name
