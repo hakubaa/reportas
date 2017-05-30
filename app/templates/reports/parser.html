@@ -2,26 +2,90 @@
 
 {% block title %} Parser {% endblock %}
 
+{% block styles %}
+{{ super() }}
+<style>
+    #report_doc a, 
+    #report_doc span, 
+    #report_doc tr, 
+    #report_doc td 
+    { 
+        white-space: pre; 
+        font-family: "Courier New", Courier, monospace;
+        font-size: 0.8em;
+    }
+    #report_table tr.nls_row {
+        background-color: lightblue;
+    }
+    #report_table tr.bls_row {
+        background-color: lightgreen;
+    }
+    #report_table tr.cfs_row {
+        background-color: lightcoral;
+    }
+
+    #report_table {
+        border-collapse: collapse;
+    }
+    #report_table, 
+    #report_table td, 
+    #report_table th {
+        border: 1px solid black;
+    }
+</style>
+{% endblock %}
+
 {% block body %}
     {{ super() }}
     <div id="report_info">
-        
+        {% if company %}
+            <p><a href="{{ url_for('main.company', isin=company.isin) }}", target="_blank">{{company.fullname}}</a></p>
+            <p>Report for {{report.timerange}} months ended on {{report.timestamp.strftime('%Y-%m-%d')}}</p>
+        {% else %}
+            <p>Company not identified.</p>
+        {% endif %}
     </div>
     
     <div id="report_doc">
-        <table>
+        <table id="report_table">
             <thead>
                 <tr>
-                    <th></th> <!-- column for check box -->
+                    <th></th> column for check box
                     <th>page#</th>
                     <th>row#</th>
-                    <th>field</th>
                     <th>type</th>
+                    <th>field</th>
                     <th>content</th>
                 </tr>    
             </thead>
             <tbody>
-                
+                {% for page_no, row_no, content in report.rows %}
+                    {% if page_no in report.nls_pages %}
+                        <tr class="nls_row">
+                    {% elif page_no in report.bls_pages %}
+                        <tr class="bls_row">
+                    {% elif page_no in report.cfs_pages %}
+                        <tr class="cfs_row">
+                    {% else %}
+                        <tr>
+                    {% endif %}
+                        <td>
+                            <input type="checkbox">
+                        </td>
+                        <td>{{page_no}}</td>
+                        <td>{{row_no}}</td>
+                        <td>
+                            <select>
+                                <option value="bls" {% if page_no in report.bls_pages %} selected="selected" {% endif %}>BLS</option>
+                                <option value="nls" {% if page_no in report.nls_pages %} selected="selected" {% endif %}>NLS</option>
+                                <option value="cfs" {% if page_no in report.cfs_pages %} selected="selected" {% endif %}>CFS</option>
+                                <option value="none" {% if page_no not in (report.bls_pages + report.nls_pages + report.cfs_pages) %} selected="selected" {% endif %}>NONE</option>
+                            </select>
+                        </td>
+                        <td>field type</td>
+                        <td>{{content}}</td>
+                    </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>

@@ -31,6 +31,7 @@ class ParserViewTest(AppTestCase):
 		return company
 
 	def test_for_creating_financial_document(self, report_mock):
+		report_mock.return_value.company = dict()
 		file = self.create_fake_file()
 
 		response = self.client.get(
@@ -42,6 +43,7 @@ class ParserViewTest(AppTestCase):
 	def test_initialize_financial_document_with_proper_file(
 		self, report_mock
 	):
+		report_mock.return_value.company = dict()
 		file = self.create_fake_file()
 
 		response = self.client.get(
@@ -55,17 +57,20 @@ class ParserViewTest(AppTestCase):
 		)
 
 	def test_for_raising_404_when_file_id_does_not_exist(self, report_mock):
+		report_mock.return_value.company = dict()
 		response = self.client.get(
 			url_for("reports.parser"), data={"file_id": 1}
 		)
 		self.assertEqual(response.status_code, 404)
 
 	def test_for_raising_400_when_no_file_id(self, report_mock):
+		report_mock.return_value.company = dict()
 		file = self.create_fake_file()
 		response = self.client.get(url_for("reports.parser"))
 		self.assertEqual(response.status_code, 400)
 
 	def test_for_rendering_proper_template(self, report_mock):
+		report_mock.return_value.company = dict()
 		file = self.create_fake_file()
 		response = self.client.get(
 			url_for("reports.parser"), data={"file_id": file.id}
@@ -74,6 +79,7 @@ class ParserViewTest(AppTestCase):
 
 	def test_for_passing_report_to_template(self, report_mock):
 		temp_mock = Mock()
+		temp_mock.company = dict()
 		report_mock.return_value = temp_mock
 		file = self.create_fake_file()
 		response = self.client.get(
@@ -83,6 +89,7 @@ class ParserViewTest(AppTestCase):
 		self.assertEqual(report, temp_mock)
 
 	def test_for_raising_500_when_there_is_no_file_in_the_disc(self, rmock):
+		rmock.return_value.company = dict()
 		file = self.create_fake_file()
 		os.remove(os.path.join(current_app.config.get("UPLOAD_FOLDER"), 
 			                   file.name))

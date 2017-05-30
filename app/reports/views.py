@@ -11,6 +11,7 @@ from app import db
 from app.models import File
 from app.reports import reports
 from db.models import Company
+from db.util import get_companies_reprs
 
 from parser.models import FinancialReport
 
@@ -90,7 +91,15 @@ def parser():
 	if not os.path.exists(filepath): 
 		abort(500) # INTERNAL SERVER ERROR (no file)
 
-	report = FinancialReport(filepath)
+	cspec = get_companies_reprs(db.session)
+	report = FinancialReport(filepath, cspec=cspec)
+
+	# Move this to Document as property 'rows'
+	rows = list()
+	for page_no, text in enumerate(report):
+		for row_no, content in enumerate(text.split("\n")):
+			rows.append((page_no, row_no, content))
+	report.rows = rows
 
 	# identify company in db
 	try: 
@@ -98,8 +107,6 @@ def parser():
 		              filter_by(isin=report.company["isin"]).one()
 	except (NoResultFound, AttributeError, KeyError):
 		company = None
-
-	import pdb; pdb.set_trace()
 
 	return render_template("reports/parser.html", report=report, 
 		                   company=company)
