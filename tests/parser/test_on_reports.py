@@ -4,7 +4,7 @@ import unittest.mock as mock
 from parser.models import FinancialReport
 from db import SQLAlchemy
 from db.models import FinRecordTypeRepr
-from db.util import upload_finrecords_spec, create_spec
+from db.util import upload_finrecords_spec, get_finrecords_reprs
 import parser.spec as spec
 from parser.util import remove_non_ascii
 from parser.nlp import find_ngrams
@@ -62,9 +62,9 @@ class RecordsExtractorTest(unittest.TestCase):
 
         # Create specification for identifying records
         cls.spec = dict(
-            bls=create_spec(cls.db, "bls"),
-            nls=create_spec(cls.db, "nls"),
-            cfs=create_spec(cls.db, "cfs")
+            bls=get_finrecords_reprs(cls.db.session, "bls"),
+            nls=get_finrecords_reprs(cls.db.session, "nls"),
+            cfs=get_finrecords_reprs(cls.db.session, "cfs")
         )
 
     @classmethod
