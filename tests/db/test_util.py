@@ -2,6 +2,7 @@ import itertools
 from datetime import datetime
 from collections import UserDict
 import unittest
+import operator
 
 from tests.db import DbTestCase
 
@@ -49,9 +50,10 @@ class UploadingReport(DbTestCase):
 		report.bls.names = [(3, (2015, 3, 31)), (3, (2014, 3, 31))]
 		report.cfs = UserDict()
 		report.cfs.names = []
-		company = Company.get_or_create(self.db.session, name="test")
+		company = Company.get_or_create(self.db.session, name="test", 
+			                            isin="test")
 		self.db.session.commit()
-		report.company = { "id": company.id }
+		report.company = { "isin": company.isin }
 		return report
 
 	def test_for_creating_record_in_db(self):
@@ -192,3 +194,41 @@ class UploadingSpecTest(DbTestCase):
 		finrecord_type = self.db.session.query(FinRecordType).first()
 		type_repr = self.db.session.query(FinRecordTypeRepr).first()
 		self.assertEqual(type_repr.rtype, finrecord_type)
+
+	def test_get_finrecords_reprs_returns_specification(self):
+		testspec = [ 
+			{ 
+				"statement": "cfs", "name": "CF#CFFO",
+				"repr": [ 
+					{ "lang": "PL", "value": "Przepływy operacyjne" }
+				]
+			} 
+		]
+		upload_finrecords_spec(self.db, testspec)	
+		spec = util.get_finrecords_reprs(self.db.session, statement="cfs")
+		self.assertEqual(len(spec), 1)
+		self.assertEqual(spec[0]["id"], "CF#CFFO")
+
+
+class CompaniesReprsTest(DbTestCase):
+
+	def test_get_companies_reprs_returns_isins_and_fullnames(self):
+		company = Company.get_or_create(
+			self.db.session, fullname="test", isin="test#isin"
+		)
+		self.db.session.commit()
+		cspec = util.get_companies_reprs(self.db.session)
+		self.assertEqual(len(cspec), 1)
+		self.assertEqual(cspec[0]["isin"], "test#isin")
+
+	def test_get_companies_reprs_returns_companies_reprs(self):
+		company = models.Company.get_or_create(
+			self.db.session, fullname="test", isin="test#isin"
+		)
+		company.reprs.append(models.CompanyRepr(value="testowo"))
+		self.db.session.commit()
+		cspec = util.get_companies_reprs(self.db.session)
+		self.assertEqual(len(cspec), 2)
+		self.assertEqual(len(set(map(operator.itemgetter("isin"), cspec))), 1)
+		reprs = list(map(operator.itemgetter("repr"), cspec))
+		self.assertCountEqual(reprs, ["test", "testowo"])

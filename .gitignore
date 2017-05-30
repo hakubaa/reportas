@@ -1,10 +1,13 @@
 venv
 __pycache__
 *.pyc
+*.sqlite
 *.sublime-workspace
 htmlcov
 *.csv
-reports
 temp
 reportas.sublime-project
 *.db*
+migrations/versions
+uploads*
+/reports/

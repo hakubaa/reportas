@@ -8,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from bs4 import BeautifulSoup
 
 from db.models import (
-	FinReport, FinRecordType, FinRecordTypeRepr, FinRecord, Company
+	FinReport, FinRecordType, FinRecordTypeRepr, FinRecord, Company,
+	CompanyRepr
 )
 from parser.nlp import find_ngrams
 from parser.util import remove_non_ascii
@@ -110,11 +111,11 @@ def upload_finrecords_spec(db, spec, commit=True):
 		db.session.commit()
 
 
-def create_spec(db, statement, lang="PL", n=1, min_len=2, 
-	            remove_non_alphabetic=True):
-	'''Create specification for selected statement and language.'''
+def get_finrecords_reprs(session, statement, lang="PL", n=1, min_len=2, 
+	                     remove_non_alphabetic=True):
+	'''Get list of finrecords representations for selected statement.'''
 	spec = list()
-	records = db.session.query(FinRecordTypeRepr).join(FinRecordType).\
+	records = session.query(FinRecordTypeRepr).join(FinRecordType).\
 	              filter(FinRecordType.statement == statement, 
 	              	     FinRecordTypeRepr.lang == lang
 	              ).all()
@@ -126,3 +127,46 @@ def create_spec(db, statement, lang="PL", n=1, min_len=2,
 		spec.append(dict(id=record.rtype.name, ngrams=nigrams))
 
 	return spec
+
+
+def get_companies_reprs(session):
+	'''Return list of companies (isin) with their reprpresentations.'''
+	keys = ("isin", "repr")
+	values = session.query(Company.isin, Company.fullname).\
+			     filter(Company.fullname != "").all()
+	cspec = list(map(lambda item: dict(zip(keys, item)), values))
+
+	keys = ("repr", "isin")
+	values = session.query(CompanyRepr.value, Company.isin).\
+	             join(Company).filter(CompanyRepr.value != "").all()
+	cspec.extend(map(lambda item: dict(zip(keys, item)), values))
+
+	return cspec
+
+
+def create_vocabulary(session, min_len=2, remove_non_alphabetic=True,
+	                  extra_words=None):
+	'''Create vocabulary from finrecord representations.'''
+	text = " ".join(map(" ".join, session.query(FinRecordTypeRepr.value).all()))
+	if remove_non_alphabetic:
+		text = remove_non_ascii(text)
+
+	voc = set(map(str, find_ngrams(
+		text, n = 1, min_len=2, remove_non_alphabetic=True
+	)))
+
+	special_words = (
+		"podstawowy", "obrotowy", "rozwodniony", "połączeń", "konsolidacji", 
+		"należne", "wpłaty", "gazu", "ropy"
+	)
+	if remove_non_alphabetic:
+		speccial_words = [remove_non_ascii(word) for word in sepcial_words]
+	voc.update(special_words)
+
+	if extra_words:
+		text = " ".join(extra_words)
+		if remove_non_alphabetic:
+			text = remove_non_alphabetic(text)
+		voc.update(text)
+
+	return voc
