@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %} Parser {% endblock %}
+
+{% block body %}
+    {{ super() }}
+    <div id="report_info">
+        
+    </div>
+    
+    <div id="report_doc">
+        <table>
+            <thead>
+                <tr>
+                    <th></th> <!-- column for check box -->
+                    <th>page#</th>
+                    <th>row#</th>
+                    <th>field</th>
+                    <th>type</th>
+                    <th>content</th>
+                </tr>    
+            </thead>
+            <tbody>
+                
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="report_fields">
+        
+    </div>
+{% endblock %}

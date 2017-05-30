@@ -5,9 +5,9 @@ __pycache__
 *.sublime-workspace
 htmlcov
 *.csv
-reports
 temp
 reportas.sublime-project
 *.db*
 migrations/versions
 uploads*
+/reports/
