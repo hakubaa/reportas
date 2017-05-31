@@ -71,9 +71,11 @@ class Document:
     @property
     def rows(self):
         collector = list()
+        global_row_no = 0
         for page_no, text in enumerate(self):
             for row_no, content in enumerate(text.split("\n")):
-                collector.append((page_no, row_no, content))
+                collector.append((global_row_no, page_no, row_no, content))
+                global_row_no += 1
         return collector
 
 
@@ -181,12 +183,13 @@ class RecordsExtractor(UserDict):
     ) 
     def __init__(self, text, recspec, require_numbers=True, 
                  remove_non_ascii=True, min_csim=0.85, fix_white_spaces=True,
-                 voc=None):
+                 voc=None, first_row_number=0):
         self.voc = voc # used by _fix_white_spaces
         if remove_non_ascii:
             text = util.remove_non_ascii(text)
         self.text = text
         self.input_rows = self._extract_rows(text)
+
         temp_rows = [row[1] for row in deepcopy(self.input_rows)]
         temp_rows = self._preprocess_labels(temp_rows)
         if fix_white_spaces:
@@ -196,13 +199,14 @@ class RecordsExtractor(UserDict):
             min_csim=min_csim
         )
         self.records = self._remove_column_with_note_reference(records)
-        # Update input rows - add marker for rows with identified records
-        vip_rows = reduce(
-            operator.add, 
-            itertools.chain(map(operator.itemgetter(-1), self.records))
-        )
-        for i, row in enumerate(self.input_rows):
-            self.input_rows[i] = row + (int(i in vip_rows),)
+
+        self.records_map = dict() 
+        for rid, nums, pages in self.records:
+            self.records_map.update(
+                itertools.zip_longest(
+                    map(lambda x: x + first_row_number, pages), 
+                    (rid[0],), fillvalue=rid[0])
+            )
 
         self.data = OrderedDict()
         for row in self.records:
@@ -358,7 +362,7 @@ class RecordsExtractor(UserDict):
         '''Create simple table. Each row as separate list of fields.'''
         table = [ (row[0], self._split_row_into_fields(row[1]))
                  for row in self._split_text_into_rows(text)]
-        table = [ row for row in table if row[1] ] # remove empty rows
+        table = [ row for row in table if row[1] ]
         return table
 
     def _preprocess_labels(self, input_rows):
