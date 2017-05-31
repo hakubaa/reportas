@@ -232,3 +232,26 @@ class CompaniesReprsTest(DbTestCase):
 		self.assertEqual(len(set(map(operator.itemgetter("isin"), cspec))), 1)
 		reprs = list(map(operator.itemgetter("repr"), cspec))
 		self.assertCountEqual(reprs, ["test", "testowo"])
+
+	def test_create_vocabulary_uses_records_reprs(self):
+		testspec = [ 
+			{ 
+				"statement": "cfs", "name": "CF#CFFO",
+				"repr": [ 
+					{ "lang": "PL", "value": "Przepływy operacyjne" }
+				]
+			} 
+		]
+		upload_finrecords_spec(self.db, testspec)	
+		voc = util.create_vocabulary(self.db.session, remove_non_ascii=False)
+		self.assertIn("operacyjne", voc)
+		self.assertIn("przepływy", voc)
+
+	def test_create_vocabulary_adds_extra_words(self):
+		voc = util.create_vocabulary(
+			self.db.session, remove_non_ascii=True,
+			extra_words = ("test", "create", "vocabulary")
+		)
+		self.assertIn("test", voc)
+		self.assertIn("create", voc)
+		self.assertIn("vocabulary", voc)

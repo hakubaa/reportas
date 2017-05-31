@@ -12,7 +12,7 @@ from db.models import (
 	CompanyRepr
 )
 from parser.nlp import find_ngrams
-from parser.util import remove_non_ascii
+import parser.util as putil
 
 
 def upload_companies(session, data):
@@ -121,7 +121,7 @@ def get_finrecords_reprs(session, statement, lang="PL", n=1, min_len=2,
 	              ).all()
 	for record in records:
 		nigrams = find_ngrams(
-			remove_non_ascii(record.value), n=n, min_len=min_len,
+			putil.remove_non_ascii(record.value), n=n, min_len=min_len,
 			remove_non_alphabetic=remove_non_alphabetic
 		)
 		spec.append(dict(id=record.rtype.name, ngrams=nigrams))
@@ -145,28 +145,29 @@ def get_companies_reprs(session):
 
 
 def create_vocabulary(session, min_len=2, remove_non_alphabetic=True,
-	                  extra_words=None):
+	                  remove_non_ascii=True, extra_words=None):
 	'''Create vocabulary from finrecord representations.'''
 	text = " ".join(map(" ".join, session.query(FinRecordTypeRepr.value).all()))
-	if remove_non_alphabetic:
-		text = remove_non_ascii(text)
+	if remove_non_ascii:
+		text = putil.remove_non_ascii(text)
+
 
 	voc = set(map(str, find_ngrams(
-		text, n = 1, min_len=2, remove_non_alphabetic=True
+		text, n = 1, min_len=2, remove_non_alphabetic=remove_non_alphabetic
 	)))
 
 	special_words = (
 		"podstawowy", "obrotowy", "rozwodniony", "połączeń", "konsolidacji", 
 		"należne", "wpłaty", "gazu", "ropy"
 	)
-	if remove_non_alphabetic:
-		speccial_words = [remove_non_ascii(word) for word in sepcial_words]
+	if remove_non_ascii:
+		special_words = [putil.remove_non_ascii(word) for word in special_words]
 	voc.update(special_words)
 
 	if extra_words:
 		text = " ".join(extra_words)
-		if remove_non_alphabetic:
-			text = remove_non_alphabetic(text)
-		voc.update(text)
+		if remove_non_ascii:
+			text = putil.remove_non_ascii(text)
+		voc.update(text.split(" "))
 
 	return voc
