@@ -731,6 +731,7 @@ class FinancialReport(Document):
         self.spec = spec or dict()
         self.voc = voc
         self.company = self._recognize_company(cspec)
+        self.records_map = dict()
 
     @property 
     def cfs(self):
@@ -903,4 +904,7 @@ class FinancialReport(Document):
             warnings.warn(
                 "Unabel to determine names of columns: '{!r}'".format(self)
             )
+
+        self.records_map.update(records.records_map)
+        
         return records
