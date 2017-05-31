@@ -731,7 +731,16 @@ class FinancialReport(Document):
         self.spec = spec or dict()
         self.voc = voc
         self.company = self._recognize_company(cspec)
-        self.records_map = dict()
+
+    @property
+    def records_map(self):
+        rmap = dict()
+        for stm in (self.bls, self.nls, self.cfs):
+            try:
+                rmap.update(stm.records_map)
+            except AttributeError:
+                pass
+        return rmap
 
     @property 
     def cfs(self):
@@ -889,7 +898,10 @@ class FinancialReport(Document):
         if not isinstance(pages, Iterable):
             pages = (pages, )
 
-        text = '\n'.join(operator.itemgetter(*sorted(pages))(self))
+        if len(pages) == 1:
+            text = self[pages[0]]
+        else:
+            text = '\n'.join(operator.itemgetter(*pages)(self))
 
         preceeding_rows_count = 0
         for page in self[:min(pages)]:
@@ -905,6 +917,4 @@ class FinancialReport(Document):
                 "Unabel to determine names of columns: '{!r}'".format(self)
             )
 
-        self.records_map.update(records.records_map)
-        
         return records
