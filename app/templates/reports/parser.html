@@ -5,39 +5,62 @@
 {% block styles %}
 {{ super() }}
 <style>
-    #report_doc a, 
-    #report_doc span, 
-    #report_doc tr, 
-    #report_doc td 
+    #report-table tr, 
+    #report-table th,
+    #report-table td 
     { 
-        white-space: pre; 
         font-family: "Courier New", Courier, monospace;
-        font-size: 0.8em;
+        font-size: 1.0em;
     }
-    #report_table tr.nls_row {
-        background-color: lightblue;
+    #report-table td:not(:first-child) {
+        min-width: 50px;
     }
-    #report_table tr.bls_row {
-        background-color: lightgreen;
-    }
-    #report_table tr.cfs_row {
-        background-color: lightcoral;
-    }
-
-    #report_table {
+    /*#report-table td.content {
+        white-space: pre; 
+    }*/
+    #report-table {
         border-collapse: collapse;
     }
-    #report_table, 
-    #report_table td, 
-    #report_table th {
+    #report-table, 
+    #report-table td, 
+    #report-table th {
         border: 1px solid black;
+    }
+    #report-table td.statement > select {
+        width: 100%;
+        border: 0px;
+    }
+    #report-table td.content {
+        width: 600px;
+    }
+    #report-table td.content > input {
+        width: 100%;
+        border: 0px;
+    }
+    #report-table td.rowno,
+    #report-table td.pageno,
+    #report-table td.field
+    {
+        text-align: center;
+    }
+    #report-table td.field {
+        padding: 0px 10px;
+    }
+    .nls-style {
+        background-color: lightblue;
+    }
+    .bls-style {
+        background-color: lightgreen;
+    }
+    .cfs-style {
+        background-color: lightcoral;
     }
 </style>
 {% endblock %}
 
 {% block body %}
     {{ super() }}
-    <div id="report_info">
+    <div class="container" id="report_info">
         {% if company %}
             <p><a href="{{ url_for('main.company', isin=company.isin) }}", target="_blank">{{company.fullname}}</a></p>
             <p>Report for {{report.timerange}} months ended on {{report.timestamp.strftime('%Y-%m-%d')}}</p>
@@ -46,51 +69,49 @@
         {% endif %}
     </div>
     
-    <div id="report_doc">
-        <table id="report_table">
+    <div class="container" id="report">
+        <table id="report-table">
             <thead>
                 <tr>
-                    <th></th> column for check box
+                    <th></th>
                     <th>page#</th>
                     <th>row#</th>
-                    <th>type</th>
+                    <th>statement</th>
                     <th>field</th>
                     <th>content</th>
-                </tr>    
+                </tr>  
             </thead>
             <tbody>
                 {% for page_no, row_no, content in report.rows %}
                     {% if page_no in report.nls_pages %}
-                        <tr class="nls_row">
+                        <tr class="nls-style">
                     {% elif page_no in report.bls_pages %}
-                        <tr class="bls_row">
+                        <tr class="bls-style">
                     {% elif page_no in report.cfs_pages %}
-                        <tr class="cfs_row">
+                        <tr class="cfs-style">
                     {% else %}
                         <tr>
                     {% endif %}
-                        <td>
-                            <input type="checkbox">
-                        </td>
-                        <td>{{page_no}}</td>
-                        <td>{{row_no}}</td>
-                        <td>
-                            <select>
+                        <td class="selector"><input type="checkbox"></td>
+                        <td class="pageno">{{page_no}}</td>
+                        <td class="rowno">{{row_no}}</td>
+                        <td class="statement">
+                            <select class="statement-type">
                                 <option value="bls" {% if page_no in report.bls_pages %} selected="selected" {% endif %}>BLS</option>
                                 <option value="nls" {% if page_no in report.nls_pages %} selected="selected" {% endif %}>NLS</option>
                                 <option value="cfs" {% if page_no in report.cfs_pages %} selected="selected" {% endif %}>CFS</option>
                                 <option value="none" {% if page_no not in (report.bls_pages + report.nls_pages + report.cfs_pages) %} selected="selected" {% endif %}>NONE</option>
                             </select>
                         </td>
-                        <td>field type</td>
-                        <td>{{content}}</td>
+                        <td class="field">field type</td>
+                        <td class="content"><input type="text" value="{{content}}"></td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
     
-    <div id="report_fields">
+    <div class="container" id="finrecords">
         
     </div>
 {% endblock %}

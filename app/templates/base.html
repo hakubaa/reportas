@@ -1,26 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 
 <head>
-	<meta charset="utf-8">
-	{% block head %}
-	<title>{% block title %}{% endblock %} - Reportas</title>
-	{% endblock %}
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>{% block title %}{% endblock %} - Reportas</title>
 
+    <!-- Bootstrap -->
+    <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    {% block head %}{% endblock %}
 	{% block styles %}{% endblock %}
+	{% block scripts %}{% endblock %}
 </head>
 
 <body>
-	{% with messages = get_flashed_messages() %}
-		{% if messages %}
-			<ul class=flashes>
-			{% for message in messages %}
-				<li>{{ message }}</li>
-			{% endfor %}
-			</ul>
-		{% endif %}
-	{% endwith %}
-	{% block body %}{% endblock %}
+    <div class="container">
+    	{% with messages = get_flashed_messages() %}
+    		{% if messages %}
+    			<ul class=flashes>
+    			{% for message in messages %}
+    				<li>{{ message }}</li>
+    			{% endfor %}
+    			</ul>
+    		{% endif %}
+    	{% endwith %}
+    	{% block body %}{% endblock %}
+    </div>
+    <script src="{{ url_for('static', filename='vendors/jquery-3.2.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendors/bootstrap/js/bootstrap.min.js') }}"></script>
+    {% block body_scripts %}{% endblock %}
 </body>
 
 </html>

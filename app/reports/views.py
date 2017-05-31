@@ -92,14 +92,7 @@ def parser():
 		abort(500) # INTERNAL SERVER ERROR (no file)
 
 	cspec = get_companies_reprs(db.session)
-	report = FinancialReport(filepath, cspec=cspec)
-
-	# Move this to Document as property 'rows'
-	rows = list()
-	for page_no, text in enumerate(report):
-		for row_no, content in enumerate(text.split("\n")):
-			rows.append((page_no, row_no, content))
-	report.rows = rows
+	report = FinancialReport(filepath, cspec=cspec, last_page=10)
 
 	# identify company in db
 	try: 
