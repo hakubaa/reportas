@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 
 from functools import reduce
-from collections import Counter, UserDict, OrderedDict
+from collections import Counter, UserDict, OrderedDict, Iterable
 from datetime import datetime
 
 import operator
@@ -204,7 +204,8 @@ class RecordsExtractor(UserDict):
         for rid, nums, pages in self.records:
             self.records_map.update(
                 itertools.zip_longest(
-                    map(lambda x: x + first_row_number, pages), 
+                    map(lambda x: self.input_rows[x][0] + first_row_number, 
+                        pages), 
                     (rid[0],), fillvalue=rid[0])
             )
 
@@ -883,11 +884,19 @@ class FinancialReport(Document):
     def _extract_records(self, pages, spec, voc):
         if not spec: # empty spec, nothing can be done
             return None
-        if len(pages) == 1:
-            text = self[pages[0]]
-        else:
-            text = '\n'.join(operator.itemgetter(*pages)(self))
-        records = RecordsExtractor(text, spec, voc=voc)
+
+        if not isinstance(pages, Iterable):
+            pages = (pages, )
+
+        text = '\n'.join(operator.itemgetter(*sorted(pages))(self))
+
+        preceeding_rows_count = 0
+        for page in self[:min(pages)]:
+            preceeding_rows_count += len(page.split("\n"))
+
+        records = RecordsExtractor(
+            text, spec, voc=voc, first_row_number=preceeding_rows_count
+        )
         try:
             records.update_names(self.timerange, self.timestamp)
         except Exception: # not vital feature, ignore and show warning
