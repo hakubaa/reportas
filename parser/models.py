@@ -68,6 +68,14 @@ class Document:
     def __repr__(self):
         return "{}('{}')".format(self.__class__.__name__, self.docpath)
 
+    @property
+    def rows(self):
+        collector = list()
+        for page_no, text in enumerate(self):
+            for row_no, content in enumerate(text.split("\n")):
+                collector.append((page_no, row_no, content))
+        return collector
+
 
 class SelfSearchingPage:
 

@@ -86,7 +86,7 @@ def find_ngrams(text, n, min_len=0, remove_non_alphabetic=False,
                        and remove_dates and not is_date(token) 
                        and len(token) >= min_len ]
     if remove_non_alphabetic:
-        regex = re.compile(r"[^a-zA-Z]")
+        regex = re.compile(r"[^A-Za-zżźćńółęąśŻŹĆĄŚĘŁÓŃ]")
         tokens = filter(bool, (re.sub(regex, "", token) for token in tokens))
     ngrams = list(nltk.ngrams(tokens, n))
     if not return_tuples:
