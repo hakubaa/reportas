@@ -11,7 +11,7 @@ from app import db
 from app.models import File
 from app.reports import reports
 from db.models import Company
-from db.util import get_companies_reprs
+from db.util import get_companies_reprs, get_finrecords_reprs, create_vocabulary
 
 from parser.models import FinancialReport
 
@@ -91,8 +91,15 @@ def parser():
 	if not os.path.exists(filepath): 
 		abort(500) # INTERNAL SERVER ERROR (no file)
 
+	voc = create_vocabulary(db.session)
+	spec = dict(
+		bls=get_finrecords_reprs(db.session, "bls"),
+		nls=get_finrecords_reprs(db.session, "nls"),
+		cfs=get_finrecords_reprs(db.session, "cfs")
+	)
 	cspec = get_companies_reprs(db.session)
-	report = FinancialReport(filepath, cspec=cspec, last_page=10)
+	report = FinancialReport(filepath, cspec=cspec, spec=spec, voc=voc, 
+		                     last_page=10)
 
 	# identify company in db
 	try: 

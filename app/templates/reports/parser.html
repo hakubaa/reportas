@@ -82,7 +82,7 @@
                 </tr>  
             </thead>
             <tbody>
-                {% for page_no, row_no, content in report.rows %}
+                {% for doc_row, page_no, page_row, content in report.rows %}
                     {% if page_no in report.nls_pages %}
                         <tr class="nls-style">
                     {% elif page_no in report.bls_pages %}
@@ -94,7 +94,7 @@
                     {% endif %}
                         <td class="selector"><input type="checkbox"></td>
                         <td class="pageno">{{page_no}}</td>
-                        <td class="rowno">{{row_no}}</td>
+                        <td class="rowno">{{page_row}}</td>
                         <td class="statement">
                             <select class="statement-type">
                                 <option value="bls" {% if page_no in report.bls_pages %} selected="selected" {% endif %}>BLS</option>
@@ -103,7 +103,7 @@
                                 <option value="none" {% if page_no not in (report.bls_pages + report.nls_pages + report.cfs_pages) %} selected="selected" {% endif %}>NONE</option>
                             </select>
                         </td>
-                        <td class="field">field type</td>
+                        <td class="field">{{ report.records_map.get(doc_row, None) }}</td>
                         <td class="content"><input type="text" value="{{content}}"></td>
                     </tr>
                 {% endfor %}
