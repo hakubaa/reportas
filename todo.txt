@@ -7,3 +7,5 @@
   - reports/<id> - report detail
   - reports/parser - parsing new reports - user interaction
   - reports/upload_file - upload new report (POST) or reports/ - POST
+
+- FinancialReport: errors when no nls, cfs or bls detected

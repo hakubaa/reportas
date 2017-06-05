@@ -6,7 +6,7 @@ from flask import url_for, current_app
 
 from tests.app import AppTestCase
 
-from db.models import Company
+from db.models import Company, FinRecordType
 from app.models import File
 from app import db
 
@@ -32,6 +32,7 @@ class ParserViewTest(AppTestCase):
 
 	def test_for_creating_financial_document(self, report_mock):
 		report_mock.return_value.company = dict()
+		report_mock.return_value.rows = list()
 		file = self.create_fake_file()
 
 		response = self.client.get(
@@ -44,6 +45,7 @@ class ParserViewTest(AppTestCase):
 		self, report_mock
 	):
 		report_mock.return_value.company = dict()
+		report_mock.return_value.rows = list()
 		file = self.create_fake_file()
 
 		response = self.client.get(
@@ -58,6 +60,7 @@ class ParserViewTest(AppTestCase):
 
 	def test_for_raising_404_when_file_id_does_not_exist(self, report_mock):
 		report_mock.return_value.company = dict()
+		report_mock.return_value.rows = list()
 		response = self.client.get(
 			url_for("reports.parser"), data={"file_id": 1}
 		)
@@ -65,12 +68,14 @@ class ParserViewTest(AppTestCase):
 
 	def test_for_raising_400_when_no_file_id(self, report_mock):
 		report_mock.return_value.company = dict()
+		report_mock.return_value.rows = list()
 		file = self.create_fake_file()
 		response = self.client.get(url_for("reports.parser"))
 		self.assertEqual(response.status_code, 400)
 
 	def test_for_rendering_proper_template(self, report_mock):
 		report_mock.return_value.company = dict()
+		report_mock.return_value.rows = list()
 		file = self.create_fake_file()
 		response = self.client.get(
 			url_for("reports.parser"), data={"file_id": file.id}
@@ -80,6 +85,7 @@ class ParserViewTest(AppTestCase):
 	def test_for_passing_report_to_template(self, report_mock):
 		temp_mock = Mock()
 		temp_mock.company = dict()
+		temp_mock.rows = list()
 		report_mock.return_value = temp_mock
 		file = self.create_fake_file()
 		response = self.client.get(
@@ -88,8 +94,30 @@ class ParserViewTest(AppTestCase):
 		report = self.get_context_variable("report")
 		self.assertEqual(report, temp_mock)
 
+	def test_for_passing_list_of_field_types_to_template(self, report_mock):
+		temp_mock = Mock()
+		temp_mock.rows = list()
+		temp_mock.company = dict()
+		report_mock.return_value = temp_mock
+		file = self.create_fake_file()
+
+		# create some fields for testing
+		FinRecordType.create(db.session, name="FIXED_ASSETS")
+		FinRecordType.create(db.session, name="LIABILITIES")
+		db.session.commit()
+
+		response = self.client.get(
+			url_for("reports.parser"), data={"file_id": file.id}
+		)		
+		fields = self.get_context_variable("fields")
+
+		self.assertEqual(len(fields), 2)
+		self.assertIn("FIXED_ASSETS", fields)
+		self.assertIn("LIABILITIES", fields)
+
 	def test_for_raising_500_when_there_is_no_file_in_the_disc(self, rmock):
 		rmock.return_value.company = dict()
+		rmock.return_value.rows = list()
 		file = self.create_fake_file()
 		os.remove(os.path.join(current_app.config.get("UPLOAD_FOLDER"), 
 			                   file.name))
@@ -103,6 +131,7 @@ class ParserViewTest(AppTestCase):
 		company = self.create_fake_company()
 		fr = Mock()
 		fr.company = { "isin": company.isin }
+		fr.rows = list()
 		rmock.return_value = fr
 
 		response = self.client.get(
