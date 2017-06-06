@@ -142,6 +142,27 @@ class ParserViewTest(AppTestCase):
 		self.assertEqual(ctx_company, company)
 
 
+class TextParserViewTest(AppTestCase):
+
+	# override setUp and tearDown methos of parent class to prevent from
+	# creating db what takes a while
+	def setUp(self):
+		pass
+	def tearDown(self):
+		pass
+
+	def test_for_raising_400_when_no_text(self):
+		response = self.client.post(url_for("reports.textparser"))
+		self.assertEqual(response.status_code, 400)
+
+	@patch("app.reports.views.identify_records")
+	def test_for_calling_identify_records(self, func_mock):
+		self.client.post(
+			url_for("reports.textparser", data=b"NET PROFIT  10  20")
+		)
+		self.assertTrue(func_mock.called)
+
+
 class TestLoadReportView(AppTestCase):
 
 	def tearDown(self):

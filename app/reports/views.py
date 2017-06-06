@@ -125,3 +125,13 @@ def parser():
 
     return render_template("reports/parser.html", report=report, 
                    company=company, fields=fields)
+
+
+@reports.route("/parser", methods=["POST"])
+def textparser():
+    data = request.data
+    if not data:
+        abort(400, "No data send with request")
+    
+    encoding = request.content_encoding or "utf-8"
+    data = data.decode(encoding)
