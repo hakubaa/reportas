@@ -7,8 +7,7 @@ import itertools
 
 import nltk
 import string
-
-from parser.util import is_date
+from dateutil.parser import parse
 
 
 # polish stop words (source: wikipedia)
@@ -72,6 +71,15 @@ class NGram:
     def __iadd__(self, other):
         self._tokens = list(itertools.chain(self, other))
         return self
+
+
+def is_date(string):
+    '''Determine whether string represents date.'''
+    try: 
+        parse(string)
+        return True
+    except (ValueError, OverflowError):
+        return False
 
 
 def find_ngrams(text, n, min_len=0, remove_non_alphabetic=False, 
