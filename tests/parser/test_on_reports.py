@@ -2,7 +2,7 @@ import unittest
 import unittest.mock as mock
 
 from parser.models import FinancialReport
-from db import SQLAlchemy
+from db.core import SQLAlchemy
 from db.models import FinRecordTypeRepr
 from db.util import upload_finrecords_spec, get_finrecords_reprs
 import parser.spec as spec
