@@ -1,6 +1,7 @@
 from io import BytesIO
 import os
 from unittest.mock import patch, Mock
+import json
 
 from flask import url_for, current_app
 
@@ -142,6 +143,8 @@ class ParserViewTest(AppTestCase):
 		self.assertEqual(ctx_company, company)
 
 
+@patch("app.reports.views.dbutil")
+@patch("app.reports.views.putil.identify_records_in_text")
 class TextParserViewTest(AppTestCase):
 
 	# override setUp and tearDown methos of parent class to prevent from
@@ -151,16 +154,48 @@ class TextParserViewTest(AppTestCase):
 	def tearDown(self):
 		pass
 
-	def test_for_raising_400_when_no_text(self):
+	def test_for_raising_400_when_no_text(self, pmock, dbmock):
 		response = self.client.post(url_for("reports.textparser"))
 		self.assertEqual(response.status_code, 400)
 
-	@patch("app.reports.views.identify_records")
-	def test_for_calling_identify_records(self, func_mock):
-		self.client.post(
-			url_for("reports.textparser", data=b"NET PROFIT  10  20")
+	def test_for_calling_identify_records_in_text(self, pmock, dbmock):
+		response = self.client.post(
+			url_for("reports.textparser"), 
+			data={"text": b"NET PROFIT  10  20", "spec": "bls"}
 		)
-		self.assertTrue(func_mock.called)
+		self.assertTrue(pmock.called)
+
+	def test_for_raising_400_when_invalid_specificiation(self, pmock, dbmock):
+		response = self.client.post(
+			url_for("reports.textparser"), 
+			data={"text": b"NET PROFIT  10  20", "spec": "no_spec"}
+		)
+		self.assertEqual(response.status_code, 400)
+
+	def test_for_calling_get_finrecords_reprs_with_proper_statement(
+		self, pmock, dbmock
+	):
+		func_mock = Mock()
+		dbmock.get_finrecords_reprs = func_mock
+		response = self.client.post(
+			url_for("reports.textparser"), 
+			data={"text": b"NET PROFIT  10  20", "spec": "bls"}
+		)
+		self.assertEqual(func_mock.call_args[0][1].upper(), "BLS")
+
+	def test_response_contains_idetified_records(self, pmock, dbmock):
+		pmock.return_value = [
+			(("TEST_NAME", 0.99), [5, 10, 15], (0,)),
+			(("NEXT_NAME", 0.80), [100, 150], (1,))
+		]
+		response = self.client.post(
+			url_for("reports.textparser"), 
+			data={"text": b"NET PROFIT  10  20", "spec": "bls"}
+		)
+		records = json.loads(response.data.decode("utf-8"))
+		self.assertEqual(len(records), 2)
+		record = next(filter(lambda x: x["name"] == "TEST_NAME", records))
+		self.assertEqual(record["numbers"], [5, 10, 15])
 
 
 class TestLoadReportView(AppTestCase):

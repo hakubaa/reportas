@@ -2,7 +2,8 @@ import os
 import pickle # just for development, remove in production
 
 from flask import (
-	request, redirect, url_for, current_app, render_template, flash, abort
+	request, redirect, url_for, current_app, render_template, flash, abort,
+    jsonify
 )
 from werkzeug.utils import secure_filename
 import requests
@@ -13,8 +14,11 @@ from app.models import File
 from app.reports import reports
 from db.models import Company, FinRecordType
 from db.util import get_companies_reprs, get_finrecords_reprs, create_vocabulary
+import db.util as dbutil
 
 from parser.models import FinancialReport
+import parser.util as putil
+
 
 
 def allowed_file(filename):
@@ -129,9 +133,36 @@ def parser():
 
 @reports.route("/parser", methods=["POST"])
 def textparser():
-    data = request.data
-    if not data:
+    text = request.values.get("text")
+    if not text:
         abort(400, "No data send with request")
     
     encoding = request.content_encoding or "utf-8"
-    data = data.decode(encoding)
+    try:
+        text = text.decode(encoding)
+    except AttributeError:
+        pass
+
+    spec_name = request.values.get("spec", "").upper()
+    if not spec_name:
+        spec = dict(
+            bls=dbutil.get_finrecords_reprs(db.session, "BLS"),
+            nls=dbutil.get_finrecords_reprs(db.session, "NLS"),
+            cfs=dbutil.get_finrecords_reprs(db.session, "CFS")
+        )
+    elif spec_name in ("BLS", "NLS", "CFS"):
+        spec = dbutil.get_finrecords_reprs(db.session, spec_name)
+    else:
+        abort(400, "Unrecognized specification")
+
+    if not spec:
+        abort(500, "Empty specification")
+
+    voc = dbutil.create_vocabulary(db.session)
+
+    records = putil.identify_records_in_text(text=text, spec=spec, voc=voc)
+    data = list()
+    for (name, sim), numbers, row_no in records:
+        data.append({"name": name, "numbers": numbers, "row_no": row_no})
+
+    return jsonify(data), 200
