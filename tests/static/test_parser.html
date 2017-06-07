@@ -54,17 +54,17 @@
                 });
 
                 it("test for sending post request", function() {
-                    identifyRecords("NET PROFIT  100  200");
+                    identifyRecords({text: "NET PROFIT  100  200"});
                     assert.equal(requests.length, 1);
                 });   
 
                 it("test for using proper ulr", function() {
-                    identifyRecords("NET PROFIT  100  200");
+                    identifyRecords({text: "NET PROFIT  100  200"});
                     assert.equal(requests[0].url, "/reports/parser");
                 });
 
                 it("test for passing text to request", function() {
-                    identifyRecords("NET PROFIT  100  200");
+                    identifyRecords({text: "NET PROFIT  100  200"});
                     var params = getJsonFromUrl(requests[0].requestBody);
                     assert.equal(
                         params.text.replace(/\+/g, " "), 
@@ -73,10 +73,16 @@
                 });
 
                 it("test for passing spec to request", function() {
-                    identifyRecords("NET PROFIT  100  200", spec="BLS");
+                    identifyRecords({text: "NET PROFIT  100  200", spec: "BLS"});
                     var params = getJsonFromUrl(requests[0].requestBody);
                     assert.equal(params.spec, "BLS");
-                });            
+                });  
+
+                it("test for raising exception when no text", function() {
+                    chai.expect(function(){
+                        identifyRecords({spec: "BLS"});
+                    }).to.throw("Undefined text.");
+                });        
             });   
 
             describe("Handling Response", function() {
@@ -99,8 +105,8 @@
                         ]
                     );
                     var spy = sinon.spy();
-                    identifyRecords("NET PROFIT  100  200", spec="BLS", 
-                                    callback=spy);
+                    identifyRecords({text: "NET PROFIT  100  200", spec: "BLS", 
+                                    callback: spy});
                     server.respond();
                     assert.isTrue(spy.called);
                 });

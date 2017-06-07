@@ -143,14 +143,12 @@ def textparser():
     except AttributeError:
         pass
 
-    spec_name = request.values.get("spec", "").upper()
+    spec_name = request.values.get("spec", "").lower()
     if not spec_name:
-        spec = dict(
-            bls=dbutil.get_finrecords_reprs(db.session, "BLS"),
-            nls=dbutil.get_finrecords_reprs(db.session, "NLS"),
-            cfs=dbutil.get_finrecords_reprs(db.session, "CFS")
-        )
-    elif spec_name in ("BLS", "NLS", "CFS"):
+        spec = dbutil.get_finrecords_reprs(db.session, "bls") +\
+                   dbutil.get_finrecords_reprs(db.session, "nls") +\
+                   dbutil.get_finrecords_reprs(db.session, "cfs")
+    elif spec_name in ("bls", "nls", "cfs"):
         spec = dbutil.get_finrecords_reprs(db.session, spec_name)
     else:
         abort(400, "Unrecognized specification")

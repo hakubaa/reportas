@@ -101,6 +101,12 @@
         max-height: 200px;
         font-family: "Courier New", Courier, monospace;
         font-size: 0.9em;
+    }   
+    #records-dropdown,
+    #stm-dropdown,
+    #refresh-btn,
+    #remove-btn {
+        display: none;
     }
 </style>
 {% endblock %}
@@ -119,8 +125,40 @@
     <div class="container">
         <div id="report-wrapper">
             <div id="report-ui">
-                <div class="dropdown dropdown-inline">
-                    <button class="btn btn-primary dropdown-toggle" type="button" id="fields-dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default" 
+                            data-select-type="ALL" id="stm-filter-btn"
+                            title="Statement">ALL</button>
+                    <button type="button" class="btn btn-default dropdown-toggle" 
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                            title="Statement">
+                        <span class="caret"></span>
+                        <span class="sr-only">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu" id="stm-filter-list">
+                        <li><a data-select-type="ALL" href="#">ALL</a></li>
+                        <li><a data-select-type="NONE" href="#">NONE</a></li>
+                        <li><a data-select-type="BLS" href="#">BLS</a></li>
+                        <li><a data-select-type="NLS" href="#">NLS</a></li>
+                        <li><a data-select-type="CFS" href="#">CFS</a></li>
+                    </ul>
+                </div>
+
+
+                <div class="dropdown dropdown-inline" id="stm-dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        Statement<span class="caret"></span>   
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="fields-menu">
+                        <li><a href="#">NONE</a></li>
+                        <li><a href="#">BLS</a></li>
+                        <li><a href="#">NLS</a></li>
+                        <li><a href="#">CFS</a></li>
+                    </ul>
+                </div>
+                <div class="dropdown dropdown-inline" id="records-dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                         Financial Records<span class="caret"></span>   
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="fields-menu">
@@ -130,7 +168,7 @@
                         {% endfor %}
                     </ul>
                 </div>
-                <button type="button" class="btn btn-success" id="refresh-btn" title="Refresh">
+                <button type="button" class="btn btn-default" id="refresh-btn" title="Refresh">
                     <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
                 </button>
                 <button type="button" class="btn btn-danger" id="remove-btn" title="Trash">
@@ -150,13 +188,13 @@
                     <tbody>
                         {% for doc_row, page_no, page_row, content in report.rows %}
                             {% if page_no in report.nls_pages %}
-                                <tr class="nls-style">
+                                <tr class="nls-style" data-stm="nls">
                             {% elif page_no in report.bls_pages %}
-                                <tr class="bls-style">
+                                <tr class="bls-style" data-stm="bls">
                             {% elif page_no in report.cfs_pages %}
-                                <tr class="cfs-style">
+                                <tr class="cfs-style" data-stm="cfs">
                             {% else %}
-                                <tr>
+                                <tr data-stm="none">
                             {% endif %}
                                 <td class="selector"><input type="checkbox"></td>
                                 <td class="pageno">{{page_no}}</td>
@@ -173,6 +211,88 @@
     </div>
     
     <div class="container" id="finrecords">
-        
+        <p>Place for identified records.</p>    
     </div>
+{% endblock %}
+
+{% block body_scripts %}
+    <script src="{{ url_for('static', filename='js/parser.js') }}"></script>
+    <script>
+        $("#refresh-btn").click(function() {
+            var rows = $(".selector > input:checkbox:checked").map(function() {
+                return $(this).closest("tr");
+            }).get();
+
+            var text = rows.map(function(element) { 
+                return element.find(".content > input").val();
+            }).join("\n");
+
+            identifyRecords({
+                text: text,
+                callback: function(data) {
+                    for (var i = 0; i < data.length; i++) {
+                        var record = data[i];
+                        console.log("Record: " + record.name);
+                        for (var j = 0; j < record.row_no.length; j++) {
+                            console.log("- setting row: " + record.row_no[j]);
+                            rows[record.row_no[j]].find(".field").text(record.name);
+                        }
+                    }
+                }
+            });
+        });
+
+        $(".selector > input").change(function() {
+            refreshReportUI();
+        });
+
+        $('#stm-filter-list a, #stm-filter-btn').click(
+            function () {
+                var stype = $(this).data("select-type");
+                if (stype !== undefined) {
+                    // Turn off all checkboxes.
+                    $(".selector > input:checkbox").prop("checked", false);
+                    switch(stype) {
+                        case "ALL":
+                            $(".selector > input:checkbox").prop("checked", true);
+                            break;
+                        case "NONE":
+                            $(".selector > input:checkbox").prop("checked", false);
+                            break;
+                        case "BLS":
+                            $("tr[data-stm='bls']").find(".selector > input").prop("checked", true);
+                            break;
+                        case "NLS":
+                            $("tr[data-stm='nls']").find(".selector > input").prop("checked", true);
+                            break;
+                        case "CFS":
+                            $("tr[data-stm='cfs']").find(".selector > input").prop("checked", true);
+                            break;
+                    }
+                }
+                refreshReportUI();
+            }
+        );
+
+        function refreshReportUI() {
+            var counter = $(".selector > input:checkbox:checked").length;
+            if (counter > 0) {
+                $("#records-dropdown").css("display","inline-block");
+                $("#stm-dropdown").css("display","inline-block");
+                $("#refresh-btn").css("display","inline-block");
+                $("#remove-btn").css("display","inline-block");
+
+                $("#stm-filter-btn").text("NONE");
+                $("#stm-filter-btn").data("select-type", "NONE");
+            } else {
+                $("#records-dropdown").css("display","none"); 
+                $("#stm-dropdown").css("display","none"); 
+                $("#refresh-btn").css("display","none"); 
+                $("#remove-btn").css("display","none"); 
+
+                $("#stm-filter-btn").text("ALL");
+                $("#stm-filter-btn").data("select-type", "ALL");
+            }  
+        }
+    </script>
 {% endblock %}

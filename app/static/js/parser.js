@@ -1,18 +1,21 @@
 /**
  * Send XMLHttpRequest for identification of records.
- * @param {string} text with information for retrival
- * @param {string} type of statment (bls, nls, cfs) 
- * @param {function} callback function 
+ * @param {Object} options 
  */
-function identifyRecords(text, spec, callback) {
-    if (spec === undefined) spec = "";
+function identifyRecords(options) {
+    if (options === undefined) options = {};
+    if (options.spec === undefined) options.spec = "";
+    if (options.text === undefined) {
+        throw "Undefined text.";
+    }
+
     $.post(
         "/reports/parser", 
-        { text: text, spec: spec }
+        { text: options.text, spec: options.spec }
     )
         .done(function(response) {
-            if (callback !== undefined) {
-                callback(response);
+            if (options.callback !== undefined) {
+                options.callback(response);
             }
         })
         .fail(function(xhr, textStatus, error){
