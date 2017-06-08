@@ -65,7 +65,11 @@
         width: 5%;
     }
     td.field {
+        position: relative;
         width: 10%;
+    }
+    td.field > span {
+        overflow: hidden;
     }
     td.content {
         width: 78%;
@@ -107,6 +111,15 @@
     #refresh-btn,
     #remove-btn {
         display: none;
+    }
+    .btn-add-record {
+        position: absolute;
+        left: 0px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .select-auto {
+         width:auto !important;
     }
 </style>
 {% endblock %}
@@ -199,7 +212,7 @@
                                 <td class="selector"><input type="checkbox"></td>
                                 <td class="pageno">{{page_no}}</td>
                                 <td class="field">
-                                    {{report.records_map.get(doc_row, None)}}
+                                    <span>{{report.records_map.get(doc_row, None)}}</span>
                                 </td>
                                 <td class="content"><input type="text" value="{{content}}"></td>
                             </tr>
@@ -216,8 +229,23 @@
 {% endblock %}
 
 {% block body_scripts %}
+    <script src="{{ url_for('static', filename='vendors/jquery.hoverIntent.js') }}"></script>
     <script src="{{ url_for('static', filename='js/parser.js') }}"></script>
     <script>
+        $("#report-table tr").hoverIntent({
+            over: function() { // IN
+                var $trow = $(this);
+                var $btn = createPlusBtn(function() {
+                    var $rselector = createRecordSelector();
+                    $rselector.insertAfter($trow);
+                });
+                $(this).find("td.field").append($btn);
+            },
+            out: function() { // OUT
+                $(this).find(".btn-add-record").remove();
+            },
+            interval: 50
+        });
         $("#refresh-btn").click(function() {
             var rows = $(".selector > input:checkbox:checked").map(function() {
                 return $(this).closest("tr");
@@ -273,6 +301,74 @@
                 refreshReportUI();
             }
         );
+
+        function createPlusBtn(onclick) {
+            var $innerobj = $(
+                "<span/>",
+                {
+                    class: "glyphicon glyphicon-plus",
+                    "aria-hidden": "true" 
+                }
+            );
+            var $btn = $(
+                "<button/>",
+                {
+                    class: "btn btn-primary btn-xs btn-add-record",
+                    type: "button"
+                }
+            );
+            $btn.click(onclick);
+            $btn.append($innerobj);
+            return $btn;
+        }
+
+        function createRecordSelector() {
+            var $row = $("<tr/>");
+            var $cell = $("<td/>", {colspan: "5"});
+
+            var $rselect = $("<select/>", {class: "form-control select-auto input-sm"});
+            $("#records-dropdown ul").children().each(function() {
+                var name = $(this).find("a").text();
+                $rselect.append($("<option/>", {text: name}));
+            });
+
+            var $form = $("<form/>");
+
+            var $formGroup;
+            var $label;
+            var $input;
+            var $button;
+
+            $formGroup = $("<div/>", {class: "form-group"});
+            $label = $("<label/>", {text: "Financial Record Type"});
+            $formGroup.append($label);
+            $formGroup.append($rselect);
+            $form.append($formGroup);
+
+            $formGroup = $("<div/>", {class: "form-group"});
+            $label = $("<label/>", {text: "Financial Data"});
+            $input = $("<input>", {type: "text", class: "form-control input-sm"});
+            $formGroup.append($label);
+            $formGroup.append($input);
+            $form.append($formGroup);
+
+            $button = $(
+                "<button/>", 
+                {type: "button", class: "btn btn-primary", text: "Add"}
+            );
+            $form.append($button);
+
+            $button = $(
+                "<button/>",
+                {type: "button", class: "btn btn-primary", text: "Abort"}
+            );
+            $form.append($button);
+
+            $cell.append($form);
+            $row.append($cell);
+
+            return $row;
+        }
 
         function refreshReportUI() {
             var counter = $(".selector > input:checkbox:checked").length;
