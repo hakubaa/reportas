@@ -492,7 +492,7 @@ class FinancialReport(Document):
     @property
     def items_source(self):
         isource = dict()
-        for stm in (self.nls, self.nls, self.cfs):
+        for stm in (self.bls, self.nls, self.cfs):
             try:
                 isource.update(stm.items_source)
             except AttributeError:

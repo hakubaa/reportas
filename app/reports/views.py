@@ -111,7 +111,7 @@ def parser():
             report = pickle.load(f)
     except FileNotFoundError:
         report = FinancialReport(filepath, cspec=cspec, spec=spec, voc=voc)
-        _ = report.records_map # refresh
+        _ = report.items_map # refresh
     with open("report.pkl", "wb") as f:
         pickle.dump(report, f)
 
