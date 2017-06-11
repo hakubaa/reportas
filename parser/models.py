@@ -178,6 +178,8 @@ class RecordsExtractor(UserDict):
                  remove_nonascii=True, min_csim=0.85, fix_white_spaces=True,
                  voc=None, first_row_number=0):
         self.voc = voc # used by _fix_white_spaces
+        self.input_text = text # save orignal text
+
         if remove_nonascii:
             text = util.remove_non_ascii(text)
         self.text = text
@@ -193,14 +195,23 @@ class RecordsExtractor(UserDict):
         )
         self.records = self._remove_column_with_note_reference(records)
 
-        self.records_map = dict() 
+        self.items_map = dict() 
         for rid, nums, pages in self.records:
-            self.records_map.update(
+            self.items_map.update(
                 itertools.zip_longest(
                     map(lambda x: self.input_rows[x][0] + first_row_number, 
                         pages), 
                     (rid[0],), fillvalue=rid[0])
             )
+
+        self.items_source = dict()
+        for (rid, rsim), nums, pages in self.records:
+            content = operator.itemgetter(
+                *list(map(lambda x: self.input_rows[x][0], pages))
+            )(self.input_text.split("\n"))
+            if not isinstance(content, str):
+                content = "\n".join(content)
+            self.items_source[rid] = content
 
         # Update input rows - add marker for rows with identified records
         vip_rows = reduce(
@@ -469,14 +480,24 @@ class FinancialReport(Document):
         self.company = self._recognize_company(cspec)
 
     @property
-    def records_map(self):
+    def items_map(self):
         rmap = dict()
         for stm in (self.bls, self.nls, self.cfs):
             try:
-                rmap.update(stm.records_map)
+                rmap.update(stm.items_map)
             except AttributeError:
                 pass
         return rmap
+
+    @property
+    def items_source(self):
+        isource = dict()
+        for stm in (self.nls, self.nls, self.cfs):
+            try:
+                isource.update(stm.items_source)
+            except AttributeError:
+                pass
+        return isource         
 
     @property 
     def cfs(self):
