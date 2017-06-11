@@ -54,17 +54,17 @@
                 });
 
                 it("test for sending post request", function() {
-                    identifyRecords({text: "NET PROFIT  100  200"});
+                    identifyItems({text: "NET PROFIT  100  200"});
                     assert.equal(requests.length, 1);
                 });   
 
                 it("test for using proper ulr", function() {
-                    identifyRecords({text: "NET PROFIT  100  200"});
+                    identifyItems({text: "NET PROFIT  100  200"});
                     assert.equal(requests[0].url, "/reports/parser");
                 });
 
                 it("test for passing text to request", function() {
-                    identifyRecords({text: "NET PROFIT  100  200"});
+                    identifyItems({text: "NET PROFIT  100  200"});
                     var params = getJsonFromUrl(requests[0].requestBody);
                     assert.equal(
                         params.text.replace(/\+/g, " "), 
@@ -73,14 +73,14 @@
                 });
 
                 it("test for passing spec to request", function() {
-                    identifyRecords({text: "NET PROFIT  100  200", spec: "BLS"});
+                    identifyItems({text: "NET PROFIT  100  200", spec: "BLS"});
                     var params = getJsonFromUrl(requests[0].requestBody);
                     assert.equal(params.spec, "BLS");
                 });  
 
                 it("test for raising exception when no text", function() {
                     chai.expect(function(){
-                        identifyRecords({spec: "BLS"});
+                        identifyItems({spec: "BLS"});
                     }).to.throw("Undefined text.");
                 });        
             });   
@@ -105,7 +105,7 @@
                         ]
                     );
                     var spy = sinon.spy();
-                    identifyRecords({text: "NET PROFIT  100  200", spec: "BLS", 
+                    identifyItems({text: "NET PROFIT  100  200", spec: "BLS", 
                                     callback: spy});
                     server.respond();
                     assert.isTrue(spy.called);

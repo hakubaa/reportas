@@ -1,8 +1,8 @@
 /**
- * Send XMLHttpRequest for identification of records.
+ * Send XMLHttpRequest for identification of items.
  * @param {Object} options 
  */
-function identifyRecords(options) {
+function identifyItems(options) {
     if (options === undefined) options = {};
     if (options.spec === undefined) options.spec = "";
     if (options.text === undefined) {
