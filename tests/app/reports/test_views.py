@@ -7,7 +7,7 @@ from flask import url_for, current_app
 
 from tests.app import AppTestCase
 
-from db.models import Company, FinRecordType
+from db.models import Company, ItemType, ItemTypeRepr
 from app.models import File
 from app import db
 
@@ -85,7 +85,7 @@ class ParserViewTest(AppTestCase):
 
 	def test_for_passing_report_to_template(self, report_mock):
 		temp_mock = Mock()
-		temp_mock.company = dict()
+		temp_mock.company = dict(name="TEST")
 		temp_mock.rows = list()
 		report_mock.return_value = temp_mock
 		file = self.create_fake_file()
@@ -93,7 +93,7 @@ class ParserViewTest(AppTestCase):
 			url_for("reports.parser"), data={"file_id": file.id}
 		)
 		report = self.get_context_variable("report")
-		self.assertEqual(report, temp_mock)
+		self.assertEqual(id(report), id(temp_mock))
 
 	def test_for_passing_list_of_field_types_to_template(self, report_mock):
 		temp_mock = Mock()
@@ -103,8 +103,8 @@ class ParserViewTest(AppTestCase):
 		file = self.create_fake_file()
 
 		# create some fields for testing
-		FinRecordType.create(db.session, name="FIXED_ASSETS")
-		FinRecordType.create(db.session, name="LIABILITIES")
+		ItemType.create(db.session, name="FIXED_ASSETS")
+		ItemType.create(db.session, name="LIABILITIES")
 		db.session.commit()
 
 		response = self.client.get(
@@ -147,7 +147,7 @@ class ParserViewTest(AppTestCase):
 @patch("app.reports.views.putil.identify_records_in_text")
 class TextParserViewTest(AppTestCase):
 
-	# override setUp and tearDown methos of parent class to prevent from
+	# override setUp and tearDown methods of parent class to prevent from
 	# creating db what takes a while
 	def setUp(self):
 		pass
@@ -322,3 +322,23 @@ class TestLoadReportView(AppTestCase):
 			os.path.join(self.app.config["UPLOAD_FOLDER"], 
 				         data["url"].split("/")[-1])
 		))
+
+
+class TestFieldsView(AppTestCase):
+
+	def setUp(self):
+		ItemTypeRepr.__table__.create(db.session.bind)
+		ItemType.__table__.create(db.session.bind)
+
+	def tearDown(self):
+		ItemTypeRepr.__table__.drop(db.session.bind)
+		ItemType.__table__.drop(db.session.bind)
+		db.session.remove()
+
+	def test_for_retrieving_types_of_items_with_get_request(self):
+		rtype1 = ItemType.create(db.session, name="FIXED_ASSETS")
+		rtype2 = ItemType.create(db.session, name="LIABILITIES")
+		db.session.commit()
+		response = self.client.get(url_for("reports.fields"))
+		data = response.json
+		self.assertEqual(len(data), 2)

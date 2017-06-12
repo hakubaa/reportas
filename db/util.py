@@ -8,8 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from bs4 import BeautifulSoup
 
 from db.models import (
-	FinReport, FinRecordType, FinRecordTypeRepr, FinRecord, Company,
-	CompanyRepr
+	Report, ItemType, ItemTypeRepr, Item, Company, CompanyRepr
 )
 from parser.nlp import find_ngrams
 import parser.util as putil
@@ -41,14 +40,14 @@ def upload_report(session, doc, bls=True, nls=True, cfs=True,
 	company = session.query(Company).filter_by(isin=doc.company["isin"]).one()
 
 	if override: # override previous data
-		report = session.query(FinReport).filter_by(
+		report = session.query(Report).filter_by(
 			timestamp=doc.timestamp, timerange=doc.timerange, company=company
 		).first()
 		if report:
 			session.delete(report)
 			session.commit()
 
-	report = FinReport.create(
+	report = Report.create(
 		session, timestamp=doc.timestamp, timerange=doc.timerange,
 		company=company
 	)
@@ -76,11 +75,11 @@ def upload_report(session, doc, bls=True, nls=True, cfs=True,
 				)
 				continue
 
-			rtype = FinRecordType.get_or_create(session, name=key)
+			itype = ItemType.get_or_create(session, name=key)
 
 			for metadata, value in zip(colnames, values):
-				FinRecord.create_or_update(
-					session, rtype=rtype, value=value, 
+				Item.create_or_update(
+					session, itype=itype, value=value, 
 					timestamp=metadata["timestamp"], 
 					timerange=metadata["timerange"], 
 					report=report, company=company, override=override
@@ -89,9 +88,9 @@ def upload_report(session, doc, bls=True, nls=True, cfs=True,
 	return report
 
 
-def upload_finrecords_spec(db, spec, commit=True):
+def upload_items_spec(session, spec):
 	'''
-	Create FinRecordType & FinRecordTypeRepr records in db in accordance with 
+	Create ItemType & ItemTypeRepr records in db in accordance with 
 	specification.
 	'''
 	try: # ensure spec is iterable
@@ -100,31 +99,29 @@ def upload_finrecords_spec(db, spec, commit=True):
 		spec = [spec]
 
 	for record_spec in spec:
-		rtype = FinRecordType.get_or_create(
-			db.session, name=record_spec["name"],
+		itype = ItemType.get_or_create(
+			session, name=record_spec["name"],
 			statement=record_spec.get("statement", None)
 		)
 		for repr_spec in record_spec.get("repr", list()):
-			repr_spec["rtype"] = rtype
-			rtype_repr = FinRecordTypeRepr.create(db.session, **repr_spec)
-	if commit:
-		db.session.commit()
+			repr_spec["itype"] = itype
+			itype_repr = ItemTypeRepr.create(session, **repr_spec)
 
 
-def get_finrecords_reprs(session, statement, lang="PL", n=1, min_len=2, 
+def get_items_reprs(session, statement, lang="PL", n=1, min_len=2, 
 	                     remove_non_alphabetic=True):
-	'''Get list of finrecords representations for selected statement.'''
+	'''Get list of items representations for selected statement.'''
 	spec = list()
-	records = session.query(FinRecordTypeRepr).join(FinRecordType).\
-	              filter(FinRecordType.statement == statement, 
-	              	     FinRecordTypeRepr.lang == lang
+	records = session.query(ItemTypeRepr).join(ItemType).\
+	              filter(ItemType.statement.ilike(statement), 
+	              	     ItemTypeRepr.lang.ilike(lang)
 	              ).all()
 	for record in records:
 		nigrams = find_ngrams(
 			putil.remove_non_ascii(record.value), n=n, min_len=min_len,
 			remove_non_alphabetic=remove_non_alphabetic
 		)
-		spec.append(dict(id=record.rtype.name, ngrams=nigrams))
+		spec.append(dict(id=record.itype.name, ngrams=nigrams))
 
 	return spec
 
@@ -147,7 +144,7 @@ def get_companies_reprs(session):
 def create_vocabulary(session, min_len=2, remove_non_alphabetic=True,
 	                  remove_non_ascii=True, extra_words=None):
 	'''Create vocabulary from finrecord representations.'''
-	text = " ".join(map(" ".join, session.query(FinRecordTypeRepr.value).all()))
+	text = " ".join(map(" ".join, session.query(ItemTypeRepr.value).all()))
 	if remove_non_ascii:
 		text = putil.remove_non_ascii(text)
 

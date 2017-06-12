@@ -112,8 +112,8 @@
     }   
     #items-dropdown,
     #stm-dropdown,
-    #refresh-btn,
-    #remove-btn {
+    #report-refresh-btn,
+    #report-remove-btn {
         display: none;
     }
     .btn-add-item {
@@ -157,20 +157,38 @@
 
 {% block body %}
     {{ super() }}
-    <div class="container" id="report_info">
-        <h3>Company Info</h3>
-        {% if company %}
-            <p><a href="{{ url_for('main.company', isin=company.isin) }}", target="_blank">{{company.fullname}}</a></p>
-        {% else %}
-            <p>Company not identified.</p>
-        {% endif %}
-    </div>
-    
     <div class="container">
         <h3>Financial Report</h3>
-        <p>Report for {{report.timerange}} months ended on {{report.timestamp.strftime('%Y-%m-%d')}}</p>
+        <p>
+            Financial report for
+            <select class="form-inline select-auto input-sm">
+                {% for i in range(1, 13) %}
+                    <option {% if report.timerange == i %}selected="selected" {% endif %}>{{i}}</option>
+                {% endfor %}
+            </select> 
+            months ended on 
+            <input type="text" maxlength="10" class="input-timestamp" value="{{report.timestamp.strftime('%Y-%m-%d')}}">
+        </p>
+        <p>
+            Company:
+            {% if company %}
+                <a href="{{ url_for('main.company', isin=company.isin) }}", target="_blank">{{company.fullname}}</a>
+            {% else %}
+                Not identified
+            {% endif %} 
+            (<a href="#">Select Company</a>)</button>
+        </p>
         <div id="report-wrapper">
             <div id="report-ui">
+                <button type="button" class="btn btn-default" id="report-bls-btn" title="BLS">
+                    <span>BLS</span>
+                </button>
+                <button type="button" class="btn btn-default" id="report-nls-btn" title="NLS">
+                    <span>NLS</span>
+                </button>
+                <button type="button" class="btn btn-default" id="report-cfs-btn" title="CFS">
+                    <span>CFS</span>
+                </button>
 
                 <div class="btn-group">
                     <button type="button" class="btn btn-default" 
@@ -214,15 +232,15 @@
                         {% endfor %}
                     </ul>
                 </div>
-                <button type="button" class="btn btn-default" id="refresh-btn" title="Refresh">
+                <button type="button" class="btn btn-default" id="report-refresh-btn" title="Refresh">
                     <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
                 </button>
-                <button type="button" class="btn btn-danger" id="remove-btn" title="Trash">
+                <button type="button" class="btn btn-danger" id="report-remove-btn" title="Trash">
                     <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                 </button>
             </div>  
             <div id="report-content">
-                <table id="report-table" class="table">
+                <table class="table">
                     <thead>
                         <tr>
                             <th></th>
@@ -272,6 +290,7 @@
                         <thead>
                             <tr>
                                 <th></th>
+                                <th>Units</th>
                                 <th>Item</th>
                                 {% for timerange, timestamp in report.bls.names %}
                                     <th class="item-range">
@@ -293,6 +312,13 @@
                                         <button type="button" class="btn btn-danger btn-xs btn-item-remove" title="Trash">
                                             <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                                         </button>
+                                    </td>
+                                    <td>
+                                        <select class="form-inline select-auto input-sm">
+                                            <option {% if report.bls.uom == 1 %} selected="selected" {% endif %}>PLN</option>
+                                            <option {% if report.bls.uom == 1000 %} selected="selected" {% endif %}>k'PLN</option>
+                                            <option {% if report.bls.uom == 1000000 %} selected="selected" {% endif %}>m'PLN</option>
+                                        </select>
                                     </td>
                                     <td data-item-source="{{ report.items_source.get(item, '') }}">
                                         {% if item in report.items_source %}
@@ -383,6 +409,20 @@
                 </div>
             </div>
         </div>
+        <div>
+            <button type="button" class="btn btn-primary">Export Data</button>
+            <div>
+                <label class="checkbox-inline">
+                    <input type="checkbox" name="statement-export" value="bls" checked>BLS
+                </label>
+                <label class="checkbox-inline">
+                    <input type="checkbox" name="statement-export" value="nls" checked>NLS
+                </label>
+                <label class="checkbox-inline">
+                    <input type="checkbox" name="statement-export" value="cfs" checked>CFS
+                </label>
+            </div>
+        </div>
     </div>
 
     <div class="modal fade" tabindex="-1" role="dialog" id="item-source-modal">
@@ -421,7 +461,7 @@
             $(this).closest("tr").remove();
         });
 
-        $("#report-table tr").hoverIntent({
+        $("#report-content table tr").hoverIntent({
             over: function() { // IN
                 var $trow = $(this);
                 var $btn = createPlusBtn(function() {
@@ -437,7 +477,8 @@
             },
             interval: 50
         });
-        $("#refresh-btn").click(function() {
+        
+        $("#report-refresh-btn").click(function() {
             var rows = $(".selector > input:checkbox:checked").map(function() {
                 return $(this).closest("tr");
             }).get();
@@ -459,6 +500,39 @@
                     }
                 }
             });
+        });
+
+        $("#report-remove-btn").click(function() {
+            
+            alert($("#report-content tbody tr").first().position().top);
+
+            // var nls = $("#report-content tr.nls-style").first();
+            var nls = $("#report-content tbody tr.nls-style");
+            var _offset = nls.position();
+            var _topoffset = _offset.top;
+
+            $("#report-content").scrollTop(_topoffset - temp);            
+        });
+
+        $("#report-bls-btn").click(function() {
+            var toffset = $("#report-content thead").position().top;
+            var $frow = $("#report-content tbody tr.bls-style");
+            var roffset = $frow.position().top;
+            $("#report-content").scrollTop(roffset - toffset);
+        });
+
+        $("#report-nls-btn").click(function() {
+            var toffset = $("#report-content thead").position().top;
+            var $frow = $("#report-content tbody tr.nls-style");
+            var roffset = $frow.position().top;
+            $("#report-content").scrollTop(roffset - toffset);
+        });
+
+        $("#report-cfs-btn").click(function() {
+            var toffset = $("#report-content thead").position().top;
+            var $frow = $("#report-content tbody tr.cfs-style");
+            var roffset = $frow.position().top;
+            $("#report-content").scrollTop(roffset - toffset);
         });
 
         $(".selector > input").change(function() {
@@ -685,16 +759,16 @@
             if (counter > 0) {
                 $("#items-dropdown").css("display","inline-block");
                 $("#stm-dropdown").css("display","inline-block");
-                $("#refresh-btn").css("display","inline-block");
-                $("#remove-btn").css("display","inline-block");
+                $("#report-refresh-btn").css("display","inline-block");
+                $("#report-remove-btn").css("display","inline-block");
 
                 $("#stm-filter-btn").text("NONE");
                 $("#stm-filter-btn").data("select-type", "NONE");
             } else {
                 $("#items-dropdown").css("display","none"); 
                 $("#stm-dropdown").css("display","none"); 
-                $("#refresh-btn").css("display","none"); 
-                $("#remove-btn").css("display","none"); 
+                $("#report-refresh-btn").css("display","none"); 
+                $("#report-remove-btn").css("display","none"); 
 
                 $("#stm-filter-btn").text("ALL");
                 $("#stm-filter-btn").data("select-type", "ALL");

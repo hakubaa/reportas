@@ -12,8 +12,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import db
 from app.models import File
 from app.reports import reports
-from db.models import Company, FinRecordType
-from db.util import get_companies_reprs, get_finrecords_reprs, create_vocabulary
+from db.models import Company, ItemType
+from db.util import get_companies_reprs, get_items_reprs, create_vocabulary
 import db.util as dbutil
 
 from parser.models import FinancialReport
@@ -123,7 +123,7 @@ def parser():
         company = None
 
     try:
-        fields = next(zip(*db.session.query(FinRecordType.name).all()))
+        fields = next(zip(*db.session.query(ItemType.name).all()))
     except StopIteration:
         fields = []
 
@@ -164,3 +164,8 @@ def textparser():
         data.append({"name": name, "numbers": numbers, "row_no": row_no})
 
     return jsonify(data), 200
+
+
+@reports.route("/items", methods=["GET"])
+def items():
+    return jsonify([None, None]), 200

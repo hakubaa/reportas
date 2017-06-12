@@ -10,7 +10,7 @@ import db.util as util
 import db.models as models
 
 from db.util import upload_finrecords_spec
-from db.models import FinRecordType, FinRecordTypeRepr, Company, FinRecord
+from db.models import ItemType, ItemTypeRepr, Company, FinRecord
 
 
 # create fake class representing FinancialReport (parser.models)
@@ -88,7 +88,7 @@ class UploadingReport(DbTestCase):
 		self.assertEqual(record.timestamp, datetime(2014, 3, 31))
 		self.assertEqual(record.timerange, 3)
 		self.assertEqual(record.report, report_db)
-		rtype = self.db.session.query(models.FinRecordType).\
+		rtype = self.db.session.query(models.ItemType).\
 		                        filter_by(name="BLS#FIXEDASSETS").one()
 		self.assertEqual(record.rtype, rtype)
 
@@ -107,8 +107,8 @@ class UploadingReport(DbTestCase):
 		report.bls.names = [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
 		util.upload_report(self.db.session, report)
 
-		record = self.db.session.query(FinRecord).join(FinRecordType).\
-			filter(FinRecordType.name == "BLS#FIXEDASSETS",
+		record = self.db.session.query(FinRecord).join(ItemType).\
+			filter(ItemType.name == "BLS#FIXEDASSETS",
 				   FinRecord.timestamp == datetime(2015, 3, 31)
 			).one()
 		self.assertEqual(record.value, 200)
@@ -141,8 +141,8 @@ class UploadingReport(DbTestCase):
 
 		self.assertEqual(self.db.session.query(FinRecord).count(), 2)	
 		self.assertEqual(
-			self.db.session.query(FinRecord).join(FinRecordType).\
-				filter(FinRecordType.name == "BLS#INVENTORY").count(), 
+			self.db.session.query(FinRecord).join(ItemType).\
+				filter(ItemType.name == "BLS#INVENTORY").count(), 
 			2
 		)
 
@@ -156,9 +156,9 @@ class UploadingSpecTest(DbTestCase):
 		]
 		upload_finrecords_spec(self.db, testspec)
 		names = list(itertools.chain(
-			*self.db.session.query(FinRecordType.name).all()
+			*self.db.session.query(ItemType.name).all()
 		))
-		self.assertEqual(self.db.session.query(FinRecordType).count(), 2)
+		self.assertEqual(self.db.session.query(ItemType).count(), 2)
 		self.assertCountEqual(names, [testspec[0]["name"], testspec[1]["name"]])
 
 	def test_for_creating_records_types_with_repr(self):
@@ -173,9 +173,9 @@ class UploadingSpecTest(DbTestCase):
 		]
 		upload_finrecords_spec(self.db, testspec)
 		values = list(itertools.chain(
-			*self.db.session.query(FinRecordTypeRepr.value).all()
+			*self.db.session.query(ItemTypeRepr.value).all()
 		))
-		self.assertEqual(self.db.session.query(FinRecordTypeRepr).count(), 2)
+		self.assertEqual(self.db.session.query(ItemTypeRepr).count(), 2)
 		self.assertCountEqual(
 			values, 
 			[testspec[0]["repr"][0]["value"], testspec[0]["repr"][1]["value"]]
@@ -191,8 +191,8 @@ class UploadingSpecTest(DbTestCase):
 			} 
 		]
 		upload_finrecords_spec(self.db, testspec)
-		finrecord_type = self.db.session.query(FinRecordType).first()
-		type_repr = self.db.session.query(FinRecordTypeRepr).first()
+		finrecord_type = self.db.session.query(ItemType).first()
+		type_repr = self.db.session.query(ItemTypeRepr).first()
 		self.assertEqual(type_repr.rtype, finrecord_type)
 
 	def test_get_finrecords_reprs_returns_specification(self):

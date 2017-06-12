@@ -16,7 +16,7 @@ class Company(Model):
 	
 	name = Column(String)
 	isin = Column(String, unique=True)
-	ticker = Column(String, unique=True)
+	ticker = Column(String)
 	fullname = Column(String)
 	district = Column(String)
 	webpage = Column(String)
@@ -27,16 +27,12 @@ class Company(Model):
 	telephone = Column(String)
 	sector = Column(String)
 
-	reports = relationship("FinReport", cascade="all,delete",
+	reports = relationship("Report", cascade="all,delete",
 		                   back_populates="company")
-	data = relationship("FinRecord", cascade="all,delete", 
+	data = relationship("Item", cascade="all,delete", 
 		                back_populates="company")
 	reprs = relationship("CompanyRepr", cascade="all,delete", 
 		                 back_populates="company")
-
-	__table_args__ = (
-		UniqueConstraint("isin", "ticker", name='_isin_ticker'),
-    )
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)
@@ -52,7 +48,7 @@ class CompanyRepr(Model):
 	company = relationship("Company", back_populates="reprs")
 
 
-class FinReport(Model):
+class Report(Model):
 	__tablename__ = "reports"
 
 	id = Column(Integer, primary_key=True)
@@ -63,7 +59,7 @@ class FinReport(Model):
 	company_id = Column(Integer, ForeignKey("companies.id"))
 	company = relationship("Company", back_populates="reports")
 
-	data = relationship("FinRecord", cascade="all,delete", 
+	data = relationship("Item", cascade="all,delete", 
 		                back_populates="report")
 
 	__table_args__ = (
@@ -72,48 +68,48 @@ class FinReport(Model):
     )
 
 	def __repr__(self):
-		return "<FinReport({!r}, {!r})>".format(self.timestamp, self.timerange)
+		return "<Report({!r}, {!r})>".format(self.timestamp, self.timerange)
 
 	def add_record(self, record=None, **kwargs):
 		if not record:
-			record = FinRecord(**kwargs)
+			record = Item(**kwargs)
 		self.data.append(record)
 		return record
 
 
-class FinRecord(Model):
-	__tablename__ = "finrecords"
+class Item(Model):
+	__tablename__ = "items"
 
 	id = Column(Integer, primary_key=True)
 	value = Column(Float, nullable=False)
 	timestamp = Column(DateTime, nullable=False)
 	timerange = Column(Integer, nullable=False)
 
-	rtype_id = Column(Integer, ForeignKey("finrecords_dict.id"))
-	rtype = relationship("FinRecordType", back_populates="records")
+	itype_id = Column(Integer, ForeignKey("items_dic.id"))
+	itype = relationship("ItemType", back_populates="items")
 
 	report_id = Column(Integer, ForeignKey("reports.id"))
-	report = relationship("FinReport", back_populates="data")
+	report = relationship("Report", back_populates="data")
 
 	company_id = Column(Integer, ForeignKey("companies.id"))
 	company = relationship("Company", back_populates="data")
 
 	__table_args__ = (
-    	UniqueConstraint("timestamp", "timerange", "rtype_id", "company_id", 
-    		             name='_timestamp_timerange_rtype_company'),
+    	UniqueConstraint("timestamp", "timerange", "itype_id", "company_id", 
+    		             name='_timestamp_timerange_itype_company'),
     )
 
 	def __repr__(self):
-		return "<FinRecord({!r}, {!r}, {!r})>".format(
-			self.rtype, self.value, self.report
+		return "<Item({!r}, {!r}, {!r})>".format(
+			self.itype, self.value, self.report
 		)
 
 	@classmethod
-	def create_or_update(cls, session, rtype, value, timestamp, timerange,
+	def create_or_update(cls, session, itype, value, timestamp, timerange,
 			             report, company, defaults=None, override=False):
 		obj, newly_created = util.get_or_create(
 			session, cls, defaults={"value": value, "report": report},
-			rtype=rtype, timestamp=timestamp, timerange=timerange,
+			itype=itype, timestamp=timestamp, timerange=timerange,
 			company=company
 		)
 		if ((override or report.timestamp > obj.report.timestamp)
@@ -125,24 +121,26 @@ class FinRecord(Model):
 		return obj
 
 
-class FinRecordType(Model):
-	__tablename__ = "finrecords_dict"
+class ItemType(Model):
+	__tablename__ = "items_dic"
 
 	id = Column(Integer, primary_key=True)
-	records = relationship("FinRecord", back_populates="rtype")
 	name = Column(String, unique=True)
 	statement = Column(String)
 
+	items = relationship("Item", back_populates="itype")
+	reprs = relationship("ItemTypeRepr", back_populates="itype")
+
 	def __repr__(self):
-		return "<FinRecordType('{!s}')>".format(self.name)
+		return "<ItemType('{!s}')>".format(self.name)
 
 
-class FinRecordTypeRepr(Model):
-	__tablename__ = "finrecords_repr"
+class ItemTypeRepr(Model):
+	__tablename__ = "items_repr"
 
 	id = Column(Integer, primary_key=True)
 	lang = Column(String)
 	value = Column(String)
 
-	rtype_id = Column(Integer, ForeignKey("finrecords_dict.id"))
-	rtype = relationship("FinRecordType")
+	itype_id = Column(Integer, ForeignKey("items_dic.id"))
+	itype = relationship("ItemType", back_populates="reprs")

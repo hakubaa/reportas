@@ -33,6 +33,10 @@ class Model(Base):
 	def create(cls, session, defaults=None, **kwargs):
 		return create(session, cls, defaults, **kwargs)
 
+	def as_dict(self, exclude=list()):
+		columns = set(self.__table__.columns.keys()) - set(exclude)
+		return dict((col, getattr(self, col)) for col in columns)
+
 
 class SQLAlchemy:
 

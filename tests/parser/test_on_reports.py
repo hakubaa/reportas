@@ -3,7 +3,7 @@ import unittest.mock as mock
 
 from parser.models import FinancialReport
 from db.core import SQLAlchemy
-from db.models import FinRecordTypeRepr
+from db.models import ItemTypeRepr
 from db.util import upload_finrecords_spec, get_finrecords_reprs
 import parser.spec as spec
 from parser.util import remove_non_ascii
@@ -50,7 +50,7 @@ class RecordsExtractorTest(unittest.TestCase):
             remove_non_ascii(
                 " ".join(map(
                     " ".join, 
-                    cls.db.session.query(FinRecordTypeRepr.value).all()
+                    cls.db.session.query(ItemTypeRepr.value).all()
                 ))
             ),
             n = 1, min_len=2, remove_non_alphabetic=True
