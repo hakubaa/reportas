@@ -2,7 +2,10 @@ import unittest
 import unittest.mock as mock
 from datetime import datetime
 
-from parser.util import convert_to_number, pdfinfo, determine_timerange
+from parser.util import (
+	convert_to_number, pdfinfo, determine_timerange,
+	identify_unit_of_measure
+)
 
 
 class DetermineTimerangeTest(unittest.TestCase):
@@ -124,3 +127,66 @@ class Convert2numberTest(unittest.TestCase):
 	def test_convert_number_converts_dash_to_zero(self):
 		output = convert_to_number("-")
 		self.assertEqual(output, 0)
+
+
+class IdentifyUnitOfMeasureTest(unittest.TestCase):
+
+    def test_iuom_returns_one_by_default(self):
+        uom = identify_unit_of_measure(text="NET PROFIT   100    200")
+        self.assertEqual(uom, 1)
+
+    def test_iuom_recognizes_thousands_test1(self):
+        uom = identify_unit_of_measure(text="w tysiącach złotych")
+        self.assertEqual(uom, 1000)
+
+    def test_iuom_recognizes_thousands_test2(self):
+        uom = identify_unit_of_measure(text="w tysicach zotych")
+        self.assertEqual(uom, 1000)
+
+    def test_iuom_recognizes_thousands_test3(self):
+        uom = identify_unit_of_measure(text="sss w tys. PLN TEST")
+        self.assertEqual(uom, 1000)
+
+    def test_iuom_recognizes_thousands_test4(self):
+        uom = identify_unit_of_measure(text="ddd w tys. zł sdfsdf")
+        self.assertEqual(uom, 1000)
+
+    def test_iuom_recognizes_thousands_test5(self):
+        uom = identify_unit_of_measure(text="sdd w tysiącach zł sdfsdf")
+        self.assertEqual(uom, 1000)
+
+    def test_iuom_recognizes_thousands_test6(self):
+        uom = identify_unit_of_measure(text="bbb w tysiącach PLN sdfsdf")
+        self.assertEqual(uom, 1000)      
+
+    def test_iuom_recognizes_thousands_test7(self):
+        uom = identify_unit_of_measure(text="asdf w tys. złotych df")
+        self.assertEqual(uom, 1000) 
+
+    def test_iuom_recognizes_thousands_test8(self):
+        uom = identify_unit_of_measure(text="dane w PLN'000")
+        self.assertEqual(uom, 1000)
+
+    def test_iuom_recognizes_millions_test1(self):
+        uom = identify_unit_of_measure(text="aa w milionach złotych bbb")
+        self.assertEqual(uom, 1000000)
+
+    def test_iuom_recognizes_millions_test2(self):
+        uom = identify_unit_of_measure(text="aa w mln PLN bbb")
+        self.assertEqual(uom, 1000000)
+
+    def test_iuom_recognizes_millions_test3(self):
+        uom = identify_unit_of_measure(text="aa w MILIONACH pln bbb")
+        self.assertEqual(uom, 1000000)
+
+    def test_iuom_returns_the_most_often_units_test1(self):
+        uom = identify_unit_of_measure(
+            text="aa w MILIONACH pln bbb or w tys. PLN or w mln złotych"
+        )
+        self.assertEqual(uom, 1000000)
+
+    def test_iuom_returns_the_most_often_units_test2(self):
+        uom = identify_unit_of_measure(
+            text="tys. PLN  milionach złotych   dane w tysiącach PLN"
+        )
+        self.assertEqual(uom, 1000)

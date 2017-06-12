@@ -7,7 +7,7 @@ import unittest
 import unittest.mock as mock
 
 from parser.models import (
-    Document, SelfSearchingPage, FinancialReport
+    Document, SelfSearchingPage, FinancialReport, RecordsExtractor
 )
 from parser.nlp import NGram
 
@@ -191,6 +191,7 @@ class FinancialReportTest(unittest.TestCase):
         doc = FinancialReport("fake.pdf", timestamp=datetime(999, 1, 1))
         output = doc._recognize_timestamp()
         self.assertEqual(output, datetime(2010, 3, 31))
+
 
 
 # class ASCITableTest(unittest.TestCase):
