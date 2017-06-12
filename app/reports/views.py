@@ -12,9 +12,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import db
 from app.models import File
 from app.reports import reports
-from db.models import Company, ItemType
+from db.models import Company, ItemType, ItemTypeRepr
 from db.util import get_companies_reprs, get_items_reprs, create_vocabulary
 import db.util as dbutil
+from db.core.util import get_or_create
 
 from parser.models import FinancialReport
 import parser.util as putil
@@ -166,6 +167,63 @@ def textparser():
     return jsonify(data), 200
 
 
-@reports.route("/items", methods=["GET"])
-def items():
-    return jsonify([None, None]), 200
+@reports.route("/itypes", methods=["GET", "POST"])
+def itypes():
+    if request.method == "GET":
+        items_types = [ 
+            item.as_dict() for item in db.session.query(ItemType).all() 
+        ]
+        return jsonify(items_types), 200
+    else:
+        try:
+            name = request.values["name"]
+        except KeyError:
+            abort(400, "'name' required")
+        statement = request.values.get("statement")
+
+        itype, created = get_or_create(
+            db.session, ItemType, defaults={"statement": statement}, name=name
+        )
+        db.session.commit()
+
+        if created:
+            status_code = 201
+        else:
+            status_code = 200
+
+        return jsonify(itype.as_dict()), status_code
+
+
+@reports.route("/itypes/<itype_id>", methods=["GET"])
+def itype(itype_id):
+    item_type = db.session.query(ItemType).get(itype_id)
+    if not item_type:
+        abort(404)
+    return jsonify(item_type.as_dict()), 200
+
+
+@reports.route("/itypes/<itype_id>/reprs", methods=["GET", "POST"])
+def ireprs(itype_id):
+    item_type = db.session.query(ItemType).get(itype_id)
+    if not item_type:
+        abort(404)
+
+    if request.method == "GET":
+        reprs = [ rep.as_dict() for rep in item_type.reprs ]
+        return jsonify(reprs), 200  
+    else:
+        try:
+            value = request.values["value"]
+        except KeyError:
+            abort(400, "'value' required")
+
+        try:
+            lang = request.values["lang"]      
+        except KeyError:
+            abort(400, "'lang' required")
+
+        itype_repr = ItemTypeRepr.create(db.session, value=value, lang=lang)
+        item_type.reprs.append(itype_repr)
+        db.session.commit()
+
+        return jsonify(itype_repr.as_dict()), 201

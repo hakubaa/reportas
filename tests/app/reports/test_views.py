@@ -324,7 +324,7 @@ class TestLoadReportView(AppTestCase):
 		))
 
 
-class TestFieldsView(AppTestCase):
+class TestITypesView(AppTestCase):
 
 	def setUp(self):
 		ItemTypeRepr.__table__.create(db.session.bind)
@@ -335,10 +335,131 @@ class TestFieldsView(AppTestCase):
 		ItemType.__table__.drop(db.session.bind)
 		db.session.remove()
 
-	def test_for_retrieving_types_of_items_with_get_request(self):
+	def test_for_retrieving_item_types_with_get_request(self):
 		rtype1 = ItemType.create(db.session, name="FIXED_ASSETS")
 		rtype2 = ItemType.create(db.session, name="LIABILITIES")
 		db.session.commit()
-		response = self.client.get(url_for("reports.fields"))
+		response = self.client.get(url_for("reports.itypes"))
 		data = response.json
+		names = [ x["name"] for x in data ]
 		self.assertEqual(len(data), 2)
+		self.assertCountEqual(names, [rtype1.name, rtype2.name])
+
+	def test_creates_new_type_with_post_request(self):
+		response = self.client.post(
+			url_for("reports.itypes"),
+			data = {"name": "NET_PROFIT", "statement": "NLS"}
+		)
+		self.assertEqual(response.status_code, 201)
+		self.assertEqual(db.session.query(ItemType).count(), 1)
+		itype = db.session.query(ItemType).one()
+		self.assertEqual(itype.name, "NET_PROFIT")
+
+	def test_post_request_without_name_argument_returns_400(self):
+		response = self.client.post(
+			url_for("reports.itypes"),
+			data = {"id": "NET_PROFIT", "statement": "NLS"}
+		)
+		self.assertEqual(response.status_code, 400)
+
+	def test_post_request_returns_200_when_duplicate_name(self):
+		ItemType.create(db.session, name="NET_PROFIT")
+		db.session.commit()
+		response = self.client.post(
+			url_for("reports.itypes"), data={"name": "NET_PROFIT"}
+		)
+		self.assertEqual(response.status_code, 200)
+
+
+class TestITypeView(AppTestCase):
+
+	def setUp(self):
+		ItemTypeRepr.__table__.create(db.session.bind)
+		ItemType.__table__.create(db.session.bind)
+
+	def tearDown(self):
+		ItemTypeRepr.__table__.drop(db.session.bind)
+		ItemType.__table__.drop(db.session.bind)
+		db.session.remove()
+
+	def test_get_request_returns_itype(self):
+		itype = ItemType.create(db.session, name="NET_PROFIT")
+		db.session.commit()
+		response = self.client.get(url_for("reports.itype", itype_id=itype.id))
+		data = response.json
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(data["name"], itype.name)
+
+	def test_get_request_returns_404_when_type_does_not_exist(self):
+		itype = ItemType.create(db.session, name="NET_PROFIT")
+		db.session.commit()
+		response = self.client.get(
+			url_for("reports.itype", itype_id=itype.id + 1)
+		)
+		self.assertEqual(response.status_code, 404)
+
+
+class TestIReprsView(AppTestCase):
+
+	def setUp(self):
+		ItemTypeRepr.__table__.create(db.session.bind)
+		ItemType.__table__.create(db.session.bind)
+
+	def tearDown(self):
+		ItemType.__table__.drop(db.session.bind)
+		ItemTypeRepr.__table__.drop(db.session.bind)
+		db.session.remove()
+
+	def test_for_retrieving_item_types_with_get_request(self):
+		itype = ItemType.create(db.session, name="FIXED_ASSETS")
+		irepr1 = ItemTypeRepr.create(
+			db.session, lang="PL", value="Aktywa trwałe", itype=itype
+		)
+		irepr2 = ItemTypeRepr.create(
+			db.session, lang="PL", value="Aktywa", itype=itype
+		)
+		db.session.commit()
+		response = self.client.get(url_for("reports.ireprs", itype_id=itype.id))
+		data = response.json
+		values = [ item["value"] for item in data ]
+		self.assertEqual(len(data), 2)
+		self.assertCountEqual(values, [irepr1.value, irepr2.value])
+
+	def test_get_request_returns_404_when_type_does_not_exist(self):
+		itype = ItemType.create(db.session, name="NET_PROFIT")
+		db.session.commit()
+		response = self.client.get(
+			url_for("reports.ireprs", itype_id=itype.id + 1)
+		)
+		self.assertEqual(response.status_code, 404)
+
+	def test_for_adding_repr_with_post_request(self):
+		itype = ItemType.create(db.session, name="NET_PROFIT")
+		db.session.commit()
+		response = self.client.post(
+			url_for("reports.ireprs", itype_id=itype.id),
+			data = {"value": "Aktywa trwale", "lang": "PL"}
+		)
+		irepr = db.session.query(ItemTypeRepr).one()
+		self.assertEqual(response.status_code, 201)
+		self.assertEqual(db.session.query(ItemTypeRepr).count(), 1)
+		self.assertEqual(irepr.itype, itype)
+
+	def test_post_request_without_value_argument_returns_400(self):
+		itype = ItemType.create(db.session, name="NET_PROFIT")
+		db.session.commit()
+		response = self.client.post(
+			url_for("reports.ireprs", itype_id=itype.id),
+			data = {"repr": "Aktywa trwale", "lang": "PL"}
+		)
+		self.assertEqual(response.status_code, 400)
+
+	def test_post_request_without_lang_argument_returns_400(self):
+		itype = ItemType.create(db.session, name="NET_PROFIT")
+		db.session.commit()
+		response = self.client.post(
+			url_for("reports.ireprs", itype_id=itype.id),
+			data = {"value": "Aktywa trwale", "language": "PL"}
+		)
+		self.assertEqual(response.status_code, 400)
+
