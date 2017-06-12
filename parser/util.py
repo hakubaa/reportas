@@ -369,7 +369,7 @@ def determine_timerange(text):
             if dt1[0] > dt2[0]: # sth is wrong - first date should be earlier
                 continue
             diff_years = dt2[0] - dt1[0]
-        if diff_years == 0 and dt1[1] > dt2[2]: # sth is wroing - the same year
+        if diff_years == 0 and dt1[1] > dt2[2]: # sth is wrong - the same year
             continue                            # but first date is earlier
         diff_months = 1 + dt2[1] - dt1[1]
         tranges.append(12*diff_years + diff_months)
@@ -687,11 +687,13 @@ def preprocess_labels(input_rows):
 
     return rows
 
+
 def split_row_into_fields(row):
     '''Split text into separate fields.'''
     return list(filter( # use filter to remove empty fields ('')
         bool, re.split(RE_FIELDS_SEPARATORS, row)
     ))
+
 
 def split_text_into_rows(text):
     '''Split text into rows. Remove empty rows.'''
@@ -699,12 +701,14 @@ def split_text_into_rows(text):
     rows = [ (i, row) for i, row in enumerate(rows) if not row.isspace() ]
     return rows
 
+
 def extract_rows(text):
     '''Create simple table. Each row as separate list of fields.'''
     table = [ (row[0], split_row_into_fields(row[1]))
              for row in split_text_into_rows(text)]
     table = [ row for row in table if row[1] ]
     return table
+
 
 def identify_records_in_text(
     text, spec, voc=None, remove_nonascii=True, 
@@ -728,3 +732,38 @@ def identify_records_in_text(
         min_csim=min_csim
     )
     return records
+
+
+def identify_unit_of_measure(text):
+    '''
+    Identify unit of measure used to measure financial items. Return
+    integer representing unit of measure (e.g. 1000 for thousands).
+    '''
+    re_thousands = re.compile(
+        r"\btys(?:\.| |i[aą]?cach) ?(?:PLN|z[lł]?otych|z[lł]?)\b",
+        flags = re.IGNORECASE
+    )
+    th_matches = re.findall(re_thousands, text)
+
+    re_thousands000 = re.compile(r"\bPLN ?'?000\b", flags = re.IGNORECASE)
+    th_matches.extend(re.findall(re_thousands000, text))
+
+    re_millions = re.compile(
+        r"\b(?:mln|milionach) ?(?:PLN|z[lł]?otych|z[lł]?)\b",
+        flags = re.IGNORECASE
+    )
+    mln_matches = re.findall(re_millions, text)
+
+    if th_matches and mln_matches: # return the most often unit
+        if len(mln_matches) > len(th_matches):
+            return 1000000
+        else:
+            return 1000
+
+    if th_matches:
+        return 1000
+
+    if mln_matches:
+        return 1000000
+
+    return 1

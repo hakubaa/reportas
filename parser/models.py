@@ -193,6 +193,7 @@ class RecordsExtractor(UserDict):
             temp_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim
         )
+        self.uom = util.identify_unit_of_measure(self.text)
         self.records = self._remove_column_with_note_reference(records)
 
         self.items_map = dict() 
@@ -367,6 +368,7 @@ class RecordsExtractor(UserDict):
 
         if coltrs:
             self.names = coltrs
+
 
     def _remove_column_with_note_reference(self, records):
         '''Remove column with note reference.'''
