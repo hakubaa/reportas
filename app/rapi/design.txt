@@ -1,0 +1,6 @@
+HTTP    Method URI
+GET     http://[hostname]/api/companies
+GET     http://[hostname]/api/companies/[isin/id]
+POST    http://[hostname]/api/companies
+PUT     http://[hostname]/api/companies/[isin/id] 
+DELETE  http://[hostname]/api/companies/[isin/id]

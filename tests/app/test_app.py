@@ -43,3 +43,8 @@ class AppTestCase(unittest.TestCase):
 		self.assertIn("reports", self.app.blueprints)
 		from app.reports import reports as reports_blueprint
 		self.assertEqual(reports_blueprint, self.app.blueprints["reports"])
+
+	def test_registration_blueprint_rapi(self):
+		self.assertIn("rapi", self.app.blueprints)
+		from app.rapi import rapi as rapi_blueprint
+		self.assertEqual(rapi_blueprint, self.app.blueprints["rapi"])
