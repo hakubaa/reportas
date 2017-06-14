@@ -196,23 +196,23 @@ class RecordsExtractor(UserDict):
         self.uom = util.identify_unit_of_measure(self.text)
         self.records = self._remove_column_with_note_reference(records)
 
-        self.items_map = dict() 
+        self.records_map = dict() 
         for rid, nums, pages in self.records:
-            self.items_map.update(
+            self.records_map.update(
                 itertools.zip_longest(
                     map(lambda x: self.input_rows[x][0] + first_row_number, 
                         pages), 
                     (rid[0],), fillvalue=rid[0])
             )
 
-        self.items_source = dict()
+        self.records_source = dict()
         for (rid, rsim), nums, pages in self.records:
             content = operator.itemgetter(
                 *list(map(lambda x: self.input_rows[x][0], pages))
             )(self.input_text.split("\n"))
             if not isinstance(content, str):
                 content = "\n".join(content)
-            self.items_source[rid] = content
+            self.records_source[rid] = content
 
         # Update input rows - add marker for rows with identified records
         vip_rows = reduce(
@@ -482,21 +482,21 @@ class FinancialReport(Document):
         self.company = self._recognize_company(cspec)
 
     @property
-    def items_map(self):
+    def records_map(self):
         rmap = dict()
         for stm in (self.bls, self.nls, self.cfs):
             try:
-                rmap.update(stm.items_map)
+                rmap.update(stm.records_map)
             except AttributeError:
                 pass
         return rmap
 
     @property
-    def items_source(self):
+    def records_source(self):
         isource = dict()
         for stm in (self.bls, self.nls, self.cfs):
             try:
-                isource.update(stm.items_source)
+                isource.update(stm.records_source)
             except AttributeError:
                 pass
         return isource         

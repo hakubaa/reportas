@@ -2,35 +2,39 @@ from flask import url_for
 
 from app import db
 from app.rapi import api
-from app.rapi.views import CompaniesListAPI, CompanyReprsListAPI
-from db.models import Company, Report, CompanyRepr
+from app.rapi.views import (
+    CompanyListAPI, CompanyReprListAPI, RecordTypeListAPI
+)
+from db.models import (
+    Company, Report, CompanyRepr, RecordType, RecordTypeRepr
+)
 
 from tests.app import AppTestCase
 
 
-class TestCompaniesListAPI(AppTestCase):
+class TestCompanyListAPI(AppTestCase):
 
-    def test_get_requests_returns_json_response(self):
-        response = self.client.get(api.url_for(CompaniesListAPI))
+    def test_get_request_returns_json_response(self):
+        response = self.client.get(api.url_for(CompanyListAPI))
         self.assertEqual(response.content_type, "application/json")
 
-    def test_get_requests_returns_list_of_companies(self):
+    def test_get_request_returns_list_of_companies(self):
         comp1 = Company.create(db.session, name="TEST1", isin="#TEST1")
         comp2 = Company.create(db.session, name="TEST2", isin="#TEST2")
         db.session.commit()
-        response = self.client.get(api.url_for(CompaniesListAPI))
+        response = self.client.get(api.url_for(CompanyListAPI))
         data = response.json
         self.assertEqual(len(data), 2)
 
-    def test_get_requests_returns_companies_data(self):
+    def test_get_request_returns_companies_data(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         db.session.commit()
-        response = self.client.get(api.url_for(CompaniesListAPI))
+        response = self.client.get(api.url_for(CompanyListAPI))
         data = response.json[0]
         self.assertEqual(data["name"], comp.name)
         self.assertEqual(data["isin"], comp.isin)
 
-    def test_get_requests_returns_hyperlinks_to_detail_view(self):
+    def test_get_request_returns_hyperlinks_to_detail_view(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         CompanyRepr.create(db.session, value="TEST Repr", company=comp)
         db.session.commit()
@@ -41,14 +45,14 @@ class TestCompaniesListAPI(AppTestCase):
 
     def test_for_creating_company_with_post_request(self):
         response = self.client.post(
-            api.url_for(CompaniesListAPI),
+            api.url_for(CompanyListAPI),
             data = {"name": "TEST", "isin": "TEST#ONE", "ticker": "TST" }
         )
         self.assertEqual(db.session.query(Company).count(), 1)
 
     def test_creates_company_with_proper_arguments(self):
         response = self.client.post(
-            api.url_for(CompaniesListAPI),
+            api.url_for(CompanyListAPI),
             data = {"name": "TEST", "isin": "TEST#ONE", "ticker": "TST" }
         )
         company = db.session.query(Company).one()
@@ -57,7 +61,7 @@ class TestCompaniesListAPI(AppTestCase):
 
     def test_post_request_returns_400_and_error_when_no_name(self):
         response = self.client.post(
-            api.url_for(CompaniesListAPI),
+            api.url_for(CompanyListAPI),
             data = {"logo": "TEST", "isin": "TEST#ONE", "ticker": "TST" }
         ) 
         data = response.json
@@ -66,7 +70,7 @@ class TestCompaniesListAPI(AppTestCase):
 
     def test_post_request_returns_400_and_error_when_no_isin(self):
         response = self.client.post(
-            api.url_for(CompaniesListAPI),
+            api.url_for(CompanyListAPI),
             data = {"name": "TEST", "isi": "TEST#ONE", "ticker": "TST" }
         ) 
         data = response.json
@@ -77,7 +81,7 @@ class TestCompaniesListAPI(AppTestCase):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         db.session.commit()
         response = self.client.post(
-            api.url_for(CompaniesListAPI),
+            api.url_for(CompanyListAPI),
             data = {"name": "TEST", "isin": "123#TEST", "ticker": "TST" }
         ) 
         data = response.json
@@ -128,17 +132,110 @@ class TestCompanyAPI(AppTestCase):
         self.assertEqual(response.status_code, 400)
         
 
-class TestCompanyReprsListAPI(AppTestCase):
+class TestCompanyReprListAPI(AppTestCase):
 
     def test_get_request_returns_json_response(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         db.session.commit()
         response = self.client.get(
-            api.url_for(CompanyReprsListAPI, id=comp.id)
+            api.url_for(CompanyReprListAPI, id=comp.id)
         )
         self.assertEqual(response.content_type, "application/json")
 
     def test_get_request_returns_404_for_non_existing_company(self):
-        response = self.client.get(api.url_for(CompanyReprsListAPI, id=1))
+        response = self.client.get(api.url_for(CompanyReprListAPI, id=1))
         data = response.json
         self.assertEqual(response.status_code, 404)
+
+
+class TestRecordTypeListAPI(AppTestCase):
+
+    def test_get_request_returns_list_of_records_types(self):
+        RecordType.create(db.session, name="TEST1", statement="NLS")
+        RecordType.create(db.session, name="TEST2", statement="BLS")
+        db.session.commit()
+        response = self.client.get(api.url_for(RecordTypeListAPI))
+        data = response.json
+        self.assertEqual(len(data), 2)
+
+    def test_get_request_returns_valid_data(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        db.session.commit()
+        response = self.client.get(api.url_for(RecordTypeListAPI))
+        data = response.json[0]
+        self.assertEqual(data["name"], rtype.name)
+        self.assertEqual(data["statement"], rtype.statement)
+
+    def test_get_request_returns_hyperlinks_to_detail_view(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        RecordTypeRepr.create(db.session, value="TEST Repr", lang="PL", 
+                              rtype=rtype)
+        db.session.commit()
+        response = self.client.get(url_for("rapi.rtype_list"))
+        data = response.json[0]
+        self.assertIsNotNone(data["uri"])
+        self.assertEqual(data["uri"], url_for("rapi.rtype", id=rtype.id))
+
+    def test_for_creating_rtype_with_post_request(self):
+        response = self.client.post(
+            api.url_for(RecordTypeListAPI),
+            data = {"name": "TEST", "statement": "BLS"}
+        )
+        self.assertEqual(db.session.query(RecordType).count(), 1)
+
+    def test_creates_rtype_with_proper_arguments(self):
+        self.client.post(
+            api.url_for(RecordTypeListAPI),
+            data = {"name": "TEST", "statement": "BLS"}
+        )
+        rtype = db.session.query(RecordType).one()
+        self.assertEqual(rtype.name, "TEST")
+        self.assertEqual(rtype.statement, "BLS") 
+
+    def test_post_request_returns_400_and_error_when_no_name(self):
+        response = self.client.post(
+            api.url_for(RecordTypeListAPI),
+            data = {"wow": "TEST", "statement": "BLS"}
+        )
+        data = response.json
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", data)
+
+    def test_post_request_returns_400_and_error_when_no_statement(self):
+        response = self.client.post(
+            api.url_for(RecordTypeListAPI),
+            data = {"name": "TEST", "stm": "BLS"}
+        )
+        data = response.json
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("statement", data)
+
+
+class TestRecordTypeAPI(AppTestCase):
+
+    def test_get_request_returns_recordtype_data(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        db.session.commit()
+        response = self.client.get(url_for("rapi.rtype", id=rtype.id))
+        data = response.json
+        self.assertEqual(data["name"], rtype.name)
+        self.assertEqual(data["statement"], rtype.statement)
+
+    def test_get_request_returns_404_when_rtype_does_not_exist(self):
+        response = self.client.get(url_for("rapi.rtype", id=1))       
+        self.assertEqual(response.status_code, 404)
+
+    def test_for_delating_rtype_with_delete_request(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        db.session.commit() 
+        response = self.client.delete(url_for("rapi.rtype", id=rtype.id))
+        self.assertEqual(db.session.query(RecordType).count(), 0)
+
+    def test_for_updating_rtype_with_put_request(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        db.session.commit()
+        response = self.client.put(
+            url_for("rapi.rtype", id=rtype.id), data={"statement": "BLS"}
+        )
+        rtype = db.session.query(RecordType).one()
+        self.assertEqual(rtype.statement, "BLS")

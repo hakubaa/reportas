@@ -29,7 +29,7 @@ class Company(Model):
 
 	reports = relationship("Report", cascade="all,delete",
 		                   back_populates="company")
-	data = relationship("Item", cascade="all,delete", 
+	data = relationship("Record", cascade="all,delete", 
 		                back_populates="company")
 	reprs = relationship("CompanyRepr", cascade="all,delete", 
 		                 back_populates="company")
@@ -59,7 +59,7 @@ class Report(Model):
 	company_id = Column(Integer, ForeignKey("companies.id"))
 	company = relationship("Company", back_populates="reports")
 
-	data = relationship("Item", cascade="all,delete", 
+	data = relationship("Record", cascade="all,delete", 
 		                back_populates="report")
 
 	__table_args__ = (
@@ -72,21 +72,21 @@ class Report(Model):
 
 	def add_record(self, record=None, **kwargs):
 		if not record:
-			record = Item(**kwargs)
+			record = Record(**kwargs)
 		self.data.append(record)
 		return record
 
 
-class Item(Model):
-	__tablename__ = "items"
+class Record(Model):
+	__tablename__ = "records"
 
 	id = Column(Integer, primary_key=True)
 	value = Column(Float, nullable=False)
 	timestamp = Column(DateTime, nullable=False)
 	timerange = Column(Integer, nullable=False)
 
-	itype_id = Column(Integer, ForeignKey("items_dic.id"))
-	itype = relationship("ItemType", back_populates="items")
+	rtype_id = Column(Integer, ForeignKey("records_dic.id"))
+	rtype = relationship("RecordType", back_populates="records")
 
 	report_id = Column(Integer, ForeignKey("reports.id"))
 	report = relationship("Report", back_populates="data")
@@ -95,21 +95,21 @@ class Item(Model):
 	company = relationship("Company", back_populates="data")
 
 	__table_args__ = (
-    	UniqueConstraint("timestamp", "timerange", "itype_id", "company_id", 
-    		             name='_timestamp_timerange_itype_company'),
+    	UniqueConstraint("timestamp", "timerange", "rtype_id", "company_id", 
+    		             name='_timestamp_timerange_rtype_company'),
     )
 
 	def __repr__(self):
-		return "<Item({!r}, {!r}, {!r})>".format(
-			self.itype, self.value, self.report
+		return "<Record({!r}, {!r}, {!r})>".format(
+			self.rtype, self.value, self.report
 		)
 
 	@classmethod
-	def create_or_update(cls, session, itype, value, timestamp, timerange,
+	def create_or_update(cls, session, rtype, value, timestamp, timerange,
 			             report, company, defaults=None, override=False):
 		obj, newly_created = util.get_or_create(
 			session, cls, defaults={"value": value, "report": report},
-			itype=itype, timestamp=timestamp, timerange=timerange,
+			rtype=rtype, timestamp=timestamp, timerange=timerange,
 			company=company
 		)
 		if ((override or report.timestamp > obj.report.timestamp)
@@ -121,26 +121,26 @@ class Item(Model):
 		return obj
 
 
-class ItemType(Model):
-	__tablename__ = "items_dic"
+class RecordType(Model):
+	__tablename__ = "records_dic"
 
 	id = Column(Integer, primary_key=True)
-	name = Column(String, unique=True)
-	statement = Column(String)
+	name = Column(String, unique=True, nullable=False)
+	statement = Column(String, nullable=False)
 
-	items = relationship("Item", back_populates="itype")
-	reprs = relationship("ItemTypeRepr", back_populates="itype")
+	records = relationship("Record", back_populates="rtype")
+	reprs = relationship("RecordTypeRepr", back_populates="rtype")
 
 	def __repr__(self):
-		return "<ItemType('{!s}')>".format(self.name)
+		return "<RecordType('{!s}')>".format(self.name)
 
 
-class ItemTypeRepr(Model):
-	__tablename__ = "items_repr"
+class RecordTypeRepr(Model):
+	__tablename__ = "records_repr"
 
 	id = Column(Integer, primary_key=True)
 	lang = Column(String)
 	value = Column(String)
 
-	itype_id = Column(Integer, ForeignKey("items_dic.id"))
-	itype = relationship("ItemType", back_populates="reprs")
+	rtype_id = Column(Integer, ForeignKey("records_dic.id"))
+	rtype = relationship("RecordType", back_populates="reprs")

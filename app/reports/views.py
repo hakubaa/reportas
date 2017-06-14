@@ -12,8 +12,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import db
 from app.models import File
 from app.reports import reports
-from db.models import Company, ItemType, ItemTypeRepr
-from db.util import get_companies_reprs, get_items_reprs, create_vocabulary
+from db.models import Company, RecordType, RecordTypeRepr
+from db.util import get_companies_reprs, get_records_reprs, create_vocabulary
 import db.util as dbutil
 from db.core.util import get_or_create
 
@@ -124,7 +124,7 @@ def parser():
         company = None
 
     try:
-        fields = next(zip(*db.session.query(ItemType.name).all()))
+        fields = next(zip(*db.session.query(RecordType.name).all()))
     except StopIteration:
         fields = []
 
@@ -171,7 +171,7 @@ def textparser():
 def itypes():
     if request.method == "GET":
         items_types = [ 
-            item.as_dict() for item in db.session.query(ItemType).all() 
+            item.as_dict() for item in db.session.query(RecordType).all() 
         ]
         return jsonify(items_types), 200
     else:
@@ -182,7 +182,7 @@ def itypes():
         statement = request.values.get("statement")
 
         itype, created = get_or_create(
-            db.session, ItemType, defaults={"statement": statement}, name=name
+            db.session, RecordType, defaults={"statement": statement}, name=name
         )
         db.session.commit()
 
@@ -196,7 +196,7 @@ def itypes():
 
 @reports.route("/itypes/<itype_id>", methods=["GET"])
 def itype(itype_id):
-    item_type = db.session.query(ItemType).get(itype_id)
+    item_type = db.session.query(RecordType).get(itype_id)
     if not item_type:
         abort(404)
     return jsonify(item_type.as_dict()), 200
@@ -204,7 +204,7 @@ def itype(itype_id):
 
 @reports.route("/itypes/<itype_id>/reprs", methods=["GET", "POST"])
 def ireprs(itype_id):
-    item_type = db.session.query(ItemType).get(itype_id)
+    item_type = db.session.query(RecordType).get(itype_id)
     if not item_type:
         abort(404)
 
@@ -222,7 +222,7 @@ def ireprs(itype_id):
         except KeyError:
             abort(400, "'lang' required")
 
-        itype_repr = ItemTypeRepr.create(db.session, value=value, lang=lang)
+        itype_repr = RecordTypeRepr.create(db.session, value=value, lang=lang)
         item_type.reprs.append(itype_repr)
         db.session.commit()
 

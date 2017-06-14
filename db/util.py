@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from bs4 import BeautifulSoup
 
 from db.models import (
-	Report, ItemType, ItemTypeRepr, Item, Company, CompanyRepr
+	Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr
 )
 from parser.nlp import find_ngrams
 import parser.util as putil
@@ -75,11 +75,11 @@ def upload_report(session, doc, bls=True, nls=True, cfs=True,
 				)
 				continue
 
-			itype = ItemType.get_or_create(session, name=key)
+			rtype = RecordType.get_or_create(session, name=key)
 
 			for metadata, value in zip(colnames, values):
-				Item.create_or_update(
-					session, itype=itype, value=value, 
+				Record.create_or_update(
+					session, rtype=rtype, value=value, 
 					timestamp=metadata["timestamp"], 
 					timerange=metadata["timerange"], 
 					report=report, company=company, override=override
@@ -88,9 +88,9 @@ def upload_report(session, doc, bls=True, nls=True, cfs=True,
 	return report
 
 
-def upload_items_spec(session, spec):
+def upload_records_spec(session, spec):
 	'''
-	Create ItemType & ItemTypeRepr records in db in accordance with 
+	Create RecordType & RecordTypeRepr records in db in accordance with 
 	specification.
 	'''
 	try: # ensure spec is iterable
@@ -99,29 +99,29 @@ def upload_items_spec(session, spec):
 		spec = [spec]
 
 	for record_spec in spec:
-		itype = ItemType.get_or_create(
+		rtype = RecordType.get_or_create(
 			session, name=record_spec["name"],
 			statement=record_spec.get("statement", None)
 		)
 		for repr_spec in record_spec.get("repr", list()):
-			repr_spec["itype"] = itype
-			itype_repr = ItemTypeRepr.create(session, **repr_spec)
+			repr_spec["rtype"] = rtype
+			rtype_repr = RecordTypeRepr.create(session, **repr_spec)
 
 
-def get_items_reprs(session, statement, lang="PL", n=1, min_len=2, 
+def get_records_reprs(session, statement, lang="PL", n=1, min_len=2, 
 	                     remove_non_alphabetic=True):
 	'''Get list of items representations for selected statement.'''
 	spec = list()
-	records = session.query(ItemTypeRepr).join(ItemType).\
-	              filter(ItemType.statement.ilike(statement), 
-	              	     ItemTypeRepr.lang.ilike(lang)
+	records = session.query(RecordTypeRepr).join(RecordType).\
+	              filter(RecordType.statement.ilike(statement), 
+	              	     RecordTypeRepr.lang.ilike(lang)
 	              ).all()
 	for record in records:
 		nigrams = find_ngrams(
 			putil.remove_non_ascii(record.value), n=n, min_len=min_len,
 			remove_non_alphabetic=remove_non_alphabetic
 		)
-		spec.append(dict(id=record.itype.name, ngrams=nigrams))
+		spec.append(dict(id=record.rtype.name, ngrams=nigrams))
 
 	return spec
 
@@ -144,7 +144,7 @@ def get_companies_reprs(session):
 def create_vocabulary(session, min_len=2, remove_non_alphabetic=True,
 	                  remove_non_ascii=True, extra_words=None):
 	'''Create vocabulary from finrecord representations.'''
-	text = " ".join(map(" ".join, session.query(ItemTypeRepr.value).all()))
+	text = " ".join(map(" ".join, session.query(RecordTypeRepr.value).all()))
 	if remove_non_ascii:
 		text = putil.remove_non_ascii(text)
 

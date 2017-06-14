@@ -4,7 +4,7 @@ from sqlalchemy import exists
 
 from app import ma, db
 from app.rapi import api
-from db.models import Company, CompanyRepr
+from db.models import Company, CompanyRepr, RecordType
 
 
 class CompanySchema(ma.ModelSchema):
@@ -32,6 +32,7 @@ class CompanySimpleSchema(ma.ModelSchema):
     class Meta:
         model = Company
         fields = ("id", "isin", "name", "ticker", "uri")
+        # dump_only = True
     uri = ma.Hyperlinks(ma.URLFor("rapi.company", id='<id>'))
 
 
@@ -40,6 +41,30 @@ class CompanyReprSchema(ma.ModelSchema):
         model = CompanyRepr
 
 
+class RecordTypeSchema(ma.ModelSchema):
+    class Meta:
+        model = RecordType
+    name = field_for(
+        RecordType, "name", required=True,
+        error_messages={"required": "Name is required."}
+    )
+    statement = field_for(
+        RecordType, "statement", required=True,
+        error_messages={"required": "Statement is required."}
+    )
+    
+
+class RecordTypeSimpleSchema(ma.ModelSchema):
+    class Meta:
+        model = RecordType
+        fields = ("id", "name", "statement", "uri")
+        # dump_only = True
+    uri = ma.Hyperlinks(ma.URLFor("rapi.rtype", id='<id>'))
+
+
+
 company = CompanySchema()
 company_simple = CompanySimpleSchema()
 companyrepr = CompanyReprSchema()
+rtype = RecordTypeSchema()
+rtype_simple = RecordTypeSimpleSchema()
