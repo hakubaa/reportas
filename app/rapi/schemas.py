@@ -4,7 +4,7 @@ from sqlalchemy import exists
 
 from app import ma, db
 from app.rapi import api
-from db.models import Company, CompanyRepr, RecordType
+from db.models import Company, CompanyRepr, RecordType, RecordTypeRepr
 
 
 class CompanySchema(ma.ModelSchema):
@@ -31,14 +31,14 @@ class CompanySchema(ma.ModelSchema):
 class CompanySimpleSchema(ma.ModelSchema):
     class Meta:
         model = Company
-        fields = ("id", "isin", "name", "ticker", "uri")
-        # dump_only = True
+        fields = ("id", "isin", "name", "ticker", "uri", "fullname")
     uri = ma.Hyperlinks(ma.URLFor("rapi.company", id='<id>'))
 
 
 class CompanyReprSchema(ma.ModelSchema):
     class Meta:
         model = CompanyRepr
+        fields = ("id", "value")
 
 
 class RecordTypeSchema(ma.ModelSchema):
@@ -52,15 +52,20 @@ class RecordTypeSchema(ma.ModelSchema):
         RecordType, "statement", required=True,
         error_messages={"required": "Statement is required."}
     )
-    
+    reprs = ma.Hyperlinks(ma.URLFor("rapi.rtype_repr_list", id='<id>'))
+
 
 class RecordTypeSimpleSchema(ma.ModelSchema):
     class Meta:
         model = RecordType
         fields = ("id", "name", "statement", "uri")
-        # dump_only = True
     uri = ma.Hyperlinks(ma.URLFor("rapi.rtype", id='<id>'))
 
+
+class RecordTypeReprSchema(ma.ModelSchema):
+    class Meta:
+        model = RecordTypeRepr
+        fields = ("id", "value", "lang")
 
 
 company = CompanySchema()
@@ -68,3 +73,4 @@ company_simple = CompanySimpleSchema()
 companyrepr = CompanyReprSchema()
 rtype = RecordTypeSchema()
 rtype_simple = RecordTypeSimpleSchema()
+rtyperepr = RecordTypeReprSchema()

@@ -1,9 +1,27 @@
 HTTP    Method URI
 GET     http://[hostname]/api/companies
-GET     http://[hostname]/api/companies/[id]
 POST    http://[hostname]/api/companies
+
+GET     http://[hostname]/api/companies/[id]
 PUT     http://[hostname]/api/companies/[id] 
 DELETE  http://[hostname]/api/companies/[id]
+
 GET     http://[hostname]/api/companies/[id]/records
+
+GET     http://[hostname]/api/rtypes
+POST    http://[hostanme]/api/rtypes
+
+GET     http://[hostname]/api/rtypes/[id]
+PUT     http://[hostname]/api/rtypes/[id]
+DELETE  http://[hostname]/api/rtypes/[id]
+
+GET     http://[hostname]/api/rtypes/[id]/reprs
+POST    http://[hostname]/api/rtypes/[id]/reprs
+
+GET     http://[hostname]/api/rtypes/[id]/reprs/[id]
+PUT     http://[hostname]/api/rtypes/[id]/reprs/[id]
+DELETE  http://[hostname]/api/rtypes/[id]/reprs/[id]
+
+
 
 GET     http://[hostname]/api/records?cid=[id]&timerange=[]&from=[]&to=[]

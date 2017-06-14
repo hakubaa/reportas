@@ -23,14 +23,14 @@ class TestCompanyListAPI(AppTestCase):
         comp2 = Company.create(db.session, name="TEST2", isin="#TEST2")
         db.session.commit()
         response = self.client.get(api.url_for(CompanyListAPI))
-        data = response.json
+        data = response.json["results"]
         self.assertEqual(len(data), 2)
 
     def test_get_request_returns_companies_data(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         db.session.commit()
         response = self.client.get(api.url_for(CompanyListAPI))
-        data = response.json[0]
+        data = response.json["results"][0]
         self.assertEqual(data["name"], comp.name)
         self.assertEqual(data["isin"], comp.isin)
 
@@ -39,7 +39,7 @@ class TestCompanyListAPI(AppTestCase):
         CompanyRepr.create(db.session, value="TEST Repr", company=comp)
         db.session.commit()
         response = self.client.get(url_for("rapi.company_list"))
-        data = response.json[0]
+        data = response.json["results"][0]
         self.assertIsNotNone(data["uri"])
         self.assertEqual(data["uri"], url_for("rapi.company", id=comp.id))
 
@@ -64,7 +64,7 @@ class TestCompanyListAPI(AppTestCase):
             api.url_for(CompanyListAPI),
             data = {"logo": "TEST", "isin": "TEST#ONE", "ticker": "TST" }
         ) 
-        data = response.json
+        data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
         self.assertIn("name", data)
 
@@ -73,7 +73,7 @@ class TestCompanyListAPI(AppTestCase):
             api.url_for(CompanyListAPI),
             data = {"name": "TEST", "isi": "TEST#ONE", "ticker": "TST" }
         ) 
-        data = response.json
+        data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
         self.assertIn("isin", data)
 
@@ -84,7 +84,7 @@ class TestCompanyListAPI(AppTestCase):
             api.url_for(CompanyListAPI),
             data = {"name": "TEST", "isin": "123#TEST", "ticker": "TST" }
         ) 
-        data = response.json
+        data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
         self.assertIn("isin", data)
 
@@ -144,7 +144,6 @@ class TestCompanyReprListAPI(AppTestCase):
 
     def test_get_request_returns_404_for_non_existing_company(self):
         response = self.client.get(api.url_for(CompanyReprListAPI, id=1))
-        data = response.json
         self.assertEqual(response.status_code, 404)
 
 
@@ -155,14 +154,14 @@ class TestRecordTypeListAPI(AppTestCase):
         RecordType.create(db.session, name="TEST2", statement="BLS")
         db.session.commit()
         response = self.client.get(api.url_for(RecordTypeListAPI))
-        data = response.json
+        data = response.json["results"]
         self.assertEqual(len(data), 2)
 
     def test_get_request_returns_valid_data(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         db.session.commit()
         response = self.client.get(api.url_for(RecordTypeListAPI))
-        data = response.json[0]
+        data = response.json["results"][0]
         self.assertEqual(data["name"], rtype.name)
         self.assertEqual(data["statement"], rtype.statement)
 
@@ -172,7 +171,7 @@ class TestRecordTypeListAPI(AppTestCase):
                               rtype=rtype)
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_list"))
-        data = response.json[0]
+        data = response.json["results"][0]
         self.assertIsNotNone(data["uri"])
         self.assertEqual(data["uri"], url_for("rapi.rtype", id=rtype.id))
 
@@ -197,7 +196,7 @@ class TestRecordTypeListAPI(AppTestCase):
             api.url_for(RecordTypeListAPI),
             data = {"wow": "TEST", "statement": "BLS"}
         )
-        data = response.json
+        data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
         self.assertIn("name", data)
 
@@ -206,7 +205,7 @@ class TestRecordTypeListAPI(AppTestCase):
             api.url_for(RecordTypeListAPI),
             data = {"name": "TEST", "stm": "BLS"}
         )
-        data = response.json
+        data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
         self.assertIn("statement", data)
 
@@ -239,3 +238,97 @@ class TestRecordTypeAPI(AppTestCase):
         )
         rtype = db.session.query(RecordType).one()
         self.assertEqual(rtype.statement, "BLS")
+
+
+class TestRecordTypeReprListAPI(AppTestCase):
+
+    def create_rtype_with_reprs(self, n=2):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        for i in range(n):
+            rtype.reprs.append(
+                RecordTypeRepr.create(
+                    db.session, 
+                    value="Test Repr. #{}".format(i), lang="PL"
+                )
+            )
+        return rtype
+
+    def test_for_retrieving_list_of_reprs(self):
+        rtype = self.create_rtype_with_reprs(n=2)
+        db.session.commit()
+        response = self.client.get(url_for("rapi.rtype_repr_list", id=rtype.id))
+        data = response.json["results"]
+        self.assertEqual(len(data), 2)
+
+    def test_get_request_returns_correct_data(self):
+        rtype = self.create_rtype_with_reprs(n=1)
+        db.session.commit()
+        response = self.client.get(url_for("rapi.rtype_repr_list", id=rtype.id))
+        data = response.json["results"][0]
+        self.assertEqual(data["value"], rtype.reprs[0].value)
+        self.assertEqual(data["lang"], rtype.reprs[0].lang)  
+
+    def test_get_request_raise_404_when_no_rtype(self):
+        rtype = self.create_rtype_with_reprs(n=1)
+        db.session.commit()
+        response = self.client.get(
+            url_for("rapi.rtype_repr_list", id=rtype.id+1)
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_for_creating_new_repr_with_post_request(self):
+        rtype = self.create_rtype_with_reprs(n=0)
+        db.session.commit()
+        response = self.client.post(
+            url_for("rapi.rtype_repr_list", id=rtype.id),
+            data={"lang": "PL", "value": "NEW REPR"}
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(rtype.reprs), 1)
+        obj = rtype.reprs[0]
+        self.assertEqual(obj.value, "NEW REPR")
+
+
+class TestRecordTypeReprAPI(AppTestCase):
+
+    def create_rtype_with_reprs(self, n=2):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        for i in range(n):
+            rtype.reprs.append(
+                RecordTypeRepr.create(
+                    db.session, 
+                    value="Test Repr. #{}".format(i), lang="PL"
+                )
+            )
+        return rtype
+
+    def test_get_request_returns_repr_of_rtype(self):
+        rtype = self.create_rtype_with_reprs(n=1)
+        db.session.commit()
+        response = self.client.get(
+            url_for("rapi.rtype_repr", id=rtype.id, rid=rtype.reprs[0].id)
+        )
+        data = response.json
+        self.assertEqual(data["value"], "Test Repr. #0")
+        self.assertEqual(data["lang"], "PL")
+
+    def test_put_request_updates_repr(self):
+        rtype = self.create_rtype_with_reprs(n=1)
+        db.session.commit()
+        self.client.put(
+            url_for("rapi.rtype_repr", id=rtype.id, rid=rtype.reprs[0].id),
+            data={"value": "New Test Repr", "lang": "EN"}
+        )
+        rrepr = db.session.query(RecordTypeRepr).first()
+        self.assertEqual(rrepr.lang, "EN")
+        self.assertEqual(rrepr.value, "New Test Repr")
+
+    def test_delet_request_deletes_repr(self):
+        rtype = self.create_rtype_with_reprs(n=1)
+        db.session.commit()
+        self.client.delete(
+            url_for("rapi.rtype_repr", id=rtype.id, rid=rtype.reprs[0].id),
+        )
+        self.assertEqual(db.session.query(RecordTypeRepr).count(), 0)
+        rtype = db.session.query(RecordType).one()
+        self.assertEqual(len(rtype.reprs), 0)
