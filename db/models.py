@@ -28,11 +28,11 @@ class Company(Model):
 	sector = Column(String)
 
 	reports = relationship("Report", cascade="all,delete",
-		                   back_populates="company")
-	data = relationship("Record", cascade="all,delete", 
-		                back_populates="company")
+		                   back_populates="company", lazy="dynamic")
+	records = relationship("Record", cascade="all,delete", 
+		                back_populates="company", lazy="dynamic")
 	reprs = relationship("CompanyRepr", cascade="all,delete", 
-		                 back_populates="company")
+		                 back_populates="company", lazy="dynamic")
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)
@@ -59,8 +59,8 @@ class Report(Model):
 	company_id = Column(Integer, ForeignKey("companies.id"))
 	company = relationship("Company", back_populates="reports")
 
-	data = relationship("Record", cascade="all,delete", 
-		                back_populates="report")
+	records = relationship("Record", cascade="all,delete", 
+		                back_populates="report", lazy="dynamic")
 
 	__table_args__ = (
     	UniqueConstraint("timestamp", "timerange", "company_id", 
@@ -73,7 +73,7 @@ class Report(Model):
 	def add_record(self, record=None, **kwargs):
 		if not record:
 			record = Record(**kwargs)
-		self.data.append(record)
+		self.records.append(record)
 		return record
 
 
@@ -89,10 +89,10 @@ class Record(Model):
 	rtype = relationship("RecordType", back_populates="records")
 
 	report_id = Column(Integer, ForeignKey("reports.id"))
-	report = relationship("Report", back_populates="data")
+	report = relationship("Report", back_populates="records")
 
 	company_id = Column(Integer, ForeignKey("companies.id"))
-	company = relationship("Company", back_populates="data")
+	company = relationship("Company", back_populates="records")
 
 	__table_args__ = (
     	UniqueConstraint("timestamp", "timerange", "rtype_id", "company_id", 
@@ -128,8 +128,9 @@ class RecordType(Model):
 	name = Column(String, unique=True, nullable=False)
 	statement = Column(String, nullable=False)
 
-	records = relationship("Record", back_populates="rtype")
-	reprs = relationship("RecordTypeRepr", back_populates="rtype")
+	records = relationship("Record", back_populates="rtype", lazy="dynamic")
+	reprs = relationship("RecordTypeRepr", back_populates="rtype", 
+		                 lazy="dynamic")
 
 	def __repr__(self):
 		return "<RecordType('{!s}')>".format(self.name)

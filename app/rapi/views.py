@@ -37,7 +37,23 @@ class MultipleObjectMixin:
     model = None
 
     def get_object(self, *args, **kwargs):
-        objs = db.session.query(self.model).all()
+        limit = request.args.get("limit")
+        offset = request.args.get("offset")
+        sort = request.args.get("sort")
+        query = db.session.query(self.model).limit(limit).offset(offset)
+        if sort:
+            sort = "".join(sort.split()) # remove all whitespaces
+            for field in sort.split(","):
+                index = 1 if field.startswith("-") else 0
+                try:
+                    column = self.model.__table__.columns[field[index:]]
+                    if index:
+                        column = column.desc()
+                except KeyError:
+                    continue
+                else:
+                    query = query.order_by(column)
+        objs = query.all()
         return objs
 
 
@@ -51,7 +67,25 @@ class ListResource(Resource):
     def get(self, *args, **kwargs):
         obj = self.get_object(*args, **kwargs)
         if self.collection:
-            obj = getattr(obj, self.collection)
+            limit = request.args.get("limit")
+            offset = request.args.get("offset")
+            sort = request.args.get("sort")
+            query = getattr(obj, self.collection).limit(limit).offset(offset)
+            if sort:
+                sort = "".join(sort.split()) # remove all whitespaces
+                for field in sort.split(","):
+                    index = 1 if field.startswith("-") else 0
+                    try:
+                        model = query.column_descriptions[0]["type"]
+                        column = model.__table__.columns[field[index:]]
+                        if index:
+                            column = column.desc()
+                    except KeyError:
+                        continue
+                    else:
+                        query = query.order_by(column)
+            obj = query.all()
+
         schema = self.get_schema()
         data = schema.dump(obj, many=True).data
         return {

@@ -43,6 +43,47 @@ class TestCompanyListAPI(AppTestCase):
         self.assertIsNotNone(data["uri"])
         self.assertEqual(data["uri"], url_for("rapi.company", id=comp.id))
 
+    def test_order_results_with_sort_parameter(self):
+        Company.create(db.session, name="BB", isin="BB")
+        Company.create(db.session, name="AA", isin="AA")
+        Company.create(db.session, name="CC", isin="CC")
+        db.session.commit()
+        response = self.client.get(
+            url_for("rapi.company_list"),
+            query_string={"sort": "name"}
+        )
+        data = response.json["results"]
+        self.assertEqual(data[0]["name"], "AA")
+        self.assertEqual(data[1]["name"], "BB")
+        self.assertEqual(data[2]["name"], "CC")
+
+    def test_sort_in_reverse_order(self):
+        Company.create(db.session, name="BB", isin="BB")
+        Company.create(db.session, name="AA", isin="AA")
+        Company.create(db.session, name="CC", isin="CC")
+        db.session.commit()
+        response = self.client.get(
+            url_for("rapi.company_list"),
+            query_string={"sort": "-name"}
+        )
+        data = response.json["results"]
+        self.assertEqual(data[0]["name"], "CC")
+        self.assertEqual(data[1]["name"], "BB")
+        self.assertEqual(data[2]["name"], "AA")
+
+    def test_sort_by_two_columns(self):
+        Company.create(db.session, name="AA", isin="AA", ticker="AA")
+        Company.create(db.session, name="BB", isin="CC", ticker="BB")     
+        Company.create(db.session, name="BB", isin="BB", ticker="AA")
+        response = self.client.get(
+            url_for("rapi.company_list"),
+            query_string={"sort": "name, ticker"}
+        )
+        data = response.json["results"]
+        self.assertEqual(data[0]["name"], "AA")
+        self.assertEqual(data[1]["ticker"], "AA")
+        self.assertEqual(data[2]["ticker"], "BB")
+
     def test_for_creating_company_with_post_request(self):
         response = self.client.post(
             api.url_for(CompanyListAPI),
@@ -284,9 +325,88 @@ class TestRecordTypeReprListAPI(AppTestCase):
             data={"lang": "PL", "value": "NEW REPR"}
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(len(rtype.reprs), 1)
+        self.assertEqual(rtype.reprs.count(), 1)
         obj = rtype.reprs[0]
         self.assertEqual(obj.value, "NEW REPR")
+
+    def test_limit_restuls_with_limit_and_offset(self):
+        rtype = self.create_rtype_with_reprs(n=10)
+        db.session.commit()
+        response = self.client.get(
+            url_for("rapi.rtype_repr_list", id=rtype.id),
+            query_string={"limit": 5, "offset": 6}
+        )
+        data = response.json
+        self.assertEqual(data["count"], 4)
+
+    def test_order_results_with_sort_parameter(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="CC", lang="PL")
+        )
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="BB", lang="PL")
+        )
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="AA", lang="PL")
+        )
+        db.session.commit()
+
+        response = self.client.get(
+            url_for("rapi.rtype_repr_list", id=rtype.id),
+            query_string={"sort": "value"}
+        )
+
+        data = response.json["results"]
+        self.assertEqual(data[0]["value"], "AA")
+        self.assertEqual(data[1]["value"], "BB")
+        self.assertEqual(data[2]["value"], "CC")
+
+    def test_sort_in_reverse_order(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="CC", lang="PL")
+        )
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="BB", lang="PL")
+        )
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="AA", lang="PL")
+        )
+        db.session.commit()
+
+        response = self.client.get(
+            url_for("rapi.rtype_repr_list", id=rtype.id),
+            query_string={"sort": "-value"}
+        )
+
+        data = response.json["results"]
+        self.assertEqual(data[0]["value"], "CC")
+        self.assertEqual(data[1]["value"], "BB")
+        self.assertEqual(data[2]["value"], "AA")
+
+    def test_sort_by_two_columns(self):
+        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="CC", lang="BB")
+        )
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="BB", lang="AA")
+        )
+        rtype.reprs.append(
+            RecordTypeRepr.create(db.session, value="AA", lang="BB")
+        )
+        db.session.commit()
+
+        response = self.client.get(
+            url_for("rapi.rtype_repr_list", id=rtype.id),
+            query_string={"sort": "lang, -value"}
+        )
+
+        data = response.json["results"]
+        self.assertEqual(data[0]["value"], "BB")
+        self.assertEqual(data[1]["value"], "CC")
+        self.assertEqual(data[2]["value"], "AA")
 
 
 class TestRecordTypeReprAPI(AppTestCase):
@@ -323,7 +443,7 @@ class TestRecordTypeReprAPI(AppTestCase):
         self.assertEqual(rrepr.lang, "EN")
         self.assertEqual(rrepr.value, "New Test Repr")
 
-    def test_delet_request_deletes_repr(self):
+    def test_delete_request_deletes_repr(self):
         rtype = self.create_rtype_with_reprs(n=1)
         db.session.commit()
         self.client.delete(
@@ -331,4 +451,4 @@ class TestRecordTypeReprAPI(AppTestCase):
         )
         self.assertEqual(db.session.query(RecordTypeRepr).count(), 0)
         rtype = db.session.query(RecordType).one()
-        self.assertEqual(len(rtype.reprs), 0)
+        self.assertEqual(rtype.reprs.count(), 0)
