@@ -32,7 +32,7 @@ class Company(Model):
 	records = relationship("Record", cascade="all,delete", 
 		                back_populates="company", lazy="dynamic")
 	reprs = relationship("CompanyRepr", cascade="all,delete", 
-		                 back_populates="company", lazy="dynamic")
+		                 back_populates="company", lazy="joined")
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)
@@ -60,7 +60,7 @@ class Report(Model):
 	company = relationship("Company", back_populates="reports")
 
 	records = relationship("Record", cascade="all,delete", 
-		                back_populates="report", lazy="dynamic")
+		                back_populates="report", lazy="noload")
 
 	__table_args__ = (
     	UniqueConstraint("timestamp", "timerange", "company_id", 
@@ -85,14 +85,14 @@ class Record(Model):
 	timestamp = Column(DateTime, nullable=False)
 	timerange = Column(Integer, nullable=False)
 
-	rtype_id = Column(Integer, ForeignKey("records_dic.id"))
-	rtype = relationship("RecordType", back_populates="records")
+	rtype_id = Column(Integer, ForeignKey("records_dic.id"), nullable=False)
+	rtype = relationship("RecordType", back_populates="records", lazy="joined")
 
 	report_id = Column(Integer, ForeignKey("reports.id"))
 	report = relationship("Report", back_populates="records")
 
-	company_id = Column(Integer, ForeignKey("companies.id"))
-	company = relationship("Company", back_populates="records")
+	company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+	company = relationship("Company", back_populates="records", lazy="joined")
 
 	__table_args__ = (
     	UniqueConstraint("timestamp", "timerange", "rtype_id", "company_id", 

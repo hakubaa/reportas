@@ -1,16 +1,32 @@
 from marshmallow_sqlalchemy import field_for
-from marshmallow import validates, ValidationError
+from marshmallow import validates, ValidationError, fields, pre_load
 from sqlalchemy import exists
 
 from app import ma, db
 from app.rapi import api
-from db.models import Company, CompanyRepr, RecordType, RecordTypeRepr
+from db.models import (
+    Company, CompanyRepr, RecordType, RecordTypeRepr, Record, Report
+)
+
+
+class CompanyReprSchema(ma.ModelSchema):
+    class Meta:
+        model = CompanyRepr
+        fields = ("id", "value")
 
 
 class CompanySchema(ma.ModelSchema):
     class Meta:
         model = Company
-    reprs = ma.List(ma.HyperlinkRelated("rapi.crepr_list"))
+    reprs = fields.Nested(
+        CompanyReprSchema, only=("id", "value"), many=True
+    )
+    records = ma.Hyperlinks(
+        ma.URLFor("rapi.company_record_list", id="<id>")
+    )
+    reports = ma.Hyperlinks(
+        ma.URLFor("rapi.company_report_list", id="<id>")
+    )
     name = field_for(
         Company, "name", required=True,
         error_messages={"required": "Name is required."}
@@ -33,12 +49,6 @@ class CompanySimpleSchema(ma.ModelSchema):
         model = Company
         fields = ("id", "isin", "name", "ticker", "uri", "fullname")
     uri = ma.Hyperlinks(ma.URLFor("rapi.company", id='<id>'))
-
-
-class CompanyReprSchema(ma.ModelSchema):
-    class Meta:
-        model = CompanyRepr
-        fields = ("id", "value")
 
 
 class RecordTypeSchema(ma.ModelSchema):
@@ -68,9 +78,38 @@ class RecordTypeReprSchema(ma.ModelSchema):
         fields = ("id", "value", "lang")
 
 
+class RecordSchema(ma.ModelSchema):
+    class Meta:
+        model = Record
+
+
+class RecordSchema(ma.ModelSchema):
+    class Meta:
+        model = Record
+
+    rtype = field_for(
+        Record, "rtype", required=True,
+        error_messages={"required": "RecordType is required."}
+    )
+    company = field_for(
+        Record, "company", required=True,
+        error_messages={"required": "Company is required."}
+    )   
+
+
+class ReportSchema(ma.ModelSchema):
+    class Meta:
+        model = Report
+    records = ma.Hyperlinks(
+        ma.URLFor("rapi.report_record_list", id="<id>")
+    )
+
+
 company = CompanySchema()
 company_simple = CompanySimpleSchema()
 companyrepr = CompanyReprSchema()
 rtype = RecordTypeSchema()
 rtype_simple = RecordTypeSimpleSchema()
 rtyperepr = RecordTypeReprSchema()
+record = RecordSchema()
+report = ReportSchema()

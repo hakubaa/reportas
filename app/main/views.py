@@ -1,10 +1,18 @@
-from flask import render_template, abort
+from flask import render_template, abort, jsonify, request
 from sqlalchemy.orm.exc import NoResultFound
+import requests
 
 from app import db
 from app.main import main
 
 from db.models import Company
+
+
+
+from flask import current_app, make_response, render_template
+
+from app import debugtoolbar
+
 
 
 @main.route("/", methods=["GET"])

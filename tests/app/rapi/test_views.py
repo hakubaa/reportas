@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import url_for
 
 from app import db
@@ -6,7 +8,7 @@ from app.rapi.resources import (
     CompanyList, CompanyReprList, RecordTypeList
 )
 from db.models import (
-    Company, Report, CompanyRepr, RecordType, RecordTypeRepr
+    Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record
 )
 
 from tests.app import AppTestCase
@@ -452,3 +454,80 @@ class TestRecordTypeReprAPI(AppTestCase):
         self.assertEqual(db.session.query(RecordTypeRepr).count(), 0)
         rtype = db.session.query(RecordType).one()
         self.assertEqual(rtype.reprs.count(), 0)
+
+
+class TestCompanyRecordList(AppTestCase):
+
+    def test_get_request_returns_list_of_records(self):
+        company = Company.create(db.session, name="TEST", isin="TEST")
+        rtype = RecordType.create(db.session, name="NET_PROFIT", 
+                                  statement="NLS")
+        rec1 = Record.create(
+            db.session, value=10, timerange=3, timestamp=datetime(2015, 3, 31),
+            rtype=rtype, company=company
+        )
+        rec2 = Record.create(
+            db.session, value=20, timerange=3, timestamp=datetime(2014, 3, 31),
+            rtype=rtype, company=company
+        )
+        db.session.commit()
+
+        response = self.client.get(
+            url_for("rapi.company_record_list", id=company.id)
+        )
+        data = response.json
+        self.assertEqual(len(data), 2)
+
+    def test_get_request_raise_404_when_no_company(self):
+        response = self.client.get(url_for("rapi.company_record_list", id=1))
+        self.assertEqual(response.status_code, 404)
+
+    def test_post_request_creates_new_record(self):
+        company = Company.create(db.session, name="TEST", isin="TEST")
+        rtype = RecordType.create(db.session, name="NET_PROFIT", 
+                                  statement="NLS")
+        db.session.commit()
+
+        response = self.client.post(
+            url_for("rapi.company_record_list", id=company.id),
+            data={
+                "value": 10, "timerange": 3,
+                "timestamp": datetime(2015, 3, 31), "rtype": rtype.id
+            }
+        )
+        company = db.session.query(Company).one()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(db.session.query(Record).count(), 1)
+        self.assertEqual(company.records.count(), 1)
+
+    def test_post_request_returns_400_when_no_rtype(self):
+        company = Company.create(db.session, name="TEST", isin="TEST")
+        rtype = RecordType.create(db.session, name="NET_PROFIT", 
+                                  statement="NLS")
+        db.session.commit()
+
+        response = self.client.post(
+            url_for("rapi.company_record_list", id=company.id),
+            data={
+                "value": 10, "timerange": 3, 
+                "timestamp": datetime(2015, 3, 31)
+            }
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_post_request_uses_company_id_from_url(self):
+        company = Company.create(db.session, name="TEST", isin="TEST1")
+        Company.create(db.session, name="TEST", isin="TEST2")
+        rtype = RecordType.create(db.session, name="NET_PROFIT", 
+                                  statement="NLS")
+        db.session.commit()
+
+        self.client.post(
+            url_for("rapi.company_record_list", id=company.id),
+            data={
+                "value": 10, "timerange": 3, "rtype": rtype.id,
+                "company_id": 120, "timestamp": datetime(2015, 3, 31)
+            }
+        )
+        record = db.session.query(Record).one()
+        self.assertEqual(record.company_id, company.id)

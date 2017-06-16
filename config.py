@@ -21,7 +21,8 @@ class DevelopmentConfig(Config):
 		or 'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
 	)
 	UPLOAD_FOLDER = os.path.join(basedir, "uploads_dev")
-
+	DEBUG_TB_PROFILER_ENABLED = True
+	
 
 class TestingConfig(Config):
 	TESTING = True

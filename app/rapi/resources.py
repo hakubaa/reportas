@@ -1,6 +1,6 @@
 import json
 
-from flask import abort, request, jsonify
+from flask import abort, request, jsonify, url_for
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
 from flask_restful import Resource
@@ -11,17 +11,17 @@ from app.rapi.util import (
     apply_query_parameters, MultipleObjectMixin, SingleObjectMixin, 
     ListResource, DetailResource
 )
-from db.models import Company, RecordType, RecordTypeRepr
+from db.models import Company, RecordType, RecordTypeRepr, Record, Report
 
 
 class Root(Resource):
 
     def get(self):
         return {
-            "companies": api.url_for(CompanyListAPI),
-            "rtypes": api.url_for(RecordTypeListAPI),
-            # "reports":
-            # "records":
+            "companies": url_for("rapi.company_list"),
+            "rtypes": url_for("rapi.rtype_list"),
+            "reports": url_for("rapi.report_list"),
+            "records": url_for("rapi.record_list")
         }
 
 
@@ -86,5 +86,84 @@ class RecordTypeReprDetail(DetailResource):
                     filter(RecordType.id == id, RecordTypeRepr.id == rid).one()
         except NoResultFound:
             abort(404, "RecordTypeRepr not found.") 
+        else:
+            return obj
+
+
+class CompanyRecordList(SingleObjectMixin, ListResource):
+    model = Company
+    schema = schemas.record
+    collection = "records"
+
+    def update_post_parameters(self, id):
+        params = request.form.to_dict()
+        params["company"] = id
+        return params
+
+
+class CompanyRecordDetail(DetailResource):
+    schema = schemas.record
+
+    def get_object(self, id, rid):
+        try:
+            obj = db.session.query(Record).join(Company).\
+                    filter(Company.id == id, Record.id == rid).one()
+        except NoResultFound:
+            abort(404, "Record not found.") 
+        else:
+            return obj
+
+
+class CompanyReportList(SingleObjectMixin, ListResource):
+    model = Company
+    schema = schemas.report
+    collection = "reports"
+
+    def update_post_parameters(self, id):
+        params = request.form.to_dict()
+        params["company"] = id
+        return params
+
+
+class RecordList(MultipleObjectMixin, ListResource):
+    model = Record
+    schema = schemas.record
+
+
+class RecordDetail(SingleObjectMixin, DetailResource):
+    model = Record
+    schema = schemas.record
+
+
+class ReportList(MultipleObjectMixin, ListResource):
+    model = Report
+    schema = schemas.report
+
+
+class ReportDetail(SingleObjectMixin, DetailResource):
+    model = Report
+    schema = schemas.report
+
+
+class ReportRecordList(SingleObjectMixin, ListResource):
+    model = Report
+    schema = schemas.record
+    collection = "records"
+
+    def update_post_parameters(self, id):
+        params = request.form.to_dict()
+        params["report"] = id
+        return params
+
+
+class ReportRecordDetail(DetailResource):
+    schema = schemas.record
+
+    def get_object(self, id, rid):
+        try:
+            obj = db.session.query(Record).join(Report).\
+                    filter(Company.id == id, Report.id == rid).one()
+        except NoResultFound:
+            abort(404, "Record not found.") 
         else:
             return obj

@@ -1,5 +1,6 @@
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.collections import InstrumentedList
 from flask_restful import Resource
 from flask import request, abort
 
@@ -9,23 +10,39 @@ from app import db
 def apply_query_parameters(query):
     limit = request.args.get("limit")
     offset = request.args.get("offset")
-    query = query.limit(limit).offset(offset)
-
     sort = request.args.get("sort")
-    if sort:
-        sort = "".join(sort.split()) # remove all whitespaces
-        for field in sort.split(","):
-            index = 1 if field.startswith("-") else 0
-            try:
-                model = query.column_descriptions[0]["type"]
-                column = model.__table__.columns[field[index:]]
-                if index:
-                    column = column.desc()
-            except KeyError:
-                continue
-            else:
-                query = query.order_by(column)   
-    return query
+    if sort: sort = "".join(sort.split()) # remove all whitespaces
+
+    if isinstance(query, InstrumentedList):
+        if sort:
+            for field in sort.split(","):
+                index = 1 if field.startswith("-") else 0
+                try:
+                    query = sorted(
+                        query, key=lambda x: x[field[index:]],
+                        reversed = bool(index)
+                    )
+                except KeyError:
+                    continue
+        if not offset: offset = 0
+        if not limit: limit = len(query)
+        query = query[offset:(offset+limit)]
+        return query
+    else:
+        if sort:
+            for field in sort.split(","):
+                index = 1 if field.startswith("-") else 0
+                try:
+                    model = query.column_descriptions[0]["type"]
+                    column = model.__table__.columns[field[index:]]
+                    if index:
+                        column = column.desc()
+                except KeyError:
+                    continue
+                else:
+                    query = query.order_by(column)   
+        query = query.limit(limit).offset(offset)
+        return query.all()
 
 
 class SingleObjectMixin:
@@ -44,7 +61,7 @@ class MultipleObjectMixin:
 
     def get_object(self, *args, **kwargs):
         query = db.session.query(self.model)
-        objs = apply_query_parameters(query).all()
+        objs = apply_query_parameters(query)
         return objs
 
 
@@ -55,13 +72,16 @@ class ListResource(Resource):
     def get_schema(self):
         return self.schema
 
+    def update_post_parameters(self, *args, **kwargs):
+        return request.form
+
     def get(self, *args, **kwargs):
-        obj = self.get_object(*args, **kwargs)
+        objs = self.get_object(*args, **kwargs)
         if self.collection:
-            query = getattr(obj, self.collection)
-            obj = apply_query_parameters(query).all()
+            query = getattr(objs, self.collection)
+            objs = apply_query_parameters(query)
         schema = self.get_schema()
-        data = schema.dump(obj, many=True).data
+        data = schema.dump(objs, many=True).data
         return {
             "results": data,
             "count": len(data)
@@ -73,12 +93,13 @@ class ListResource(Resource):
             parent_obj = self.get_object(*args, **kwargs)
 
         schema = self.get_schema()
-        obj, errors = schema.load(request.form)
+        obj, errors = schema.load(self.update_post_parameters(*args, **kwargs),
+                                  session=db.session)
         if errors:
             return {
                 "errors": errors
             }, 400
-
+        
         if parent_obj:
             getattr(parent_obj, self.collection).append(obj)
         else:
