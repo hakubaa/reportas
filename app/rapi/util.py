@@ -71,8 +71,14 @@ class ListResource(Resource):
     schema = None
     collection = None
 
-    def get_schema(self):
+    def get_schema_cls(self):
         return self.schema
+
+    def get_schema(self):
+        fields = request.values.get("fields", None)
+        if fields: fields = "".join(fields.split()).split(",")
+        schema = self.get_schema_cls()(only=fields)
+        return schema
 
     def update_request_data(self, data, many, *args, **kwargs):
         return data
@@ -95,7 +101,7 @@ class ListResource(Resource):
             parent_obj = self.get_object(*args, **kwargs)
 
         data = request.get_json()
-        many_obj = request.args.get("many", "").lower() in ("t", "true")
+        many_obj = request.values.get("many", "").lower() in ("t", "true")
 
         data = self.update_request_data(data, many_obj, *args, **kwargs)
         schema = self.get_schema()
@@ -118,8 +124,14 @@ class ListResource(Resource):
 class DetailResource(Resource):
     schema = None
 
-    def get_schema(self):
+    def get_schema_cls(self):
         return self.schema
+
+    def get_schema(self):
+        fields = request.values.get("fields", None)
+        if fields: fields = "".join(fields.split()).split(",")
+        schema = self.get_schema_cls()(only=fields)
+        return schema
 
     def get(self, *args, **kwargs):
         obj = self.get_object(*args, **kwargs)

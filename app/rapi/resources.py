@@ -28,16 +28,16 @@ class Root(Resource):
 class CompanyList(MultipleObjectMixin, ListResource):
     model = Company
 
-    def get_schema(self):
+    def get_schema_cls(self):
         if request.method == "GET":
-            return schemas.company_simple
+            return schemas.CompanySimpleSchema
         else:
-            return schemas.company
+            return schemas.CompanySchema
 
 
 class CompanyDetail(SingleObjectMixin, DetailResource):
     model = Company
-    schema = schemas.company
+    schema = schemas.CompanySchema
 
     def put(self, id):
         company = self.get_object(id)
@@ -53,33 +53,33 @@ class CompanyDetail(SingleObjectMixin, DetailResource):
 
 class CompanyReprList(SingleObjectMixin, ListResource):
     model = Company
-    schema = schemas.companyrepr
+    schema = schemas.CompanyReprSchema
     collection = "reprs"
 
 
 class RecordTypeList(MultipleObjectMixin, ListResource):
     model = RecordType
 
-    def get_schema(self):
+    def get_schema_cls(self):
         if request.method == "GET":
-            return schemas.rtype_simple
+            return schemas.RecordTypeSimpleSchema
         else:
-            return schemas.rtype
+            return schemas.RecordTypeSchema
 
 
 class RecordTypeDetail(SingleObjectMixin, DetailResource):
     model = RecordType
-    schema = schemas.rtype
+    schema = schemas.RecordTypeSchema
 
 
 class RecordTypeReprList(SingleObjectMixin, ListResource):
     model = RecordType
-    schema = schemas.rtyperepr
+    schema = schemas.RecordTypeReprSchema
     collection = "reprs"
 
 
 class RecordTypeReprDetail(DetailResource):
-    schema = schemas.rtyperepr
+    schema = schemas.RecordTypeReprSchema
 
     def get_object(self, id, rid):
         try:
@@ -93,7 +93,7 @@ class RecordTypeReprDetail(DetailResource):
 
 class CompanyRecordList(SingleObjectMixin, ListResource):
     model = Company
-    schema = schemas.record
+    schema = schemas.RecordSchema
     collection = "records"
 
     def update_request_data(self, data, many, id):
@@ -106,7 +106,7 @@ class CompanyRecordList(SingleObjectMixin, ListResource):
 
 
 class CompanyRecordDetail(DetailResource):
-    schema = schemas.record
+    schema = schemas.RecordSchema
 
     def get_object(self, id, rid):
         try:
@@ -120,7 +120,7 @@ class CompanyRecordDetail(DetailResource):
 
 class CompanyReportList(SingleObjectMixin, ListResource):
     model = Company
-    schema = schemas.report
+    schema = schemas.ReportSchema
     collection = "reports"
 
     def update_request_data(self, data, many, id):
@@ -134,27 +134,27 @@ class CompanyReportList(SingleObjectMixin, ListResource):
 
 class RecordList(MultipleObjectMixin, ListResource):
     model = Record
-    schema = schemas.record
+    schema = schemas.RecordSchema
 
 
 class RecordDetail(SingleObjectMixin, DetailResource):
     model = Record
-    schema = schemas.record
+    schema = schemas.RecordSchema
 
 
 class ReportList(MultipleObjectMixin, ListResource):
     model = Report
-    schema = schemas.report
+    schema = schemas.ReportSchema
 
 
 class ReportDetail(SingleObjectMixin, DetailResource):
     model = Report
-    schema = schemas.report
+    schema = schemas.ReportSchema
 
 
 class ReportRecordList(SingleObjectMixin, ListResource):
     model = Report
-    schema = schemas.record
+    schema = schemas.RecordSchema
     collection = "records"
 
     def update_request_data(self, data, many, id):
@@ -167,7 +167,7 @@ class ReportRecordList(SingleObjectMixin, ListResource):
 
 
 class ReportRecordDetail(DetailResource):
-    schema = schemas.record
+    schema = schemas.RecordSchema
 
     def get_object(self, id, rid):
         try:

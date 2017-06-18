@@ -14,7 +14,21 @@ class CompanyReprSchema(ma.ModelSchema):
         model = CompanyRepr
         fields = ("id", "value")
 
+    company = field_for(
+        Record, "company", required=True,
+        error_messages={"required": "Company is required."}
+    )   
 
+    @validates("company")
+    def validate_company(self, value):
+        (ret, ), = db.session.query(exists().where(Company.id == value.id))
+        if not ret:
+            raise ValidationError(
+                "Company with id '{}' does not exist.".format(value.id)
+            )
+        return True
+
+        
 class CompanySchema(ma.ModelSchema):
     class Meta:
         model = Company
@@ -101,7 +115,7 @@ class RecordSchema(ma.ModelSchema):
         return True
 
     @validates("rtype")
-    def validate_company(self, value):
+    def validate_rtype(self, value):
         (ret, ), = db.session.query(exists().where(RecordType.id == value.id))
         if not ret:
             raise ValidationError(

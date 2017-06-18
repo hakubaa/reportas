@@ -204,6 +204,16 @@ class TestCompanyAPI(AppTestCase):
         )
         self.assertEqual(response.status_code, 400)
         
+    def test_for_returning_only_request_fields(self):
+        comp = Company.create(db.session, name="TEST1", isin="#TEST2")
+        db.session.commit()
+        response = self.client.get(
+            url_for("rapi.company", id=comp.id),
+            query_string={"fields": "name, id"}
+        )
+        data = response.json
+        self.assertEqual(set(data.keys()), set(("name", "id")))
+
 
 class TestCompanyReprList(AppTestCase):
 
@@ -632,3 +642,23 @@ class TestRecordList(AppTestCase):
             content_type="application/json"
         )
         self.assertEqual(db.session.query(Record).count(), 2)
+
+    def test_for_returning_only_request_fields(self):
+        company, rtype = self.create_company_and_rtype()
+        rec1 = Record.create(
+            db.session, timerange=3, timestamp=datetime(2016, 3, 31),
+            value=10, rtype=rtype, company=company
+        )
+        rec2 = Record.create(
+            db.session, timerange=3, timestamp=datetime(2015, 3, 31),
+            value=5, rtype=rtype, company=company
+        )
+        db.session.commit()
+        
+        response = self.client.get(
+            url_for("rapi.record_list"),
+            query_string={"fields": "timerange, value"}
+        )
+        data = response.json["results"]
+        self.assertEqual(set(data[0].keys()), set(("value", "timerange")))
+        self.assertEqual(set(data[1].keys()), set(("value", "timerange")))
