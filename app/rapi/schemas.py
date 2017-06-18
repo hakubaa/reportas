@@ -82,11 +82,6 @@ class RecordSchema(ma.ModelSchema):
     class Meta:
         model = Record
 
-
-class RecordSchema(ma.ModelSchema):
-    class Meta:
-        model = Record
-
     rtype = field_for(
         Record, "rtype", required=True,
         error_messages={"required": "RecordType is required."}
@@ -95,6 +90,24 @@ class RecordSchema(ma.ModelSchema):
         Record, "company", required=True,
         error_messages={"required": "Company is required."}
     )   
+
+    @validates("company")
+    def validate_company(self, value):
+        (ret, ), = db.session.query(exists().where(Company.id == value.id))
+        if not ret:
+            raise ValidationError(
+                "Company with id '{}' does not exist.".format(value.id)
+            )
+        return True
+
+    @validates("rtype")
+    def validate_company(self, value):
+        (ret, ), = db.session.query(exists().where(RecordType.id == value.id))
+        if not ret:
+            raise ValidationError(
+                "RecordType with id '{}' does not exist.".format(value.id)
+            )
+        return True
 
 
 class ReportSchema(ma.ModelSchema):

@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.collections import InstrumentedList
@@ -72,8 +74,8 @@ class ListResource(Resource):
     def get_schema(self):
         return self.schema
 
-    def update_post_parameters(self, *args, **kwargs):
-        return request.form
+    def update_request_data(self, data, many, *args, **kwargs):
+        return data
 
     def get(self, *args, **kwargs):
         objs = self.get_object(*args, **kwargs)
@@ -92,18 +94,23 @@ class ListResource(Resource):
         if args or kwargs:
             parent_obj = self.get_object(*args, **kwargs)
 
+        data = request.get_json()
+        many_obj = request.args.get("many", "").lower() in ("t", "true")
+
+        data = self.update_request_data(data, many_obj, *args, **kwargs)
         schema = self.get_schema()
-        obj, errors = schema.load(self.update_post_parameters(*args, **kwargs),
-                                  session=db.session)
+        obj, errors = schema.load(data, session=db.session, many=many_obj)
+
         if errors:
-            return {
-                "errors": errors
-            }, 400
+            return dict(errors=errors), 400
         
         if parent_obj:
             getattr(parent_obj, self.collection).append(obj)
         else:
-            db.session.add(obj)
+            if many_obj:
+                db.session.add_all(obj)
+            else:
+                db.session.add(obj)
         db.session.commit()
         return "", 201
 
@@ -126,7 +133,16 @@ class DetailResource(Resource):
 
     def put(self, *args, **kwargs):
         obj = self.get_object(*args, **kwargs)
-        for key, value in request.form.items():
+        data = request.get_json()
+        for key, value in data.items():
             if key not in ("id", ):
                 setattr(obj, key, value)
         db.session.commit()
+
+
+class DatetimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return super(DatetimeEncoder, obj).default(obj)
+        except TypeError:
+            return str(obj)

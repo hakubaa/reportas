@@ -1,9 +1,11 @@
 from datetime import datetime
+import json
 
 from flask import url_for
 
 from app import db
 from app.rapi import api
+from app.rapi.util import DatetimeEncoder
 from app.rapi.resources import (
     CompanyList, CompanyReprList, RecordTypeList
 )
@@ -89,14 +91,22 @@ class TestCompanyList(AppTestCase):
     def test_for_creating_company_with_post_request(self):
         response = self.client.post(
             api.url_for(CompanyList),
-            data = {"name": "TEST", "isin": "TEST#ONE", "ticker": "TST" }
+            data = json.dumps(
+                {"name": "TEST", "isin": "TEST#ONE", "ticker": "TST" },
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         self.assertEqual(db.session.query(Company).count(), 1)
 
     def test_creates_company_with_proper_arguments(self):
         response = self.client.post(
             api.url_for(CompanyList),
-            data = {"name": "TEST", "isin": "TEST#ONE", "ticker": "TST" }
+            data = json.dumps(
+                {"name": "TEST", "isin": "TEST#ONE", "ticker": "TST" },
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         company = db.session.query(Company).one()
         self.assertEqual(company.name, "TEST")
@@ -105,7 +115,11 @@ class TestCompanyList(AppTestCase):
     def test_post_request_returns_400_and_error_when_no_name(self):
         response = self.client.post(
             api.url_for(CompanyList),
-            data = {"logo": "TEST", "isin": "TEST#ONE", "ticker": "TST" }
+            data = json.dumps(
+                {"logo": "TEST", "isin": "TEST#ONE", "ticker": "TST" },
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         ) 
         data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
@@ -114,7 +128,11 @@ class TestCompanyList(AppTestCase):
     def test_post_request_returns_400_and_error_when_no_isin(self):
         response = self.client.post(
             api.url_for(CompanyList),
-            data = {"name": "TEST", "isi": "TEST#ONE", "ticker": "TST" }
+            data = json.dumps(
+                {"name": "TEST", "isi": "TEST#ONE", "ticker": "TST" },
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         ) 
         data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
@@ -125,7 +143,11 @@ class TestCompanyList(AppTestCase):
         db.session.commit()
         response = self.client.post(
             api.url_for(CompanyList),
-            data = {"name": "TEST", "isin": "123#TEST", "ticker": "TST" }
+            data = json.dumps(
+                {"name": "TEST", "isin": "123#TEST", "ticker": "TST" },
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         ) 
         data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
@@ -158,7 +180,11 @@ class TestCompanyAPI(AppTestCase):
         db.session.commit()
         response = self.client.put(
             url_for("rapi.company", id=comp.id),
-            data={"name": "NEW NAME", "ticker": "HEJ"}
+            data=json.dumps(
+                {"name": "NEW NAME", "ticker": "HEJ"},
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         comp = db.session.query(Company).one()
         self.assertEqual(comp.name, "NEW NAME")
@@ -170,7 +196,11 @@ class TestCompanyAPI(AppTestCase):
         db.session.commit()
         response = self.client.put(
             url_for("rapi.company", id=comp.id),
-            data={"name": "NEW NAME", "isin": "#TEST2"}
+            data=json.dumps(
+                {"name": "NEW NAME", "isin": "#TEST2"},
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         self.assertEqual(response.status_code, 400)
         
@@ -221,14 +251,22 @@ class TestRecordTypeList(AppTestCase):
     def test_for_creating_rtype_with_post_request(self):
         response = self.client.post(
             api.url_for(RecordTypeList),
-            data = {"name": "TEST", "statement": "BLS"}
+            data = json.dumps(
+                {"name": "TEST", "statement": "BLS"},
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         self.assertEqual(db.session.query(RecordType).count(), 1)
 
     def test_creates_rtype_with_proper_arguments(self):
         self.client.post(
             api.url_for(RecordTypeList),
-            data = {"name": "TEST", "statement": "BLS"}
+            data = json.dumps(
+                {"name": "TEST", "statement": "BLS"},
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         rtype = db.session.query(RecordType).one()
         self.assertEqual(rtype.name, "TEST")
@@ -237,7 +275,11 @@ class TestRecordTypeList(AppTestCase):
     def test_post_request_returns_400_and_error_when_no_name(self):
         response = self.client.post(
             api.url_for(RecordTypeList),
-            data = {"wow": "TEST", "statement": "BLS"}
+            data = json.dumps(
+                {"wow": "TEST", "statement": "BLS"},
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
@@ -246,7 +288,11 @@ class TestRecordTypeList(AppTestCase):
     def test_post_request_returns_400_and_error_when_no_statement(self):
         response = self.client.post(
             api.url_for(RecordTypeList),
-            data = {"name": "TEST", "stm": "BLS"}
+            data = json.dumps(
+                {"name": "TEST", "stm": "BLS"},
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
@@ -277,7 +323,9 @@ class TestRecordTypeAPI(AppTestCase):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         db.session.commit()
         response = self.client.put(
-            url_for("rapi.rtype", id=rtype.id), data={"statement": "BLS"}
+            url_for("rapi.rtype", id=rtype.id), 
+            data=json.dumps({"statement": "BLS"}, cls=DatetimeEncoder),
+            content_type="application/json"
         )
         rtype = db.session.query(RecordType).one()
         self.assertEqual(rtype.statement, "BLS")
@@ -324,7 +372,10 @@ class TestRecordTypeReprListAPI(AppTestCase):
         db.session.commit()
         response = self.client.post(
             url_for("rapi.rtype_repr_list", id=rtype.id),
-            data={"lang": "PL", "value": "NEW REPR"}
+            data=json.dumps(
+                {"lang": "PL", "value": "NEW REPR"}, cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(rtype.reprs.count(), 1)
@@ -439,7 +490,11 @@ class TestRecordTypeReprAPI(AppTestCase):
         db.session.commit()
         self.client.put(
             url_for("rapi.rtype_repr", id=rtype.id, rid=rtype.reprs[0].id),
-            data={"value": "New Test Repr", "lang": "EN"}
+            data=json.dumps(
+                {"value": "New Test Repr", "lang": "EN"},
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
         )
         rrepr = db.session.query(RecordTypeRepr).first()
         self.assertEqual(rrepr.lang, "EN")
@@ -490,10 +545,11 @@ class TestCompanyRecordList(AppTestCase):
 
         response = self.client.post(
             url_for("rapi.company_record_list", id=company.id),
-            data={
+            data=json.dumps({
                 "value": 10, "timerange": 3,
                 "timestamp": datetime(2015, 3, 31), "rtype": rtype.id
-            }
+            }, cls=DatetimeEncoder),
+            content_type="application/json"
         )
         company = db.session.query(Company).one()
         self.assertEqual(response.status_code, 201)
@@ -508,10 +564,11 @@ class TestCompanyRecordList(AppTestCase):
 
         response = self.client.post(
             url_for("rapi.company_record_list", id=company.id),
-            data={
+            data=json.dumps({
                 "value": 10, "timerange": 3, 
                 "timestamp": datetime(2015, 3, 31)
-            }
+            }, cls=DatetimeEncoder),
+            content_type="application/json"
         )
         self.assertEqual(response.status_code, 400)
 
@@ -524,10 +581,54 @@ class TestCompanyRecordList(AppTestCase):
 
         self.client.post(
             url_for("rapi.company_record_list", id=company.id),
-            data={
+            data=json.dumps({
                 "value": 10, "timerange": 3, "rtype": rtype.id,
                 "company_id": 120, "timestamp": datetime(2015, 3, 31)
-            }
+            }, cls=DatetimeEncoder),
+            content_type="application/json"
         )
         record = db.session.query(Record).one()
         self.assertEqual(record.company_id, company.id)
+
+
+class TestRecordList(AppTestCase):
+
+    def create_company_and_rtype(self):
+        company = Company.create(db.session, name="TEST", isin="#TEST")
+        rtype = RecordType.create(db.session, name="NET_PROFIT", 
+                                  statement="NLS")
+        db.session.commit()
+        return company, rtype
+
+    def test_for_creating_one_record_with_post_request(self):
+        company, rtype = self.create_company_and_rtype()
+        response = self.client.post(
+            url_for("rapi.record_list"),
+            data=json.dumps({
+                "value": 10, "timerange": 3, "rtype": rtype.id,
+                "company": company.id, "timestamp": datetime(2015, 3, 31)
+            }, cls=DatetimeEncoder),
+            content_type="application/json"
+        )
+        self.assertEqual(db.session.query(Record).count(), 1)
+        record = db.session.query(Record).one()
+        self.assertEqual(record.company_id, company.id)
+
+    def test_for_creating_multiplie_records_with_post_request(self):
+        company, rtype = self.create_company_and_rtype()
+        response = self.client.post(
+            url_for("rapi.record_list"),
+            data=json.dumps([
+                {
+                    "value": 10, "timerange": 3, "rtype": rtype.id,
+                    "company": company.id, "timestamp": datetime(2015, 3, 31)
+                },
+                {
+                    "value": 100, "timerange": 3, "rtype": rtype.id,
+                    "company": company.id, "timestamp": datetime(2016, 3, 31)
+                }
+            ], cls=DatetimeEncoder),
+            query_string={"many": True},
+            content_type="application/json"
+        )
+        self.assertEqual(db.session.query(Record).count(), 2)

@@ -41,7 +41,8 @@ class CompanyDetail(SingleObjectMixin, DetailResource):
 
     def put(self, id):
         company = self.get_object(id)
-        for key, value in request.form.items():
+        data = request.get_json()
+        for key, value in data.items():
             if key not in ("id", ):
                 setattr(company, key, value)
         try:
@@ -95,10 +96,13 @@ class CompanyRecordList(SingleObjectMixin, ListResource):
     schema = schemas.record
     collection = "records"
 
-    def update_post_parameters(self, id):
-        params = request.form.to_dict()
-        params["company"] = id
-        return params
+    def update_request_data(self, data, many, id):
+        if many:
+            for item in data:
+                item["company"] = id
+        else:
+            data["company"] = id
+        return data
 
 
 class CompanyRecordDetail(DetailResource):
@@ -119,10 +123,13 @@ class CompanyReportList(SingleObjectMixin, ListResource):
     schema = schemas.report
     collection = "reports"
 
-    def update_post_parameters(self, id):
-        params = request.form.to_dict()
-        params["company"] = id
-        return params
+    def update_request_data(self, data, many, id):
+        if many:
+            for item in data:
+                item["company"] = id
+        else:
+            data["company"] = id
+        return data
 
 
 class RecordList(MultipleObjectMixin, ListResource):
@@ -150,10 +157,13 @@ class ReportRecordList(SingleObjectMixin, ListResource):
     schema = schemas.record
     collection = "records"
 
-    def update_post_parameters(self, id):
-        params = request.form.to_dict()
-        params["report"] = id
-        return params
+    def update_request_data(self, data, many, id):
+        if many:
+            for item in data:
+                item["report"] = id
+        else:
+            data["report"] = id
+        return data
 
 
 class ReportRecordDetail(DetailResource):
