@@ -15,14 +15,14 @@ class Model(Base):
 	'''Extension of base model by additional methods.'''
 	__abstract__ = True
 
-	def __init__(self, **kwargs):
-		cls = self.__class__
-		valid_fields = cls.__mapper__.columns.keys() +\
-					   cls.__mapper__.relationships.keys()
+	# def __init__(self, **kwargs):
+	# 	cls = self.__class__
+	# 	valid_fields = cls.__mapper__.columns.keys() +\
+	# 				   cls.__mapper__.relationships.keys()
 
-		for key, value in kwargs.items():
-			if not isinstance(value, ClauseElement) and key in valid_fields:
-				setattr(self, key, value)
+	# 	for key, value in kwargs.items():
+	# 		if not isinstance(value, ClauseElement) and key in valid_fields:
+	# 			setattr(self, key, value)
 
 	@classmethod
 	def get_or_create(cls, session, defaults=None, **kwargs):

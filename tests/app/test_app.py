@@ -48,3 +48,8 @@ class AppTestCase(unittest.TestCase):
 		self.assertIn("rapi", self.app.blueprints)
 		from app.rapi import rapi as rapi_blueprint
 		self.assertEqual(rapi_blueprint, self.app.blueprints["rapi"])
+
+	def test_registration_blueprint_user(self):
+		self.assertIn("user", self.app.blueprints)
+		from app.user import user as user_blueprint
+		self.assertEqual(user_blueprint, self.app.blueprints["user"])

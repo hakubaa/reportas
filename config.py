@@ -32,7 +32,8 @@ class TestingConfig(Config):
 		or 'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
 	)
 	UPLOAD_FOLDER = os.path.join(basedir, "uploads_test")
-
+	WTF_CSRF_ENABLED = False
+	
 
 config = {
 	"development": DevelopmentConfig,

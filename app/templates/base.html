@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {% endblock %}
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <title>{% block title %}{% endblock %} - Reportas</title>
+    <title>Reportas - {% block title %}{% endblock %}</title>
 
     <!-- Bootstrap -->
     <link href="{{ url_for('static', filename='vendors/normalize.css') }}" rel="stylesheet">
@@ -30,15 +30,12 @@
 
 <body>
     <div class="container">
-    	{% with messages = get_flashed_messages() %}
-    		{% if messages %}
-    			<ul class=flashes>
-    			{% for message in messages %}
-    				<li>{{ message }}</li>
-    			{% endfor %}
-    			</ul>
-    		{% endif %}
-    	{% endwith %}
+        {% for message in get_flashed_messages() %}
+            <div class="alert alert-warning">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                {{ message }}
+                </div>
+        {% endfor %}
     	{% block body %}{% endblock %}
     </div>
     <script src="{{ url_for('static', filename='vendors/jquery-3.2.1.min.js') }}"></script>
