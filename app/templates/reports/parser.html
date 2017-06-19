@@ -209,7 +209,6 @@
                     </ul>
                 </div>
 
-
                 <div class="dropdown dropdown-inline" id="stm-dropdown">
                     <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                         Statement<span class="caret"></span>   
@@ -219,17 +218,6 @@
                         <li><a href="#">BLS</a></li>
                         <li><a href="#">NLS</a></li>
                         <li><a href="#">CFS</a></li>
-                    </ul>
-                </div>
-                <div class="dropdown dropdown-inline" id="items-dropdown">
-                    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                        Financial items<span class="caret"></span>   
-                    </button>
-                    <ul class="dropdown-menu" aria-labelledby="fields-menu">
-                        <li><a href="#">NONE</a></li>
-                        {% for field in fields %}
-                            <li><a href="#">{{field}}</a></li>
-                        {% endfor %}
                     </ul>
                 </div>
                 <button type="button" class="btn btn-default" id="report-refresh-btn" title="Refresh">
@@ -263,7 +251,7 @@
                                 <td class="selector"><input type="checkbox"></td>
                                 <td class="pageno">{{page_no}}</td>
                                 <td class="field">
-                                    <span>{{report.items_map.get(doc_row, None)}}</span>
+                                    <span>{{report.records_map.get(doc_row, None)}}</span>
                                 </td>
                                 <td class="content"><input type="text" value="{{content}}"></td>
                             </tr>
@@ -320,8 +308,8 @@
                                             <option {% if report.bls.uom == 1000000 %} selected="selected" {% endif %}>m'PLN</option>
                                         </select>
                                     </td>
-                                    <td data-item-source="{{ report.items_source.get(item, '') }}">
-                                        {% if item in report.items_source %}
+                                    <td data-item-source="{{ report.records_source.get(item, '') }}">
+                                        {% if item in report.records_source %}
                                             <a href="#" data-toggle="modal" data-target="#item-source-modal">{{item}}</a>
                                         {% else %}
                                             {{item}} 
@@ -623,10 +611,17 @@
             var $cell = $("<td/>", {colspan: "5"});
 
             var $rselect = $("<select/>", {class: "form-control select-auto input-sm"});
-            $("#items-dropdown ul").children().each(function() {
-                var name = $(this).find("a").text();
-                $rselect.append($("<option/>", {text: name}));
+            getRecordTypes({
+                callback: function(rtypes) {
+                    for (var i = 0; i < rtypes.length; i++) {
+                        $rselect.append($("<option/>", {text: rtypes[i]}));
+                    }
+                }
             });
+            // $("#items-dropdown ul").children().each(function() {
+            //     var name = $(this).find("a").text();
+            //     $rselect.append($("<option/>", {text: name}));
+            // });
             $rselect.prop("id", "item-name");
 
             var $form = $("<form/>", {class: "form-horizontal"});

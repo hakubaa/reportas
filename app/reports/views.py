@@ -99,9 +99,9 @@ def parser():
 
     voc = create_vocabulary(db.session)
     spec = dict(
-        bls=get_finrecords_reprs(db.session, "bls"),
-        nls=get_finrecords_reprs(db.session, "nls"),
-        cfs=get_finrecords_reprs(db.session, "cfs")
+        bls=get_records_reprs(db.session, "bls"),
+        nls=get_records_reprs(db.session, "nls"),
+        cfs=get_records_reprs(db.session, "cfs")
     )
     cspec = get_companies_reprs(db.session)
 
@@ -112,7 +112,7 @@ def parser():
             report = pickle.load(f)
     except FileNotFoundError:
         report = FinancialReport(filepath, cspec=cspec, spec=spec, voc=voc)
-        _ = report.items_map # refresh
+        _ = report.records_map # refresh
     with open("report.pkl", "wb") as f:
         pickle.dump(report, f)
 

@@ -144,4 +144,4 @@ class RecordTypeRepr(Model):
 	value = Column(String)
 
 	rtype_id = Column(Integer, ForeignKey("records_dic.id"))
-	rtype = relationship("RecordType", back_populates="reprs")
+	rtype = relationship("RecordType", back_populates="reprs", lazy="joined")

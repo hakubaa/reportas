@@ -25,3 +25,24 @@ function identifyItems(options) {
               alert("Error: " + error);
         });
 }
+
+/**
+ * Send XMLHttpRequest for list of records types.
+ * @param {Object} options 
+ */
+function getRecordTypes(options) {
+    $.getJSON("/api/rtypes", { fields: "name" }, function(data) {
+        var rtypes = data.results.map(function(element) { 
+            return element.name;
+        });
+        if (options.callback !== undefined) {
+            options.callback(rtypes);            
+        }
+    })
+        .fail(function(xhr, textStatus, error){
+              console.log(xhr.statusText);
+              console.log(textStatus);
+              console.log(error);
+              alert("Error: " + error);
+        });
+}

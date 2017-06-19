@@ -8,6 +8,7 @@ class Config:
 	SQLALCHEMY_TRACK_MODIFICATIONS = False
 	ALLOWED_EXTENSIONS = set(["txt", "pdf"])
 	MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB
+	DEBUG_TB_ENABLED = False
 
 	@staticmethod
 	def init_app(app):
@@ -22,7 +23,7 @@ class DevelopmentConfig(Config):
 	)
 	UPLOAD_FOLDER = os.path.join(basedir, "uploads_dev")
 	DEBUG_TB_PROFILER_ENABLED = True
-	
+
 
 class TestingConfig(Config):
 	TESTING = True
