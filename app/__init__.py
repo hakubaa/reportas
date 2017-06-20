@@ -3,6 +3,7 @@ from flask_restful import Api
 from flask_marshmallow import Marshmallow
 from flask_debugtoolbar import DebugToolbarExtension
 from flask_login import LoginManager
+from flask_mail import Mail
 
 from app.patch.sqlalchemy import SQLAlchemy
 from config import config
@@ -12,14 +13,12 @@ from db.core import Base
 
 db = SQLAlchemy()
 db.register_base(Base)
-
 login_manager = LoginManager()
-login_manager.session_protection = "strong"
-login_manager.login_view = "user.login"
 
 
 ma = Marshmallow()
 debugtoolbar = DebugToolbarExtension()
+mail = Mail()
 
 
 def create_app(config_name):
@@ -30,6 +29,12 @@ def create_app(config_name):
 	db.init_app(app)
 	ma.init_app(app)
 	debugtoolbar.init_app(app)
+	mail.init_app(app)
+
+	from app.models import AnonymousUser
+	login_manager.session_protection = "strong"
+	login_manager.login_view = "user.login"
+	login_manager.anonymous_user = AnonymousUser
 	login_manager.init_app(app)
 
 	from app.main import main as main_blueprint

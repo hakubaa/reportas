@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Register{% endblock %}
 
 {% block body %}
     <div class="page-header">
-        <h2>Login</h2>
+        <h2>Register</h2>
     </div>
     <form method="post">
         {{ form.csrf_token }}
@@ -17,6 +17,15 @@
                 </span>
             {% endif %}
         </div>
+        <div class="form-group {% if form.name.errors %} has-error {% endif %}">
+            <label>{{form.name.label}}</label>
+            {{ form.name(class="form-control") }}
+            {% if form.name.errors %}
+                <span class="help-block">
+                    {{ form.name.errors|join("; ") }}
+                </span>
+            {% endif %}
+        </div>
         <div class="form-group {% if form.password.errors %} has-error {% endif %}">
             <label>{{form.password.label}}</label>
             {{ form.password(class="form-control") }}
@@ -26,10 +35,14 @@
                 </span>
             {% endif %}
         </div>
-        <div class="checkbox">
-            <label>
-                {{ form.remember_me() }} Keep me logged in
-            </label>
+        <div class="form-group {% if form.password.errors %} has-error {% endif %}">
+            <label>{{form.password2.label}}</label>
+            {{ form.password2(class="form-control") }}
+            {% if form.password2.errors %}
+                <span class="help-block">
+                    {{ form.password2.errors|join("; ") }}
+                </span>
+            {% endif %}
         </div>
         {{ form.submit(class="btn btn-default") }}
     </form>

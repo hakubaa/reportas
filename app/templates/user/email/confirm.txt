@@ -1,0 +1,10 @@
+Dear {{ user.name }},
+
+Welcome to Open Stock!
+
+To confirm your account please click on the following link:
+{{ url_for('user.confirm', token=token, _external=True) }}
+
+Sincerely,
+
+The Open Stock Team

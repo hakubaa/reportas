@@ -10,6 +10,13 @@ class Config:
 	MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB
 	DEBUG_TB_ENABLED = False
 
+	MAIL_SERVER = "smtp.gmail.com"
+	MAIL_PORT = 465
+	MAIL_USE_SSL = True
+	MAIL_USE_TLS = False
+	MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+	MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+
 	@staticmethod
 	def init_app(app):
 		pass

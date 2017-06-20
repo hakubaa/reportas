@@ -1,11 +1,16 @@
 from flask import render_template, redirect, url_for, flash, request
-from flask_login import login_user, login_required, logout_user
+from flask_login import login_user, login_required, logout_user, current_user
 
 from app.user import user as user_blueprint
-from app.user.util import get_redirect_target
-from app.user.forms import LoginForm
+from app.user.util import get_redirect_target, send_email
+from app.user.forms import LoginForm, RegistrationForm
 from app.models import User
 from app import db
+
+
+@user_blueprint.route("/test", methods=["GET"])
+def test():
+    return render_template("user/test.html")
 
 
 @user_blueprint.route("/login", methods=["GET", "POST"])
@@ -21,7 +26,65 @@ def login():
 
 
 @user_blueprint.route("/logout", methods=["GET"])
+@login_required
 def logout():
     logout_user()
     flash("You have been logged out.")
     return redirect(get_redirect_target() or url_for("main.index"))
+
+
+@user_blueprint.route("/register", methods=["GET", "POST"])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(
+            email=form.email.data, name=form.name.data,
+            password=form.password.data
+        )
+        db.session.add(user)
+        db.session.commit()
+        token = user.generate_confirmation_token()
+        send_email(
+            user.email, "Confirm Your Account",
+            "user/email/confirm", user=user, token=token
+        )
+        flash("A confirmation email has been sent to you by email.")
+        return redirect(url_for("user.login"))
+    return render_template("user/register.html", form=form)
+
+
+@user_blueprint.route("/confirm/<token>")
+@login_required
+def confirm(token):
+    if current_user.confirmed:
+        return redirect(url_for("main.index"))
+    if current_user.confirm(token):
+        flash("You have confirmed your account. Thanks!")
+    else:
+        flash("The confirmation link is invalid or has expired.")
+    return redirect(url_for("main.index"))
+
+
+@user_blueprint.before_app_request
+def before_request():
+    if current_user.is_authenticated \
+            and not current_user.confirmed \
+            and request.endpoint[:5] != "user.":
+        return redirect(url_for("user.unconfirmed"))
+
+
+@user_blueprint.route("/unconfirmed")
+def unconfirmed():
+    if current_user.is_anonymous or current_user.confirmed:
+        return redirect("main.index")
+    return render_template("user/unconfirmed.html")
+
+
+@user_blueprint.route("/confirm")
+@login_required
+def resend_confirmation():
+    token = current_user.generate_confirmation_token()
+    send_email(current_user.email, "Confirm Your Account", 
+               "user/email/confirm", user=current_user, token=token)
+    flash("A new confirmation email has been sent to you by email.")
+    return redirect(url_for("main.index"))
