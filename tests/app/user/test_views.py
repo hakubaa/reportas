@@ -1,10 +1,11 @@
+import base64
 import unittest.mock as mock
 from urllib.parse import urlparse
 
 from flask import url_for
 from flask_login import current_user
 
-from tests.app import AppTestCase
+from tests.app import AppTestCase, create_basic_httpauth_header
 
 from app import db
 from app.models import User
@@ -193,7 +194,7 @@ class ConfirmationViewTest(AppTestCase):
 
     def test_for_confirming_user_with_valid_token(self):
         user = self.create_user()
-        token = user.generate_confirmation_token()
+        token = user.generate_token()
         self.login_user()
         response = self.client.get(
             url_for("user.confirm", token=token),
@@ -204,14 +205,64 @@ class ConfirmationViewTest(AppTestCase):
 
     def test_redirects_user_to_main_page_when_invalid_token(self):
         user = self.create_user()
-        token = user.generate_confirmation_token()
+        token = user.generate_token()
         self.login_user()
         response = self.client.get(url_for("user.confirm", token="abc.abc"))
         self.assertRedirects(response, url_for("main.index"))
 
     def test_unauthenticated_user_are_redirected_to_login_page(self):
         user = self.create_user()
-        token = user.generate_confirmation_token()
+        token = user.generate_token()
         response = self.client.get(url_for("user.confirm", token=token))
         self.assertEqual(urlparse(response.location).path, url_for("user.login"))
         self.assertFalse(user.confirmed)
+
+
+class AuthorizationTest(AppTestCase):
+
+    def setUp(self): 
+        User.__table__.create(db.session.bind)
+
+    def tearDown(self): 
+        db.session.remove()
+        User.__table__.drop(db.session.bind)
+
+    def test_returns_unauthorized_access_for_not_authenticated_user(self):
+        response = self.client.get(url_for("user.get_token"))
+        self.assertEqual(response.status_code, 401)
+
+    def test_authenticate_user_with_http_authentication(self):
+        user = User(email="test@test.com", password="test", name="Test")
+        db.session.add(user)
+        db.session.commit()
+        response = self.client.get(
+            url_for("user.get_token"),
+            headers=create_basic_httpauth_header(user.email, "test")
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_authenticate_user_with_cookie_based_authentication(self):
+        user = self.create_user()
+        self.login_user()
+        response = self.client.get(url_for("user.get_token"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_for_receiving_token(self):
+        user = self.create_user()
+        self.login_user()
+        response = self.client.get(url_for("user.get_token"))
+        data = response.json
+        self.assertIn("token", data)
+
+    def test_auathetnicate_user_with_token(self):
+        user = User(email="test@test.com", password="test", name="Test")
+        db.session.add(user)
+        db.session.commit()
+        token = user.generate_token()
+        response = self.client.get(
+            url_for("user.get_token"),
+            headers={
+                "Authorization": b"OpenStock " + token
+            }
+        )        
+        self.assertEqual(response.status_code, 200)

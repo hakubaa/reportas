@@ -1,4 +1,6 @@
-from flask import render_template, redirect, url_for, flash, request
+import functools
+
+from flask import render_template, redirect, url_for, flash, request, jsonify, g
 from flask_login import login_user, login_required, logout_user, current_user
 
 from app.user import user as user_blueprint
@@ -6,6 +8,7 @@ from app.user.util import get_redirect_target, send_email
 from app.user.forms import LoginForm, RegistrationForm
 from app.models import User
 from app import db
+from app.user import auth
 
 
 @user_blueprint.route("/test", methods=["GET"])
@@ -43,7 +46,7 @@ def register():
         )
         db.session.add(user)
         db.session.commit()
-        token = user.generate_confirmation_token()
+        token = user.generate_token()
         send_email(
             user.email, "Confirm Your Account",
             "user/email/confirm", user=user, token=token
@@ -83,8 +86,15 @@ def unconfirmed():
 @user_blueprint.route("/confirm")
 @login_required
 def resend_confirmation():
-    token = current_user.generate_confirmation_token()
+    token = current_user.generate_token()
     send_email(current_user.email, "Confirm Your Account", 
                "user/email/confirm", user=current_user, token=token)
     flash("A new confirmation email has been sent to you by email.")
     return redirect(url_for("main.index"))
+    
+
+@user_blueprint.route("/token")
+@auth.login_required
+def get_token():
+    token = g.user.generate_token()
+    return jsonify({"token": token.decode("ascii")})

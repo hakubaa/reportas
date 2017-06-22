@@ -79,16 +79,6 @@ class User(UserMixin, Model):
     confirmed = Column(Boolean, default=False)
     role_id = Column(Integer, ForeignKey("roles.id"))
 
-    def __init__(self, **kwargs):
-        super(User, self).__init__(**kwargs)
-        if self.role is None:
-            if self.email in current_app.config.get("REPORTAS_ADMIN", []):
-                self.role = db.session.query(Role).\
-                                filter_by(permissions=0xff).first()
-            if self.role is None:
-                self.role = db.session.query(Role).\
-                                filter_by(default=True).first()
-
     @property
     def password(self):
         raise AttributeError("read-only attribute")
@@ -100,9 +90,9 @@ class User(UserMixin, Model):
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    def generate_confirmation_token(self, expiration=3600):
+    def generate_token(self, expiration=3600):
         s = Serializer(current_app.config["SECRET_KEY"], expiration)
-        return s.dumps({"confirm": self.id})
+        return s.dumps({"id": self.id})
 
     def confirm(self, token):
         s = Serializer(current_app.config["SECRET_KEY"])
@@ -110,7 +100,7 @@ class User(UserMixin, Model):
             data = s.loads(token)
         except:
             return False
-        if data.get("confirm") != self.id:
+        if data.get("id") != self.id:
             return False
         self.confirmed = True
         db.session.add(self)
@@ -123,6 +113,16 @@ class User(UserMixin, Model):
     @property
     def is_administrator(self):
         return self.can(Permission.ADMINISTER)
+
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer(current_app.config["SECRET_KEY"])
+        try:
+            data = s.loads(token)
+        except:
+            return None # invalid token
+        user = db.session.query(User).get(data["id"])
+        return user
 
     def __repr__(self):
         return "<User %r>" % (self.name or self.email)

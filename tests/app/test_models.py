@@ -37,16 +37,16 @@ class UserModelTest(unittest.TestCase):
     def test_for_generating_valid_confirmation_token(self, mock_app):
         mock_app.config = dict(SECRET_KEY=b'TEST')
         user = User(email="tet@test.test", id=1)
-        token = user.generate_confirmation_token()
+        token = user.generate_token()
         data = Serializer(b'TEST').loads(token)
-        self.assertEqual(data.get("confirm"), user.id)
+        self.assertEqual(data.get("id"), user.id)
 
     @patch("app.models.current_app")
     @patch("app.models.db")
     def test_for_confirming_account_with_token(self, db_mock, mock_app):
         mock_app.config = dict(SECRET_KEY=b'TEST')
         user = User(email="tet@test.test", id=1)
-        token = user.generate_confirmation_token()
+        token = user.generate_token()
         self.assertTrue(user.confirm(token))
 
     @patch("app.models.current_app")
@@ -54,7 +54,7 @@ class UserModelTest(unittest.TestCase):
     def test_confirmation_fails_when_invalid_token(self, db_mock, mock_app):
         mock_app.config = dict(SECRET_KEY=b'TEST')
         user = User(email="tet@test.test", id=1)
-        token = user.generate_confirmation_token()
+        token = user.generate_token()
         self.assertFalse(user.confirm(b"sdkfjsdfkjs.dfksdfj"))
 
 

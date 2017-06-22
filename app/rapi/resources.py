@@ -12,6 +12,7 @@ from app.rapi.util import (
     ListResource, DetailResource
 )
 from db.models import Company, RecordType, RecordTypeRepr, Record, Report
+from app.user import auth
 
 
 class Root(Resource):
@@ -26,6 +27,9 @@ class Root(Resource):
 
 
 class CompanyList(MultipleObjectMixin, ListResource):
+    decorators = [
+        auth.login_required
+    ]
     model = Company
 
     def get_schema_cls(self):

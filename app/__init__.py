@@ -10,15 +10,13 @@ from config import config
 
 from db.core import Base
 
-
 db = SQLAlchemy()
 db.register_base(Base)
-login_manager = LoginManager()
-
 
 ma = Marshmallow()
 debugtoolbar = DebugToolbarExtension()
 mail = Mail()
+login_manager = LoginManager()
 
 
 def create_app(config_name):

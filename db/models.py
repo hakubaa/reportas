@@ -1,3 +1,5 @@
+import operator
+
 from sqlalchemy import (
 	Column, Integer, String, DateTime, Boolean, Float,
 	UniqueConstraint
@@ -36,6 +38,41 @@ class Company(Model):
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)
+
+	@staticmethod
+	def insert_companies(session):
+		from scraper.util import get_info_about_companies, get_list_of_companies
+
+		companies = get_list_of_companies()
+		companies_db = session.query(Company.isin).all()
+		if companies_db:
+			companies_db = list(zip(*companies_db))[0]
+
+		new_companies = filter(lambda cp: cp["isin"] not in companies_db, companies)
+		data_companies = get_info_about_companies(
+			filter(bool, map(operator.itemgetter("isin"), new_companies)),
+			max_workers=5
+		)
+
+		for company in data_companies: # merge data with companies
+			try:
+				data = next(x for x in companies if x["isin"] == company["isin"])
+			except StopIteration:
+				pass
+			else:
+				company.update(data)
+
+		util.upload_companies(db.session, data_companies)
+		session.commit()
+
+		import parser.cspec as cspec
+
+		for comp in cspec.companies:
+			company = db.session.query(Company).filter_by(isin=comp["isin"]).one()
+			company.reprs.append(
+				CompanyRepr(value=comp["value"])
+			)
+		session.commit()
 
 
 class CompanyRepr(Model):
@@ -134,6 +171,12 @@ class RecordType(Model):
 
 	def __repr__(self):
 		return "<RecordType('{!s}')>".format(self.name)
+
+	@staticmethod
+	def insert_rtypes(session):
+		import parser.spec as spec
+		util.upload_records_spec(session, spec.finrecords)
+		session.commit()
 
 
 class RecordTypeRepr(Model):

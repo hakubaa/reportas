@@ -18,6 +18,12 @@ from tests.app import AppTestCase
 
 class TestCompanyList(AppTestCase):
 
+    def test_authenticate_user_with_token(self):
+        pass
+
+    def test_authenticate_user_with_cookies(self):
+        pass
+
     def test_get_request_returns_json_response(self):
         response = self.client.get(api.url_for(CompanyList))
         self.assertEqual(response.content_type, "application/json")

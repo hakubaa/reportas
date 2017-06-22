@@ -1,3 +1,5 @@
+import base64
+
 from flask_testing import TestCase
 from flask import url_for
 
@@ -32,3 +34,12 @@ class AppTestCase(TestCase):
 
     def logout_user(self):
         return self.client.get(url_for("user.logout"), follow_redirects=True)
+
+
+def create_basic_httpauth_header(name, password):
+    headers = {
+            "Authorization": b"Basic " + base64.b64encode(
+                bytes(name + ":" + password, encoding="utf-8")
+            )
+    }
+    return headers
