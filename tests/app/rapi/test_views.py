@@ -13,21 +13,23 @@ from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record
 )
 
-from tests.app import AppTestCase
+from tests.app import AppTestCase, create_and_login_user
 
 
 class TestCompanyList(AppTestCase):
 
-    def test_authenticate_user_with_token(self):
-        pass
-
     def test_authenticate_user_with_cookies(self):
         pass
 
+    def test_user_without_write_permission_cannot_send_post_request(self):
+        pass
+
+    @create_and_login_user()
     def test_get_request_returns_json_response(self):
         response = self.client.get(api.url_for(CompanyList))
         self.assertEqual(response.content_type, "application/json")
 
+    @create_and_login_user()
     def test_get_request_returns_list_of_companies(self):
         comp1 = Company.create(db.session, name="TEST1", isin="#TEST1")
         comp2 = Company.create(db.session, name="TEST2", isin="#TEST2")
@@ -36,6 +38,7 @@ class TestCompanyList(AppTestCase):
         data = response.json["results"]
         self.assertEqual(len(data), 2)
 
+    @create_and_login_user()
     def test_get_request_returns_companies_data(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         db.session.commit()
@@ -44,6 +47,7 @@ class TestCompanyList(AppTestCase):
         self.assertEqual(data["name"], comp.name)
         self.assertEqual(data["isin"], comp.isin)
 
+    @create_and_login_user()
     def test_get_request_returns_hyperlinks_to_detail_view(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         CompanyRepr.create(db.session, value="TEST Repr", company=comp)
@@ -53,6 +57,7 @@ class TestCompanyList(AppTestCase):
         self.assertIsNotNone(data["uri"])
         self.assertEqual(data["uri"], url_for("rapi.company", id=comp.id))
 
+    @create_and_login_user()
     def test_order_results_with_sort_parameter(self):
         Company.create(db.session, name="BB", isin="BB")
         Company.create(db.session, name="AA", isin="AA")
@@ -67,6 +72,7 @@ class TestCompanyList(AppTestCase):
         self.assertEqual(data[1]["name"], "BB")
         self.assertEqual(data[2]["name"], "CC")
 
+    @create_and_login_user()
     def test_sort_in_reverse_order(self):
         Company.create(db.session, name="BB", isin="BB")
         Company.create(db.session, name="AA", isin="AA")
@@ -81,6 +87,7 @@ class TestCompanyList(AppTestCase):
         self.assertEqual(data[1]["name"], "BB")
         self.assertEqual(data[2]["name"], "AA")
 
+    @create_and_login_user()
     def test_sort_by_two_columns(self):
         Company.create(db.session, name="AA", isin="AA", ticker="AA")
         Company.create(db.session, name="BB", isin="CC", ticker="BB")     
@@ -94,6 +101,7 @@ class TestCompanyList(AppTestCase):
         self.assertEqual(data[1]["ticker"], "AA")
         self.assertEqual(data[2]["ticker"], "BB")
 
+    @create_and_login_user()
     def test_for_creating_company_with_post_request(self):
         response = self.client.post(
             api.url_for(CompanyList),
@@ -105,6 +113,7 @@ class TestCompanyList(AppTestCase):
         )
         self.assertEqual(db.session.query(Company).count(), 1)
 
+    @create_and_login_user()
     def test_creates_company_with_proper_arguments(self):
         response = self.client.post(
             api.url_for(CompanyList),
@@ -118,6 +127,7 @@ class TestCompanyList(AppTestCase):
         self.assertEqual(company.name, "TEST")
         self.assertEqual(company.isin, "TEST#ONE") 
 
+    @create_and_login_user()
     def test_post_request_returns_400_and_error_when_no_name(self):
         response = self.client.post(
             api.url_for(CompanyList),
@@ -131,6 +141,7 @@ class TestCompanyList(AppTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("name", data)
 
+    @create_and_login_user()
     def test_post_request_returns_400_and_error_when_no_isin(self):
         response = self.client.post(
             api.url_for(CompanyList),
@@ -144,6 +155,7 @@ class TestCompanyList(AppTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("isin", data)
 
+    @create_and_login_user()
     def test_post_request_returns_400_when_not_unique_isin(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         db.session.commit()
@@ -162,6 +174,7 @@ class TestCompanyList(AppTestCase):
 
 class TestCompanyAPI(AppTestCase):
 
+    @create_and_login_user()
     def test_get_request_returns_company_data(self):
         comp = Company.create(db.session, name="TEST1", isin="#TEST1")
         db.session.commit()
@@ -170,17 +183,20 @@ class TestCompanyAPI(AppTestCase):
         self.assertEqual(data["name"], comp.name)
         self.assertEqual(data["isin"], comp.isin)
 
+    @create_and_login_user()
     def test_get_request_returns_404_when_company_does_not_exist(self):
         db.session.commit()
         response = self.client.get(url_for("rapi.company", id=1))       
         self.assertEqual(response.status_code, 404)
 
+    @create_and_login_user()
     def test_for_delating_company_with_delete_request(self):
         comp = Company.create(db.session, name="TEST1", isin="#TEST1")
         db.session.commit() 
         response = self.client.delete(url_for("rapi.company", id=comp.id))
         self.assertEqual(db.session.query(Company).count(), 0)
 
+    @create_and_login_user()
     def test_for_updating_company_with_put_request(self):
         comp = Company.create(db.session, name="TEST1", isin="#TEST1")
         db.session.commit()
@@ -196,6 +212,7 @@ class TestCompanyAPI(AppTestCase):
         self.assertEqual(comp.name, "NEW NAME")
         self.assertEqual(comp.ticker, "HEJ")
 
+    @create_and_login_user()
     def test_raises_400_when_updating_with_not_unique_isin(self):
         Company.create(db.session, name="TEST1", isin="#TEST2")
         comp = Company.create(db.session, name="TEST1", isin="#TEST1")
@@ -210,6 +227,7 @@ class TestCompanyAPI(AppTestCase):
         )
         self.assertEqual(response.status_code, 400)
         
+    @create_and_login_user()
     def test_for_returning_only_request_fields(self):
         comp = Company.create(db.session, name="TEST1", isin="#TEST2")
         db.session.commit()
@@ -223,6 +241,7 @@ class TestCompanyAPI(AppTestCase):
 
 class TestCompanyReprList(AppTestCase):
 
+    @create_and_login_user()
     def test_get_request_returns_json_response(self):
         comp = Company.create(db.session, name="TEST", isin="123#TEST")
         db.session.commit()
@@ -231,6 +250,7 @@ class TestCompanyReprList(AppTestCase):
         )
         self.assertEqual(response.content_type, "application/json")
 
+    @create_and_login_user()
     def test_get_request_returns_404_for_non_existing_company(self):
         response = self.client.get(api.url_for(CompanyReprList, id=1))
         self.assertEqual(response.status_code, 404)
@@ -238,6 +258,7 @@ class TestCompanyReprList(AppTestCase):
 
 class TestRecordTypeList(AppTestCase):
 
+    @create_and_login_user()
     def test_get_request_returns_list_of_records_types(self):
         RecordType.create(db.session, name="TEST1", statement="NLS")
         RecordType.create(db.session, name="TEST2", statement="BLS")
@@ -246,6 +267,7 @@ class TestRecordTypeList(AppTestCase):
         data = response.json["results"]
         self.assertEqual(len(data), 2)
 
+    @create_and_login_user()
     def test_get_request_returns_valid_data(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         db.session.commit()
@@ -254,6 +276,7 @@ class TestRecordTypeList(AppTestCase):
         self.assertEqual(data["name"], rtype.name)
         self.assertEqual(data["statement"], rtype.statement)
 
+    @create_and_login_user()
     def test_get_request_returns_hyperlinks_to_detail_view(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         RecordTypeRepr.create(db.session, value="TEST Repr", lang="PL", 
@@ -264,6 +287,7 @@ class TestRecordTypeList(AppTestCase):
         self.assertIsNotNone(data["uri"])
         self.assertEqual(data["uri"], url_for("rapi.rtype", id=rtype.id))
 
+    @create_and_login_user()
     def test_for_creating_rtype_with_post_request(self):
         response = self.client.post(
             api.url_for(RecordTypeList),
@@ -275,6 +299,7 @@ class TestRecordTypeList(AppTestCase):
         )
         self.assertEqual(db.session.query(RecordType).count(), 1)
 
+    @create_and_login_user()
     def test_creates_rtype_with_proper_arguments(self):
         self.client.post(
             api.url_for(RecordTypeList),
@@ -288,6 +313,7 @@ class TestRecordTypeList(AppTestCase):
         self.assertEqual(rtype.name, "TEST")
         self.assertEqual(rtype.statement, "BLS") 
 
+    @create_and_login_user()
     def test_post_request_returns_400_and_error_when_no_name(self):
         response = self.client.post(
             api.url_for(RecordTypeList),
@@ -301,6 +327,7 @@ class TestRecordTypeList(AppTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("name", data)
 
+    @create_and_login_user()
     def test_post_request_returns_400_and_error_when_no_statement(self):
         response = self.client.post(
             api.url_for(RecordTypeList),
@@ -317,6 +344,7 @@ class TestRecordTypeList(AppTestCase):
 
 class TestRecordTypeAPI(AppTestCase):
 
+    @create_and_login_user()
     def test_get_request_returns_recordtype_data(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         db.session.commit()
@@ -325,16 +353,19 @@ class TestRecordTypeAPI(AppTestCase):
         self.assertEqual(data["name"], rtype.name)
         self.assertEqual(data["statement"], rtype.statement)
 
+    @create_and_login_user()
     def test_get_request_returns_404_when_rtype_does_not_exist(self):
         response = self.client.get(url_for("rapi.rtype", id=1))       
         self.assertEqual(response.status_code, 404)
 
+    @create_and_login_user()
     def test_for_delating_rtype_with_delete_request(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         db.session.commit() 
         response = self.client.delete(url_for("rapi.rtype", id=rtype.id))
         self.assertEqual(db.session.query(RecordType).count(), 0)
 
+    @create_and_login_user()
     def test_for_updating_rtype_with_put_request(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         db.session.commit()
@@ -360,6 +391,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
             )
         return rtype
 
+    @create_and_login_user()
     def test_for_retrieving_list_of_reprs(self):
         rtype = self.create_rtype_with_reprs(n=2)
         db.session.commit()
@@ -367,6 +399,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
         data = response.json["results"]
         self.assertEqual(len(data), 2)
 
+    @create_and_login_user()
     def test_get_request_returns_correct_data(self):
         rtype = self.create_rtype_with_reprs(n=1)
         db.session.commit()
@@ -375,6 +408,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
         self.assertEqual(data["value"], rtype.reprs[0].value)
         self.assertEqual(data["lang"], rtype.reprs[0].lang)  
 
+    @create_and_login_user()
     def test_get_request_raise_404_when_no_rtype(self):
         rtype = self.create_rtype_with_reprs(n=1)
         db.session.commit()
@@ -383,6 +417,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    @create_and_login_user()
     def test_for_creating_new_repr_with_post_request(self):
         rtype = self.create_rtype_with_reprs(n=0)
         db.session.commit()
@@ -398,6 +433,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
         obj = rtype.reprs[0]
         self.assertEqual(obj.value, "NEW REPR")
 
+    @create_and_login_user()
     def test_limit_restuls_with_limit_and_offset(self):
         rtype = self.create_rtype_with_reprs(n=10)
         db.session.commit()
@@ -408,6 +444,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
         data = response.json
         self.assertEqual(data["count"], 4)
 
+    @create_and_login_user()
     def test_order_results_with_sort_parameter(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         rtype.reprs.append(
@@ -431,6 +468,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
         self.assertEqual(data[1]["value"], "BB")
         self.assertEqual(data[2]["value"], "CC")
 
+    @create_and_login_user()
     def test_sort_in_reverse_order(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         rtype.reprs.append(
@@ -454,6 +492,7 @@ class TestRecordTypeReprListAPI(AppTestCase):
         self.assertEqual(data[1]["value"], "BB")
         self.assertEqual(data[2]["value"], "AA")
 
+    @create_and_login_user()
     def test_sort_by_two_columns(self):
         rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
         rtype.reprs.append(
@@ -491,6 +530,7 @@ class TestRecordTypeReprAPI(AppTestCase):
             )
         return rtype
 
+    @create_and_login_user()
     def test_get_request_returns_repr_of_rtype(self):
         rtype = self.create_rtype_with_reprs(n=1)
         db.session.commit()
@@ -501,6 +541,7 @@ class TestRecordTypeReprAPI(AppTestCase):
         self.assertEqual(data["value"], "Test Repr. #0")
         self.assertEqual(data["lang"], "PL")
 
+    @create_and_login_user()
     def test_put_request_updates_repr(self):
         rtype = self.create_rtype_with_reprs(n=1)
         db.session.commit()
@@ -516,6 +557,7 @@ class TestRecordTypeReprAPI(AppTestCase):
         self.assertEqual(rrepr.lang, "EN")
         self.assertEqual(rrepr.value, "New Test Repr")
 
+    @create_and_login_user()
     def test_delete_request_deletes_repr(self):
         rtype = self.create_rtype_with_reprs(n=1)
         db.session.commit()
@@ -529,6 +571,7 @@ class TestRecordTypeReprAPI(AppTestCase):
 
 class TestCompanyRecordList(AppTestCase):
 
+    @create_and_login_user()
     def test_get_request_returns_list_of_records(self):
         company = Company.create(db.session, name="TEST", isin="TEST")
         rtype = RecordType.create(db.session, name="NET_PROFIT", 
@@ -549,10 +592,12 @@ class TestCompanyRecordList(AppTestCase):
         data = response.json
         self.assertEqual(len(data), 2)
 
+    @create_and_login_user()
     def test_get_request_raise_404_when_no_company(self):
         response = self.client.get(url_for("rapi.company_record_list", id=1))
         self.assertEqual(response.status_code, 404)
 
+    @create_and_login_user()
     def test_post_request_creates_new_record(self):
         company = Company.create(db.session, name="TEST", isin="TEST")
         rtype = RecordType.create(db.session, name="NET_PROFIT", 
@@ -572,6 +617,7 @@ class TestCompanyRecordList(AppTestCase):
         self.assertEqual(db.session.query(Record).count(), 1)
         self.assertEqual(company.records.count(), 1)
 
+    @create_and_login_user()
     def test_post_request_returns_400_when_no_rtype(self):
         company = Company.create(db.session, name="TEST", isin="TEST")
         rtype = RecordType.create(db.session, name="NET_PROFIT", 
@@ -588,6 +634,7 @@ class TestCompanyRecordList(AppTestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    @create_and_login_user()
     def test_post_request_uses_company_id_from_url(self):
         company = Company.create(db.session, name="TEST", isin="TEST1")
         Company.create(db.session, name="TEST", isin="TEST2")
@@ -616,6 +663,7 @@ class TestRecordList(AppTestCase):
         db.session.commit()
         return company, rtype
 
+    @create_and_login_user()
     def test_for_creating_one_record_with_post_request(self):
         company, rtype = self.create_company_and_rtype()
         response = self.client.post(
@@ -630,6 +678,7 @@ class TestRecordList(AppTestCase):
         record = db.session.query(Record).one()
         self.assertEqual(record.company_id, company.id)
 
+    @create_and_login_user()
     def test_for_creating_multiplie_records_with_post_request(self):
         company, rtype = self.create_company_and_rtype()
         response = self.client.post(
@@ -649,6 +698,7 @@ class TestRecordList(AppTestCase):
         )
         self.assertEqual(db.session.query(Record).count(), 2)
 
+    @create_and_login_user()
     def test_for_returning_only_request_fields(self):
         company, rtype = self.create_company_and_rtype()
         rec1 = Record.create(

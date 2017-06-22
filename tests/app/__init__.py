@@ -4,7 +4,7 @@ from flask_testing import TestCase
 from flask import url_for
 
 from app import create_app, db
-from app.models import User
+from app.models import User, Role
 
 
 class AppTestCase(TestCase):
@@ -20,7 +20,10 @@ class AppTestCase(TestCase):
         db.drop_all()
 
     def create_user(self, email="test@test.com", name="Test", password="test"):
-        user = User(email=email, name=name, password=password)
+        Role.insert_roles()
+        admin = db.session.query(Role).filter_by(name="Administrator").first()
+        user = User(email=email, name=name, password=password, role=admin,
+                    confirmed=True)
         db.session.add(user)
         db.session.commit()
         return user
@@ -43,3 +46,30 @@ def create_basic_httpauth_header(name, password):
             )
     }
     return headers
+
+
+def create_and_login_user(**udata):
+    def deco_wrapper(f):
+        def deco(*args, **kwargs):
+            Role.insert_roles()
+            admin = db.session.query(Role).filter_by(name="Administrator").one() 
+            user_data = {
+                "email": "test@test.com",
+                "name": "Test",
+                "password": "test",
+                "role": admin,
+                "confirmed": True
+            }
+            user_data.update(udata)
+            user = User(**user_data)
+            db.session.add(user)
+            db.session.commit()
+            args[0].client.post(
+                url_for("user.login"), 
+                data=dict(email=user_data["email"], 
+                          password=user_data["password"]), 
+                follow_redirects=True
+            )
+            return f(*args, **kwargs)
+        return deco
+    return deco_wrapper

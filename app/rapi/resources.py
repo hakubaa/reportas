@@ -16,6 +16,9 @@ from app.user import auth
 
 
 class Root(Resource):
+    decorators = [
+        auth.login_required
+    ]
 
     def get(self):
         return {
@@ -27,10 +30,11 @@ class Root(Resource):
 
 
 class CompanyList(MultipleObjectMixin, ListResource):
-    decorators = [
-        auth.login_required
-    ]
     model = Company
+    decorators = [
+        auth.login_required,
+        #permissi_required(Permission.WRITE_DATA)
+    ]
 
     def get_schema_cls(self):
         if request.method == "GET":
@@ -42,6 +46,9 @@ class CompanyList(MultipleObjectMixin, ListResource):
 class CompanyDetail(SingleObjectMixin, DetailResource):
     model = Company
     schema = schemas.CompanySchema
+    decorators = [
+        auth.login_required
+    ]
 
     def put(self, id):
         company = self.get_object(id)
@@ -59,10 +66,16 @@ class CompanyReprList(SingleObjectMixin, ListResource):
     model = Company
     schema = schemas.CompanyReprSchema
     collection = "reprs"
+    decorators = [
+        auth.login_required
+    ]
 
 
 class RecordTypeList(MultipleObjectMixin, ListResource):
     model = RecordType
+    decorators = [
+        auth.login_required
+    ]
 
     def get_schema_cls(self):
         if request.method == "GET":
@@ -74,16 +87,25 @@ class RecordTypeList(MultipleObjectMixin, ListResource):
 class RecordTypeDetail(SingleObjectMixin, DetailResource):
     model = RecordType
     schema = schemas.RecordTypeSchema
+    decorators = [
+        auth.login_required
+    ]
 
 
 class RecordTypeReprList(SingleObjectMixin, ListResource):
     model = RecordType
     schema = schemas.RecordTypeReprSchema
     collection = "reprs"
+    decorators = [
+        auth.login_required
+    ]
 
 
 class RecordTypeReprDetail(DetailResource):
     schema = schemas.RecordTypeReprSchema
+    decorators = [
+        auth.login_required
+    ]
 
     def get_object(self, id, rid):
         try:
@@ -99,6 +121,9 @@ class CompanyRecordList(SingleObjectMixin, ListResource):
     model = Company
     schema = schemas.RecordSchema
     collection = "records"
+    decorators = [
+        auth.login_required
+    ]
 
     def update_request_data(self, data, many, id):
         if many:
@@ -111,6 +136,9 @@ class CompanyRecordList(SingleObjectMixin, ListResource):
 
 class CompanyRecordDetail(DetailResource):
     schema = schemas.RecordSchema
+    decorators = [
+        auth.login_required
+    ]
 
     def get_object(self, id, rid):
         try:
@@ -126,6 +154,9 @@ class CompanyReportList(SingleObjectMixin, ListResource):
     model = Company
     schema = schemas.ReportSchema
     collection = "reports"
+    decorators = [
+        auth.login_required
+    ]
 
     def update_request_data(self, data, many, id):
         if many:
@@ -139,27 +170,38 @@ class CompanyReportList(SingleObjectMixin, ListResource):
 class RecordList(MultipleObjectMixin, ListResource):
     model = Record
     schema = schemas.RecordSchema
-
+    decorators = [
+        auth.login_required
+    ]
 
 class RecordDetail(SingleObjectMixin, DetailResource):
     model = Record
     schema = schemas.RecordSchema
-
+    decorators = [
+        auth.login_required
+    ]
 
 class ReportList(MultipleObjectMixin, ListResource):
     model = Report
     schema = schemas.ReportSchema
-
+    decorators = [
+        auth.login_required
+    ]
 
 class ReportDetail(SingleObjectMixin, DetailResource):
     model = Report
     schema = schemas.ReportSchema
-
+    decorators = [
+        auth.login_required
+    ]
 
 class ReportRecordList(SingleObjectMixin, ListResource):
     model = Report
     schema = schemas.RecordSchema
     collection = "records"
+    decorators = [
+        auth.login_required
+    ]
 
     def update_request_data(self, data, many, id):
         if many:
@@ -172,7 +214,10 @@ class ReportRecordList(SingleObjectMixin, ListResource):
 
 class ReportRecordDetail(DetailResource):
     schema = schemas.RecordSchema
-
+    decorators = [
+        auth.login_required
+    ]
+    
     def get_object(self, id, rid):
         try:
             obj = db.session.query(Record).join(Report).\
