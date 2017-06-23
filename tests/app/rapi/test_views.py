@@ -12,6 +12,7 @@ from app.rapi.resources import (
 from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record
 )
+from app.models import Permission, Role, User
 
 from tests.app import AppTestCase, create_and_login_user
 
@@ -170,6 +171,20 @@ class TestCompanyList(AppTestCase):
         data = response.json["errors"]
         self.assertEqual(response.status_code, 400)
         self.assertIn("isin", data)
+
+    @create_and_login_user(pass_user=True)
+    def test_post_request_requires_upload_permission(self, user):
+        user.role = db.session.query(Role).filter_by(name="Visitor").first()
+        db.session.query()
+        response = self.client.post(
+            api.url_for(CompanyList),
+            data = json.dumps(
+                {"name": "TEST", "isin": "123#TEST", "ticker": "TST" },
+                cls=DatetimeEncoder
+            ),
+            content_type="application/json"
+        ) 
+        self.assertEqual(response.status_code, 401)
 
 
 class TestCompanyAPI(AppTestCase):

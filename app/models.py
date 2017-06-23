@@ -45,6 +45,9 @@ class Role(Model):
     @staticmethod
     def insert_roles():
         roles = {
+            "Visitor": (
+                Permission.READ_DATA, False
+            ),
             "User": (
                 Permission.READ_DATA |
                 Permission.UPLOAD_DATA, True
@@ -64,6 +67,12 @@ class Role(Model):
             role_db.default = roles[role][1]
             db.session.add(role_db)
         db.session.commit()
+
+    def add_permissions(self, perm):
+        self.permissions |= perm
+
+    def del_permissions(self, perm):
+        self.permissions &= ~perm
 
     def __repr__(self):
         return "<Role %r>" % self.name

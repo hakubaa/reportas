@@ -12,7 +12,9 @@ from app.rapi.util import (
     ListResource, DetailResource
 )
 from db.models import Company, RecordType, RecordTypeRepr, Record, Report
+from app.models import Permission
 from app.user import auth
+from app.user.auth import permission_required
 
 
 class Root(Resource):
@@ -32,8 +34,8 @@ class Root(Resource):
 class CompanyList(MultipleObjectMixin, ListResource):
     model = Company
     decorators = [
-        auth.login_required,
-        #permissi_required(Permission.WRITE_DATA)
+        permission_required(Permission.UPLOAD_DATA),
+        auth.login_required
     ]
 
     def get_schema_cls(self):

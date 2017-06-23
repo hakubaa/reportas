@@ -1,7 +1,7 @@
 import types
 import functools
 
-from flask import g, request, current_app, make_response
+from flask import g, request, current_app, make_response, abort
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from flask_login import current_user
 
@@ -46,3 +46,16 @@ def verify_token(token):
         return False
     g.user = user
     return True
+
+
+def permission_required(permissions):
+    def deco_wrapper(f):
+        @functools.wraps(f)
+        def decorator(*args, **kwargs):
+            if not hasattr(g, "user") and not current_user.is_authenticated:
+                abort(401)
+            if not g.user.role.permissions & permissions:
+                abort(401)
+            return f(*args, **kwargs)
+        return decorator
+    return deco_wrapper

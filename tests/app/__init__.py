@@ -48,7 +48,7 @@ def create_basic_httpauth_header(name, password):
     return headers
 
 
-def create_and_login_user(**udata):
+def create_and_login_user(pass_user=False, **udata):
     def deco_wrapper(f):
         def deco(*args, **kwargs):
             Role.insert_roles()
@@ -70,6 +70,9 @@ def create_and_login_user(**udata):
                           password=user_data["password"]), 
                 follow_redirects=True
             )
-            return f(*args, **kwargs)
+            if pass_user:
+                return f(*args, **kwargs, user=user)
+            else:
+                return f(*args, **kwargs)
         return deco
     return deco_wrapper
