@@ -4,15 +4,47 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import (
 	Column, Integer, String, DateTime, Boolean, Float,
-	UniqueConstraint
+	UniqueConstraint, CheckConstraint
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
 from flask_login import UserMixin, AnonymousUserMixin
 from flask import current_app
 
 from db.core import Model
 from app import login_manager, db
+
+
+class DBRequest(Model):
+    __tablename__ = "dbrequests"
+    
+    id = Column(Integer, primary_key=True)
+    
+    data = Column(String, nullable=False) # data in json format
+    model = Column(String, nullable=False) # model affected by data
+    
+    action = Column(String, nullable=False) # create, update, delete
+    comment = Column(String) # some additional info concerning request
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    user = relationship("User", backref=backref("requests", lazy="dynamic"))
+    
+    # moderator_id = Column(Integer, ForeignKey("users.id"))
+    # moderator = relationship("User", backref=backref("_requests", lazy="dynamic"))
+    # moderated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    # moderator_action = Column(String)
+    # moderator_comment = Column(String)
+    
+    __table_args__ = (
+        CheckConstraint("action in ('create', 'update', 'remove')"),  
+        # CheckConstraint("moderator_action in ('commit', 'reject')")
+    )
+    
+    def commit(self, moderator):
+        pass
+    
+    def reject(self, moderator):
+        pass
 
 
 class File(Model):
@@ -28,7 +60,7 @@ class File(Model):
 
 class Permission:
     READ_DATA = 0x01
-    UPLOAD_DATA = 0x02
+    MODIFY_DATA = 0x02
     MODERATE_DATA = 0x40 
     ADMINISTER = 0x80
 
@@ -50,11 +82,11 @@ class Role(Model):
             ),
             "User": (
                 Permission.READ_DATA |
-                Permission.UPLOAD_DATA, True
+                Permission.MODIFY_DATA, True
             ),
             "Moderator": (
                 Permission.READ_DATA |
-                Permission.UPLOAD_DATA |
+                Permission.MODIFY_DATA |
                 Permission.MODERATE_DATA, False
             ),
             "Administrator": (0xff, False)

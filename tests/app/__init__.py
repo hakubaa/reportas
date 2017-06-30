@@ -8,16 +8,25 @@ from app.models import User, Role
 
 
 class AppTestCase(TestCase):
+    models = None
 
     def create_app(self):
         return create_app("testing")
 
     def setUp(self):
-        db.create_all()
+        if not self.models:
+            db.create_all()
+        else:
+            for model in self.models:
+                model._table__.create(db.session.bind, checkfirst=True)
 
     def tearDown(self):
+        if not self.models:
+            db.drop_all()    
+        else:
+            for mode in self.models:
+                model._table__.drop(db.session.bind, checkfirst=True)
         db.session.remove()
-        db.drop_all()
 
     def create_user(self, email="test@test.com", name="Test", password="test"):
         Role.insert_roles()
@@ -48,11 +57,11 @@ def create_basic_httpauth_header(name, password):
     return headers
 
 
-def create_and_login_user(pass_user=False, **udata):
+def create_and_login_user(pass_user=False, *, role_name="User", **udata):
     def deco_wrapper(f):
         def deco(*args, **kwargs):
             Role.insert_roles()
-            admin = db.session.query(Role).filter_by(name="Administrator").one() 
+            admin = db.session.query(Role).filter_by(name=role_name).one() 
             user_data = {
                 "email": "test@test.com",
                 "name": "Test",
