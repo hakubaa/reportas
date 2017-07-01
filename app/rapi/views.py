@@ -10,7 +10,6 @@ from flask_login import current_user
 from app import debugtoolbar, db
 from app.models import DBRequest, Permission
 from app.rapi import api, rapi
-from app.rapi import resources as res
 from app.user import auth
 from app.user.auth import permission_required
 import db.models as models

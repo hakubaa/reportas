@@ -3,6 +3,7 @@ import json
 from flask import jsonify, request, g, abort
 from flask.views import MethodView
 
+from app.rapi.util import apply_query_parameters
 from app.models import DBRequest, Permission
 from app.user import auth
 from app.user.auth import permission_required
@@ -76,13 +77,13 @@ class ListView(ViewUtilMixin, MethodView):
     schema = None
 
     def get_objects(self, *args, **kwargs):
-        objs = db.session.query(self.model).all()
+        objs = db.session.query(self.model)
         return objs
 
     @auth.login_required
     @permission_required(Permission.READ_DATA)
     def get(self, *args, **kwargs):
-        objs = self.get_objects(*args, **kwargs)
+        objs = apply_query_parameters(self.get_objects(*args, **kwargs))
         schema = self.get_schema()
         data = schema.dump(objs, many=True).data
         return jsonify({

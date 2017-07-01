@@ -18,7 +18,7 @@ class AppTestCase(TestCase):
             db.create_all()
         else:
             for model in self.models:
-                model._table__.create(db.session.bind, checkfirst=True)
+                model.__table__.create(db.session.bind, checkfirst=True)
         # db.session.begin(subtransactions=True)
 
     def tearDown(self):
@@ -26,8 +26,8 @@ class AppTestCase(TestCase):
         if not self.models:
             db.drop_all()    
         else:
-            for mode in self.models:
-                model._table__.drop(db.session.bind, checkfirst=True)
+            for model in self.models:
+                model.__table__.drop(db.session.bind, checkfirst=True)
         # db.session.rollback()
         # db.session.close()
 
