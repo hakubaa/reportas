@@ -19,14 +19,17 @@ class AppTestCase(TestCase):
         else:
             for model in self.models:
                 model._table__.create(db.session.bind, checkfirst=True)
+        # db.session.begin(subtransactions=True)
 
     def tearDown(self):
+        db.session.remove()
         if not self.models:
             db.drop_all()    
         else:
             for mode in self.models:
                 model._table__.drop(db.session.bind, checkfirst=True)
-        db.session.remove()
+        # db.session.rollback()
+        # db.session.close()
 
     def create_user(self, email="test@test.com", name="Test", password="test"):
         Role.insert_roles()

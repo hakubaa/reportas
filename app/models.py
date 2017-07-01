@@ -36,7 +36,7 @@ class DBRequest(Model):
     # moderator_comment = Column(String)
     
     __table_args__ = (
-        CheckConstraint("action in ('create', 'update', 'remove')"),  
+        CheckConstraint("action in ('create', 'update', 'delete')"),  
         # CheckConstraint("moderator_action in ('commit', 'reject')")
     )
     
@@ -118,7 +118,7 @@ class User(UserMixin, Model):
     name = Column(String(64), unique=True, index=True)
     password_hash = Column(String(128))
     confirmed = Column(Boolean, default=False)
-    role_id = Column(Integer, ForeignKey("roles.id"))
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
 
     @property
     def password(self):

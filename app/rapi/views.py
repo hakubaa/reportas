@@ -1,8 +1,10 @@
 import json
 
 from flask import (
-    current_app, make_response, render_template, jsonify, request, g
+    current_app, make_response, render_template, jsonify, request, g, abort,
+    url_for
 )
+from flask.views import MethodView
 from flask_login import current_user
 
 from app import debugtoolbar, db
@@ -13,66 +15,313 @@ from app.user import auth
 from app.user.auth import permission_required
 import db.models as models
 from app.rapi import schemas
+from app.rapi.base import DetailView, ListView
 
 
-@rapi.route("/companies", methods=["GET", "POST"])
+class ReportListView(ListView):
+    model = models.Report
+    schema = schemas.ReportSchema
+
+
+class ReportDetailView(DetailView):
+    model = models.Report
+    schema = schemas.ReportSchema
+
+
+class CompanyListView(ListView):
+    model = models.Company
+    schema = schemas.CompanySimpleSchema
+
+
+class CompanyDetailView(DetailView):
+    model = models.Company
+    schema = schemas.CompanySchema
+
+
+class RecordListView(ListView):
+    model = models.Record
+    schema = schemas.RecordSchema
+
+
+class RecordDetailView(DetailView):
+    model = models.Record
+    schema = schemas.RecordSchema
+
+
+class RecordTypeListView(ListView):
+    model = models.RecordType
+    schema = schemas.RecordTypeSimpleSchema
+    
+
+class RecordTypeDetailView(DetailView):
+    model = models.RecordType
+    schema = schemas.RecordTypeSchema
+
+
+class RecordTypeReprListView(ListView):
+    model = models.RecordTypeRepr
+    schema = schemas.RecordTypeReprSchema
+
+    def get_objects(self, id):
+        rtype = db.session.query(models.RecordType).get(id)
+        if not rtype:
+            abort(404)
+        return rtype.reprs
+
+    def modify_data(self, data):
+        data["rtype"] = data["id"]
+        del data["id"]
+        return data
+
+
+class RecordTypeReprDetailView(DetailView):
+    model = models.RecordTypeRepr
+    schema = schemas.RecordTypeReprSchema
+
+    def get_object(self, rid, id):
+        rtype_repr = db.session.query(models.RecordTypeRepr).filter(
+            models.RecordTypeRepr.rtype_id == rid,
+            models.RecordTypeRepr.id == id
+        ).first()
+        if not rtype_repr:
+            abort(404)
+        return rtype_repr
+
+    def modify_data(self, data):
+        rtype_id = data["rid"]
+        data["rtype"] = rtype_id
+        del data["rid"]
+        return data
+
+
+class CompanyRecordListView(ListView):
+    model = models.Record
+    schema = schemas.RecordSchema
+
+    def get_objects(self, id):
+        company = db.session.query(models.Company).get(id)
+        if not company:
+            abort(404)
+        return company.records
+
+    def modify_data(self, data):
+        data["company"] = data["id"]
+        del data["id"]
+        return data
+
+
+class CompanyRecordDetailView(DetailView):
+    model = models.Record
+    schema = schemas.RecordSchema
+
+    def get_object(self, id, rid):
+        record = db.session.query(models.Record).filter(
+            models.Record.company_id == id,
+            models.Record.id == rid
+        ).first()
+        if not record:
+            abort(404)
+        return record
+
+    def modify_data(self, data):
+        record_id = data["rid"]
+        company_id = data["id"]
+        data["company"] = company_id
+        data["id"] = record_id
+        del data["rid"]
+        return data
+
+
+class CompanyReprListView(ListView):
+    model = models.CompanyRepr
+    schema = schemas.CompanyReprSchema
+
+    def get_objects(self, id):
+        company = db.session.query(models.Company).get(id)
+        if not company:
+            abort(404)
+        return company.reprs
+
+    def modify_data(self, data):
+        data["company"] = data["id"]
+        del data["id"]
+        return data
+
+
+class CompanyReprDetailView(DetailView):
+    model = models.CompanyRepr
+    schema = schemas.CompanyReprSchema
+
+    def get_object(self, id, rid):
+        record = db.session.query(models.CompanyRepr).filter(
+            models.CompanyRepr.company_id == id,
+            models.CompanyRepr.id == rid
+        ).first()
+        if not record:
+            abort(404)
+        return record
+
+    def modify_data(self, data):
+        repr_id = data["rid"]
+        company_id = data["id"]
+        data["company"] = company_id
+        data["id"] = repr_id
+        del data["rid"]
+        return data
+
+
+class CompanyReportListView(ListView):
+    model = models.Report
+    schema = schemas.ReportSchema
+
+    def get_objects(self, id):
+        company = db.session.query(models.Company).get(id)
+        if not company:
+            abort(404)
+        return company.reports
+
+    def modify_data(self, data):
+        data["company"] = data["id"]
+        del data["id"]
+        return data
+
+
+class CompanyReportDetailView(DetailView):
+    model = models.Report
+    schema = schemas.ReportSchema
+
+    def get_object(self, id, rid):
+        record = db.session.query(models.Report).filter(
+            models.Report.company_id == id,
+            models.Report.id == rid
+        ).first()
+        if not record:
+            abort(404)
+        return record
+
+    def modify_data(self, data):
+        report_id = data["rid"]
+        company_id = data["id"]
+        data["company"] = company_id
+        data["id"] = report_id
+        del data["rid"]
+        return data
+
+
+class ReportRecordListView(ListView):
+    model = models.Record
+    schema = schemas.RecordSchema
+
+    def get_objects(self, id):
+        report = db.session.query(models.Report).get(id)
+        if not report:
+            abort(404)
+        return report.records
+
+    def modify_data(self, data):
+        data["report"] = data["id"]
+        del data["id"]
+        return data
+
+
+class ReportRecordDetailView(DetailView):
+    model = models.Record
+    schema = schemas.RecordSchema
+
+    def get_object(self, id, rid):
+        record = db.session.query(models.Record).filter(
+            models.Record.report_id == id,
+            models.Record.id == rid
+        ).first()
+        if not record:
+            abort(404)
+        return record
+
+    def modify_data(self, data):
+        report_id = data["id"]
+        record_id = data["rid"]
+        data["report"] = report_id
+        data["id"] = record_id
+        del data["rid"]
+        return data
+
+
+
+@rapi.route("/")
 @auth.login_required
-@permission_required(Permission.MODIFY_DATA)
-def company_list():
-    if request.method == "GET":
-
-        objs = db.session.query(models.Company).all()
-        schema = schemas.CompanySimpleSchema()
-        data = schema.dump(objs, many=True).data
-        return jsonify({
-            "results": data,
-            "count": len(data)
-        }), 200
-
-    elif request.method == "POST":
-
-        dbrequest = DBRequest(data=request.data.decode(), user=g.user, 
-                              action="create", model="Company")
-        db.session.add(dbrequest)
-        db.session.commit()
-
-        return jsonify({}), 201
+@permission_required(Permission.READ_DATA)
+def root():
+    return jsonify({
+        "companies": url_for("rapi.company_list"),
+        "reports": url_for("rapi.report_list"),
+        "records": url_for("rapi.record_list"),
+        "rtypes": url_for("rapi.rtype_list")
+    })
 
 
+rapi.add_url_rule(
+    "/companies",  
+    view_func=CompanyListView.as_view("company_list")
+)
+rapi.add_url_rule(
+    "/companies/<int:id>", 
+    view_func=CompanyDetailView.as_view("company_detail")
+)
 
-@rapi.route("/companies/<int:id>", methods=["GET"])
-def company():
-    return jsonify({}), 200
+rapi.add_url_rule(
+    "/companies/<int:id>/reprs",
+    view_func=CompanyReprListView.as_view("company_repr_list")
+)
+rapi.add_url_rule(
+    "/companies/<int:id>/reprs/<int:rid>",
+    view_func=CompanyReprDetailView.as_view("company_repr_detail")
+)
+
+rapi.add_url_rule(
+    "/companies/<int:id>/records",
+    view_func=CompanyRecordListView.as_view("company_record_list")
+)
+rapi.add_url_rule(
+    "/companies/<int:id>/records/<int:rid>",
+    view_func=CompanyRecordDetailView.as_view("company_record_detail")
+)
+
+rapi.add_url_rule(
+    "/companies/<int:id>/reports",
+    view_func=CompanyReportListView.as_view("company_report_list")
+)
+rapi.add_url_rule(
+    "/companies/<int:id>/reports/<int:rid>",
+    view_func=CompanyReportDetailView.as_view("company_report_detail")
+)
 
 
-# api.add_resource(res.Root, "/", endpoint="root")
-# api.add_resource(res.CompanyList, "/companies", endpoint="company_list")
-# api.add_resource(res.CompanyDetail, "/companies/<int:id>", endpoint="company")
-# api.add_resource(res.CompanyReprList, "/companies/<int:id>/reprs", 
-#                  endpoint="crepr_list")
-# api.add_resource(res.CompanyRecordList, "/companies/<int:id>/records",
-#                  endpoint="company_record_list")
-# api.add_resource(res.CompanyRecordDetail, "/companies/<int:id>/records/<int:rid>",
-#                  endpoint="company_record")
-# api.add_resource(res.CompanyReportList, "/companies/<int:id>/reports",
-#                  endpoint="company_report_list")
+rapi.add_url_rule("/rtypes",
+                  view_func=RecordTypeListView.as_view("rtype_list"))
+rapi.add_url_rule("/rtypes/<int:id>",
+                  view_func=RecordTypeDetailView.as_view("rtype_detail"))
 
-# api.add_resource(res.RecordTypeList, "/rtypes", endpoint="rtype_list")
-# api.add_resource(res.RecordTypeDetail, "/rtypes/<int:id>", endpoint="rtype")
-# api.add_resource(res.RecordTypeReprList, "/rtypes/<int:id>/reprs",
-#                  endpoint="rtype_repr_list")
-# api.add_resource(res.RecordTypeReprDetail, "/rtypes/<int:id>/reprs/<int:rid>",
-#                  endpoint="rtype_repr")
+rapi.add_url_rule("/rtypes/<int:id>/reprs",
+                  view_func=RecordTypeReprListView.as_view("rtype_repr_list"))
+rapi.add_url_rule("/rtypes/<int:id>/reprs/<int:rid>",
+                  view_func=RecordTypeReprDetailView.as_view("rtype_repr_detail"))
 
-# api.add_resource(res.RecordList, "/records", endpoint="record_list")
-# api.add_resource(res.RecordDetail, "/records/<int:id>", endpoint="record")
 
-# api.add_resource(res.ReportList, "/reports", endpoint="report_list")
-# api.add_resource(res.ReportDetail, "/reports/<int:id>", endpoint="report")
-# api.add_resource(res.ReportList, "/reports/<int:id>/records", 
-#                  endpoint="report_record_list")
-# api.add_resource(res.ReportList, "/reports/<int:id>/records/<int:rid>", 
-#                  endpoint="report_record")
+rapi.add_url_rule("/reports", view_func=ReportListView.as_view("report_list"))
+rapi.add_url_rule("/reports/<int:id>", 
+                  view_func=ReportDetailView.as_view("report_detail"))
+
+rapi.add_url_rule("/reports/<int:id>/records",
+                  view_func=ReportRecordListView.as_view("report_record_list"))
+rapi.add_url_rule(
+    "/reports/<int:id>/records/<int:rid>",
+    view_func=ReportRecordDetailView.as_view("report_record_detail")
+)
+
+rapi.add_url_rule("/records", view_func=RecordListView.as_view("record_list"))
+rapi.add_url_rule("/records/<int:id>", 
+                  view_func=RecordDetailView.as_view("record_detail"))
+
 
 
 # @rapi.after_request

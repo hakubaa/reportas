@@ -65,9 +65,10 @@ class SQLAlchemy:
 	    Session = sessionmaker(bind=self.engine)
 	    return Session()
 
-	def create_all(self, *args, **kwargs):
+	def create_all(self, *args, checkfirst=True, **kwargs):
 		'''Create tables.'''
-		Base.metadata.create_all(self.engine, *args, **kwargs)
+		Base.metadata.create_all(self.engine, *args, checkfirst=checkfirst, 
+			                     **kwargs)
 
 	def drop_all(self, *args, **kwargs):
 		'''Drop all tables.'''

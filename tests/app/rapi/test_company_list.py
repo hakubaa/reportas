@@ -47,7 +47,7 @@ class TestCompanyList(AppTestCase):
         response = self.client.get(url_for("rapi.company_list"))
         data = response.json["results"][0]
         self.assertIsNotNone(data["uri"])
-        self.assertEqual(data["uri"], url_for("rapi.company", id=comp.id))
+        self.assertEqual(data["uri"], url_for("rapi.company_detail", id=comp.id))
 
     # @create_and_login_user()
     # def test_order_results_with_sort_parameter(self):
@@ -134,6 +134,11 @@ class TestCompanyList(AppTestCase):
             content_type="application/json"
         )
         self.assertEqual(response.status_code, 401)
+
+    @create_and_login_user(role_name="Visitor")
+    def test_user_without_permission_to_modify_data_can_read_data(self):
+        response = self.client.get(url_for("rapi.company_list"))
+        self.assertEqual(response.status_code, 200)
 
     # @create_and_login_user()
     # def test_post_request_returns_400_and_error_when_no_name(self):

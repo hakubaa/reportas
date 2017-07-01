@@ -8,7 +8,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 
 from db.core import Model
-import db.core.util as util
 
 
 class Company(Model):
@@ -42,6 +41,7 @@ class Company(Model):
 	@staticmethod
 	def insert_companies(session):
 		from scraper.util import get_info_about_companies, get_list_of_companies
+		import db.util as util
 
 		companies = get_list_of_companies()
 		companies_db = session.query(Company.isin).all()
@@ -62,13 +62,13 @@ class Company(Model):
 			else:
 				company.update(data)
 
-		util.upload_companies(db.session, data_companies)
+		util.upload_companies(session, data_companies)
 		session.commit()
 
 		import parser.cspec as cspec
 
 		for comp in cspec.companies:
-			company = db.session.query(Company).filter_by(isin=comp["isin"]).one()
+			company = session.query(Company).filter_by(isin=comp["isin"]).one()
 			company.reprs.append(
 				CompanyRepr(value=comp["value"])
 			)
@@ -144,6 +144,7 @@ class Record(Model):
 	@classmethod
 	def create_or_update(cls, session, rtype, value, timestamp, timerange,
 			             report, company, defaults=None, override=False):
+		import db.util as util
 		obj, newly_created = util.get_or_create(
 			session, cls, defaults={"value": value, "report": report},
 			rtype=rtype, timestamp=timestamp, timerange=timerange,
@@ -175,6 +176,7 @@ class RecordType(Model):
 	@staticmethod
 	def insert_rtypes(session):
 		import parser.spec as spec
+		import db.util as util
 		util.upload_records_spec(session, spec.finrecords)
 		session.commit()
 
