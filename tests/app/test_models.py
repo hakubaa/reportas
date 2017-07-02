@@ -19,7 +19,7 @@ class Student(Model):
 
     id = Column(Integer, primary_key=True)
     age = Column(Integer)
-    name = Column(String)
+    name = Column(String, nullable=False)
 
 class StudentSchema(ma.ModelSchema):
     class Meta:
@@ -171,7 +171,7 @@ class RoleModelTest(AppTestCase):
         Role.insert_roles()
         user_role = db.session.query(Role).filter_by(name="User").one()
         self.assertTrue(user_role.permissions & Permission.READ_DATA)
-        self.assertTrue(user_role.permissions & Permission.UPLOAD_DATA)
+        self.assertTrue(user_role.permissions & Permission.MODIFY_DATA)
 
     def test_administrator_has_all_permissions(self):
         Role.insert_roles()

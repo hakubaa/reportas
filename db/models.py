@@ -15,8 +15,8 @@ class Company(Model):
 
 	id = Column(Integer, primary_key=True)
 	
-	name = Column(String)
-	isin = Column(String, unique=True)
+	name = Column(String, nullable=False)
+	isin = Column(String, unique=True, nullable=False)
 	ticker = Column(String)
 	fullname = Column(String)
 	district = Column(String)

@@ -17,7 +17,5 @@
 
 - Sunday:
   - transition from dbrequest to records in db
-  - API record: show rtype, not only id
   - history of changes
   - 'many' in query_parameters
-  - write tests for schema, test error raising

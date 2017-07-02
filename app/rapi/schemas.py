@@ -6,9 +6,11 @@ __all__ = [
 
 
 from marshmallow_sqlalchemy import field_for
-from marshmallow import validates, ValidationError, fields, pre_load
+from marshmallow import (
+    validates, ValidationError, fields, pre_load, validates_schema
+)
 from marshmallow.validate import OneOf
-from sqlalchemy import exists
+from sqlalchemy import exists, and_
 import werkzeug
 
 from app import ma, db
@@ -63,14 +65,14 @@ class CompanySchema(ma.ModelSchema):
     )
     records = ma.Hyperlinks(ma.URLFor("rapi.company_record_list", id="<id>"))
     reports = ma.Hyperlinks(ma.URLFor("rapi.company_report_list", id="<id>"))
-    name = field_for(
-        models.Company, "name", required=True,
-        error_messages={"required": "Name is required."}
-    )
-    isin = field_for(
-        models.Company, "isin", required=True,
-        error_messages={"required": "ISIN is required."}
-    )
+    # name = field_for(
+    #     models.Company, "name", required=True,
+    #     error_messages={"required": "Name is required."}
+    # )
+    # isin = field_for(
+    #     models.Company, "isin", required=True,
+    #     error_messages={"required": "ISIN is required."}
+    # )
 
     @validates("isin")
     def validate_isin(self, value):
@@ -101,10 +103,10 @@ class RecordTypeReprSchema(ma.ModelSchema):
 class RecordTypeSchema(ma.ModelSchema):
     class Meta:
         model = RecordType
-    name = field_for(
-        RecordType, "name", required=True,
-        error_messages={"required": "Name is required."}
-    )
+    # name = field_for(
+    #     RecordType, "name", required=True,
+    #     error_messages={"required": "Name is required."}
+    # )
     statement = field_for(
         RecordType, "statement", required=True,
         error_messages={"required": "Statement is required."},
@@ -174,6 +176,25 @@ class RecordSchema(ma.ModelSchema):
         if not ret:
             raise ValidationError(
                 "Report with id '{}' does not exist.".format(value)
+            )
+        return True
+
+    @validates_schema
+    def validate_uniquness(self, data):
+        if not ("timerange" in data and "timestamp" in data and 
+                "company_id" in data and "rtype_id" in data):
+            return False
+
+        (ret, ), = db.session.query(exists().where(and_(
+            Record.timerange == data["timerange"],
+            Record.timestamp == data["timestamp"],
+            Record.company_id == data["company_id"],
+            Record.rtype_id == data["rtype_id"]
+        )))
+        if ret:
+            raise ValidationError(
+                "Record not unique in terms of timerange, timestamp, "
+                "company and type.", field_names=("record")
             )
         return True
 
