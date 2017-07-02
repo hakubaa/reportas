@@ -11,11 +11,16 @@ from app import db
 
 
 class ViewUtilMixin(object):
+    schema = None
+    schema_post = None
 
     def get_schema(self):
-        fields = request.values.get("fields", None)
-        if fields: fields = "".join(fields.split()).split(",")
-        schema = self.schema(only=fields)
+        if request.method in ("GET", "HEAD"):
+            fields = request.values.get("fields", None)
+            if fields: fields = "".join(fields.split()).split(",")
+            schema = self.schema(only=fields)
+        else:
+            schema = (self.schema_post or self.schema)()
         return schema
 
     def modify_data(self, data):
@@ -37,7 +42,6 @@ class ViewUtilMixin(object):
 
 class DetailView(ViewUtilMixin, MethodView):
     model = None
-    schema = None
 
     def get_object(self, id):
         obj = db.session.query(self.model).get(id)
@@ -74,7 +78,6 @@ class DetailView(ViewUtilMixin, MethodView):
 
 class ListView(ViewUtilMixin, MethodView):
     model = None
-    schema = None
 
     def get_objects(self, *args, **kwargs):
         objs = db.session.query(self.model)

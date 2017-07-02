@@ -1,4 +1,7 @@
 import datetime
+import sys
+import inspect
+import json
 
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,6 +9,7 @@ from sqlalchemy import (
 	Column, Integer, String, DateTime, Boolean, Float,
 	UniqueConstraint, CheckConstraint
 )
+from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
 from flask_login import UserMixin, AnonymousUserMixin
@@ -19,10 +23,10 @@ class DBRequest(Model):
     __tablename__ = "dbrequests"
     
     id = Column(Integer, primary_key=True)
-    
     data = Column(String, nullable=False) # data in json format
-    model = Column(String, nullable=False) # model affected by data
-    
+
+    # meta data
+    model = Column(String) # model affected by data
     action = Column(String, nullable=False) # create, update, delete
     comment = Column(String) # some additional info concerning request
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
@@ -39,10 +43,48 @@ class DBRequest(Model):
         CheckConstraint("action in ('create', 'update', 'delete')"),  
         # CheckConstraint("moderator_action in ('commit', 'reject')")
     )
+
+    def _identify_class(self):
+        for frame_info in inspect.getouterframes(inspect.currentframe()):
+            try:
+                return frame_info.frame.f_globals[self.model]
+            except KeyError:
+                pass
+        return None
+
+    def _get_session(self, session=None):
+        session = session or sqlalchemy_inspect(self).session
+        if not session:
+            return ValueError("DBRequest requires a session")
+        return session
+
+    def _get_obj(self, id, session=None):
+        cls = self._identify_class()
+        if not cls:
+            return NameError("model '%s' is not defined" % self.model)
+        session = self._get_session(session)
+        instance = session.query(cls).get(id)
+        if not instance:
+            return RuntimeError(
+                "'%s' with id='%d' does not exist".format(self.model, id)
+            )    
+        return instance
     
-    def commit(self, moderator):
-        pass
-    
+    def execute(self, moderator, schema=None, session=None, instance=None):
+        data = json.loads(self.data)
+        if self.action == "create":
+            return schema.load(data)
+        elif self.action == "update":
+            instance = instance or self._get_obj(data["id"], session)
+            return schema.load(data, instance=instance, partial=True)
+        elif self.action == "delete":
+            instance = instance or self._get_obj(data["id"], session)
+            session = self._get_session(session)
+            session.delete(instance)
+            return None, {}
+        else:
+            raise RuntimeError("action '%s' is not valid" % self.action)
+
     def reject(self, moderator):
         pass
 

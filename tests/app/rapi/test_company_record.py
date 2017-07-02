@@ -6,7 +6,6 @@ from flask import url_for
 from app import db
 from app.rapi import api
 from app.rapi.util import DatetimeEncoder
-import app.rapi.resources as res
 import db.models as models
 from db.models import Company, RecordType, Record
 from app.models import Permission, Role, User, DBRequest
@@ -19,7 +18,7 @@ class TestListView(AppTestCase):
     def generate_data(self, name="TEST"):
         company = Company.create(db.session, name=name, isin="#"+name)
         rtype = RecordType.get_or_create(
-            db.session, {"statement": "NLS"}, name="NET_PROFIT"
+            db.session, {"statement": "nls"}, name="NET_PROFIT"
         )
         rec1 = Record.create(
             db.session, value=10, timerange=3, timestamp=datetime(2015, 3, 31),
@@ -67,7 +66,7 @@ class TestListView(AppTestCase):
         data = json.loads(dbrequest.data)
         self.assertEqual(data["value"], 10)
         self.assertEqual(data["rtype"], test_data["rtype"].id) 
-        self.assertEqual(data["company"], test_data["company"].id)
+        self.assertEqual(data["company_id"], test_data["company"].id)
         self.assertEqual(dbrequest.user, user)
         self.assertEqual(dbrequest.action, "create")
         self.assertEqual(dbrequest.model, "Record")
@@ -98,7 +97,7 @@ class TestListView(AppTestCase):
         )
         dbrequest = db.session.query(DBRequest).one()
         data = json.loads(dbrequest.data)
-        self.assertEqual(data["company"], test_data["company"].id)
+        self.assertEqual(data["company_id"], test_data["company"].id)
 
 
 class TestDetailView(AppTestCase):
@@ -106,7 +105,7 @@ class TestDetailView(AppTestCase):
     def generate_data(self, name="TEST"):
         company = Company.create(db.session, name=name, isin="#"+name)
         rtype = RecordType.get_or_create(
-            db.session, {"statement": "NLS"}, name="NET_PROFIT"
+            db.session, {"statement": "nls"}, name="NET_PROFIT"
         )
         rec1 = Record.create(
             db.session, value=10, timerange=3, timestamp=datetime(2015, 3, 31),

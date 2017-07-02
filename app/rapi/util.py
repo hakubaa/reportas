@@ -1,6 +1,6 @@
 import json
 
-from flask_sqlalchemy import BaseQuery
+from sqlalchemy.orm.query import Query
 from flask import request
 
 
@@ -10,7 +10,7 @@ def apply_query_parameters(query):
     sort = request.args.get("sort")
     if sort: sort = "".join(sort.split()) # remove all whitespaces
 
-    if isinstance(query, BaseQuery):
+    if isinstance(query, Query):
         if sort:
             for field in sort.split(","):
                 index = 1 if field.startswith("-") else 0

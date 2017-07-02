@@ -30,6 +30,7 @@ class ReportDetailView(DetailView):
 class CompanyListView(ListView):
     model = models.Company
     schema = schemas.CompanySimpleSchema
+    schema_post = schemas.CompanySchema
 
 
 class CompanyDetailView(DetailView):
@@ -50,6 +51,7 @@ class RecordDetailView(DetailView):
 class RecordTypeListView(ListView):
     model = models.RecordType
     schema = schemas.RecordTypeSimpleSchema
+    schema_post = schemas.RecordTypeSchema
     
 
 class RecordTypeDetailView(DetailView):
@@ -68,7 +70,7 @@ class RecordTypeReprListView(ListView):
         return rtype.reprs
 
     def modify_data(self, data):
-        data["rtype"] = data["id"]
+        data["rtype_id"] = data["id"]
         del data["id"]
         return data
 
@@ -88,7 +90,7 @@ class RecordTypeReprDetailView(DetailView):
 
     def modify_data(self, data):
         rtype_id = data["rid"]
-        data["rtype"] = rtype_id
+        data["rtype_id"] = rtype_id
         del data["rid"]
         return data
 
@@ -104,7 +106,7 @@ class CompanyRecordListView(ListView):
         return company.records
 
     def modify_data(self, data):
-        data["company"] = data["id"]
+        data["company_id"] = data["id"]
         del data["id"]
         return data
 
@@ -125,7 +127,7 @@ class CompanyRecordDetailView(DetailView):
     def modify_data(self, data):
         record_id = data["rid"]
         company_id = data["id"]
-        data["company"] = company_id
+        data["company_id"] = company_id
         data["id"] = record_id
         del data["rid"]
         return data
@@ -142,7 +144,7 @@ class CompanyReprListView(ListView):
         return company.reprs
 
     def modify_data(self, data):
-        data["company"] = data["id"]
+        data["company_id"] = data["id"]
         del data["id"]
         return data
 
@@ -163,7 +165,7 @@ class CompanyReprDetailView(DetailView):
     def modify_data(self, data):
         repr_id = data["rid"]
         company_id = data["id"]
-        data["company"] = company_id
+        data["company_id"] = company_id
         data["id"] = repr_id
         del data["rid"]
         return data
@@ -180,7 +182,7 @@ class CompanyReportListView(ListView):
         return company.reports
 
     def modify_data(self, data):
-        data["company"] = data["id"]
+        data["company_id"] = data["id"]
         del data["id"]
         return data
 
@@ -201,7 +203,7 @@ class CompanyReportDetailView(DetailView):
     def modify_data(self, data):
         report_id = data["rid"]
         company_id = data["id"]
-        data["company"] = company_id
+        data["company_id"] = company_id
         data["id"] = report_id
         del data["rid"]
         return data
@@ -218,7 +220,7 @@ class ReportRecordListView(ListView):
         return report.records
 
     def modify_data(self, data):
-        data["report"] = data["id"]
+        data["report_id"] = data["id"]
         del data["id"]
         return data
 
@@ -239,7 +241,7 @@ class ReportRecordDetailView(DetailView):
     def modify_data(self, data):
         report_id = data["id"]
         record_id = data["rid"]
-        data["report"] = report_id
+        data["report_id"] = report_id
         data["id"] = record_id
         del data["rid"]
         return data

@@ -18,7 +18,7 @@ from tests.app import AppTestCase, create_and_login_user
 class TestListView(AppTestCase):
 
     def create_rtype_with_reprs(self, n=2, name="TEST"):
-        rtype = RecordType.create(db.session, name=name, statement="NLS")
+        rtype = RecordType.create(db.session, name=name, statement="nls")
         for i in range(n):
             rtype.reprs.append(
                 RecordTypeRepr.create(
@@ -101,7 +101,7 @@ class TestListView(AppTestCase):
         )
         dbrequest = db.session.query(DBRequest).first()
         data = json.loads(dbrequest.data)   
-        self.assertEqual(data["rtype"], rtype.id)
+        self.assertEqual(data["rtype_id"], rtype.id)
 
 
     # @create_and_login_user()
@@ -117,7 +117,7 @@ class TestListView(AppTestCase):
 
     # @create_and_login_user()
     # def test_order_results_with_sort_parameter(self):
-    #     rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+    #     rtype = RecordType.create(db.session, name="TEST1", statement="nls")
     #     rtype.reprs.append(
     #         RecordTypeRepr.create(db.session, value="CC", lang="PL")
     #     )
@@ -141,7 +141,7 @@ class TestListView(AppTestCase):
 
     # @create_and_login_user()
     # def test_sort_in_reverse_order(self):
-    #     rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+    #     rtype = RecordType.create(db.session, name="TEST1", statement="nls")
     #     rtype.reprs.append(
     #         RecordTypeRepr.create(db.session, value="CC", lang="PL")
     #     )
@@ -165,7 +165,7 @@ class TestListView(AppTestCase):
 
     # @create_and_login_user()
     # def test_sort_by_two_columns(self):
-    #     rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+    #     rtype = RecordType.create(db.session, name="TEST1", statement="nls")
     #     rtype.reprs.append(
     #         RecordTypeRepr.create(db.session, value="CC", lang="BB")
     #     )
@@ -192,7 +192,7 @@ class TestListView(AppTestCase):
 class TestDetailView(AppTestCase):
 
     def create_rtype_with_reprs(self, n=2, name="TEST"):
-        rtype = RecordType.create(db.session, name=name, statement="NLS")
+        rtype = RecordType.create(db.session, name=name, statement="nls")
         for i in range(n):
             rtype.reprs.append(
                 RecordTypeRepr.create(

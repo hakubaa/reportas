@@ -19,8 +19,8 @@ class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_list_of_records_types(self):
-        RecordType.create(db.session, name="TEST1", statement="NLS")
-        RecordType.create(db.session, name="TEST2", statement="BLS")
+        RecordType.create(db.session, name="TEST1", statement="nls")
+        RecordType.create(db.session, name="TEST2", statement="bls")
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_list"))
         data = response.json["results"]
@@ -28,7 +28,7 @@ class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_proper_data(self):
-        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_list"))
         data = response.json["results"][0]
@@ -37,7 +37,7 @@ class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_hyperlinks_to_detail_view(self):
-        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
         RecordTypeRepr.create(db.session, value="TEST Repr", lang="PL", 
                               rtype=rtype)
         db.session.commit()
@@ -51,7 +51,7 @@ class TestRecordTypeList(AppTestCase):
         response = self.client.post(
             url_for("rapi.rtype_list"),
             data = json.dumps(
-                {"name": "TEST", "statement": "BLS"},
+                {"name": "TEST", "statement": "bls"},
                 cls=DatetimeEncoder
             ),
             content_type="application/json"
@@ -63,7 +63,7 @@ class TestRecordTypeList(AppTestCase):
         self.client.post(
             url_for("rapi.rtype_list"),
             data = json.dumps(
-                {"name": "TEST", "statement": "BLS"},
+                {"name": "TEST", "statement": "bls"},
                 cls=DatetimeEncoder
             ),
             content_type="application/json"
@@ -71,7 +71,7 @@ class TestRecordTypeList(AppTestCase):
         dbrequest = db.session.query(DBRequest).first()
         data = json.loads(dbrequest.data)
         self.assertEqual(data["name"], "TEST")
-        self.assertEqual(data["statement"], "BLS") 
+        self.assertEqual(data["statement"], "bls") 
         self.assertEqual(dbrequest.user, user)
         self.assertEqual(dbrequest.action, "create")
         self.assertEqual(dbrequest.model, "RecordType")
@@ -81,7 +81,7 @@ class TestRecordTypeList(AppTestCase):
     #     response = self.client.post(
     #         api.url_for(RecordTypeList),
     #         data = json.dumps(
-    #             {"wow": "TEST", "statement": "BLS"},
+    #             {"wow": "TEST", "statement": "bls"},
     #             cls=DatetimeEncoder
     #         ),
     #         content_type="application/json"
@@ -95,7 +95,7 @@ class TestRecordTypeList(AppTestCase):
     #     response = self.client.post(
     #         api.url_for(RecordTypeList),
     #         data = json.dumps(
-    #             {"name": "TEST", "stm": "BLS"},
+    #             {"name": "TEST", "stm": "bls"},
     #             cls=DatetimeEncoder
     #         ),
     #         content_type="application/json"
@@ -109,7 +109,7 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_recordtype_data(self):
-        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_detail", id=rtype.id))
         data = response.json
@@ -123,7 +123,7 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_delete_request_creates_dbrequest(self, user):
-        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
         db.session.commit() 
         response = self.client.delete(url_for("rapi.rtype_detail", id=rtype.id))
         self.assertEqual(db.session.query(DBRequest).count(), 1)
@@ -135,11 +135,11 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_put_request_creates_dbrequest(self, user):
-        rtype = RecordType.create(db.session, name="TEST1", statement="NLS")
+        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
         db.session.commit()
         response = self.client.put(
             url_for("rapi.rtype_detail", id=rtype.id), 
-            data=json.dumps({"statement": "BLS"}, cls=DatetimeEncoder),
+            data=json.dumps({"statement": "bls"}, cls=DatetimeEncoder),
             content_type="application/json"
         )
         self.assertEqual(db.session.query(DBRequest).count(), 1)
@@ -148,4 +148,4 @@ class TestRecordTypeAPI(AppTestCase):
         self.assertEqual(dbrequest.action, "update")
         self.assertEqual(dbrequest.user, user)
         self.assertEqual(data["id"], rtype.id)
-        self.assertEqual(data["statement"], "BLS")
+        self.assertEqual(data["statement"], "bls")

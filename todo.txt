@@ -13,3 +13,11 @@
 - versining dataset
   - https://stackoverflow.com/questions/2015232/database-design-for-audit-logging
   - http://blog.jasny.net/articles/versioning-mysql-data/
+
+
+- Sunday:
+  - transition from dbrequest to records in db
+  - API record: show rtype, not only id
+  - history of changes
+  - 'many' in query_parameters
+  - write tests for schema, test error raising

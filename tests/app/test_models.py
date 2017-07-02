@@ -1,11 +1,107 @@
 import unittest
 from unittest.mock import patch
+import json
 
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from sqlalchemy import Column, Integer, String
 
-from app.models import User, Role, Permission, AnonymousUser
+from app.models import User, Role, Permission, AnonymousUser, DBRequest
 from tests.app import AppTestCase
-from app import db
+from app import db, ma
+from db.core import Model
+
+################################################################################
+# CREATE MODELS FOR TESTS
+################################################################################
+
+class Student(Model):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True)
+    age = Column(Integer)
+    name = Column(String)
+
+class StudentSchema(ma.ModelSchema):
+    class Meta:
+        model = Student
+
+################################################################################
+
+class DBRequestTest(AppTestCase):
+    models = [DBRequest, Student, User, Role]
+
+    def setUp(self):
+        super().setUp()
+        Role.insert_roles()
+
+    def create_user(self, email="test@test.com", password="test",
+                    role_name="User"):
+        role = db.session.query(Role).filter_by(name=role_name).one()
+        user = User(email=email, password=password, role=role)
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+    def test_create_new_object_with_dbrequest(self):
+        user = self.create_user()
+        dbrequest = DBRequest(
+            model="Student", user=user, action="create",
+            comment="Create new student",
+            data=json.dumps({"age": 17, "name": "Python"})
+        )
+        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        db.session.add(obj)
+        self.assertTrue(db.session.query(Student).count(), 1)
+
+    def test_update_object_with_dbrequest(self):
+        user = self.create_user()
+        student = Student(age=17, name="Python 2")
+        db.session.add(student)
+        db.session.commit()
+        dbrequest = DBRequest(
+            model="Student", user=user, action="update",
+            comment="Create new student",
+            data=json.dumps({"age": 18, "name": "Python 3", "id": student.id})
+        )    
+        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        db.session.commit()
+        student = db.session.query(Student).one()
+        self.assertEqual(student.age, 18)
+        self.assertEqual(student.name, "Python 3")
+
+    def test_delete_object_with_dbrequest(self):
+        user = self.create_user()
+        student = Student(age=17, name="Python 2")
+        db.session.add(student)
+        db.session.commit()
+        dbrequest = DBRequest(
+            model="Student", user=user, action="delete",
+            comment="Create new student",
+            data=json.dumps({"id": student.id})
+        )    
+        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        db.session.commit()
+        self.assertEqual(db.session.query(Student).count(), 0)
+
+    def test_identify_class_returns_class_object(self):
+        user = self.create_user()
+        dbrequest = DBRequest(
+            model="Student", user=user, action="create",
+            comment="Create new student",
+            data=json.dumps({"age": 17, "name": "Python"})
+        )
+        cls = dbrequest._identify_class()
+        self.assertEqual(cls, Student)
+
+    def test_identify_class_returns_None_when_class_does_not_exist(self):
+        user = self.create_user()
+        dbrequest = DBRequest(
+            model="Studentos", user=user, action="create",
+            comment="Create new student",
+            data=json.dumps({"age": 17, "name": "Python"})
+        )
+        cls = dbrequest._identify_class()
+        self.assertIsNone(cls)
 
 
 class UserModelTest(unittest.TestCase):

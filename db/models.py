@@ -2,7 +2,7 @@ import operator
 
 from sqlalchemy import (
 	Column, Integer, String, DateTime, Boolean, Float,
-	UniqueConstraint
+	UniqueConstraint, CheckConstraint
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
@@ -160,25 +160,29 @@ class Record(Model):
 
 
 class RecordType(Model):
-	__tablename__ = "records_dic"
+    __tablename__ = "records_dic"
 
-	id = Column(Integer, primary_key=True)
-	name = Column(String, unique=True, nullable=False)
-	statement = Column(String, nullable=False)
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    statement = Column(String, nullable=False)
 
-	records = relationship("Record", back_populates="rtype", lazy="dynamic")
-	reprs = relationship("RecordTypeRepr", back_populates="rtype", 
-		                 lazy="dynamic")
+    records = relationship("Record", back_populates="rtype", lazy="dynamic")
+    reprs = relationship("RecordTypeRepr", back_populates="rtype", 
+    lazy="dynamic")
 
-	def __repr__(self):
-		return "<RecordType('{!s}')>".format(self.name)
+    __table_args__ = (
+        CheckConstraint("statement in ('nls', 'bls', 'cfs')"),  
+    )
 
-	@staticmethod
-	def insert_rtypes(session):
-		import parser.spec as spec
-		import db.util as util
-		util.upload_records_spec(session, spec.finrecords)
-		session.commit()
+    def __repr__(self):
+        return "<RecordType('{!s}')>".format(self.name)
+
+    @staticmethod
+    def insert_rtypes(session):
+        import parser.spec as spec
+        import db.util as util
+        util.upload_records_spec(session, spec.finrecords)
+        session.commit()
 
 
 class RecordTypeRepr(Model):

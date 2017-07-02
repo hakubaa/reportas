@@ -14,7 +14,7 @@ class AppTestCase(TestCase):
         return create_app("testing")
 
     def setUp(self):
-        if not self.models:
+        if self.models is None:
             db.create_all()
         else:
             for model in self.models:
@@ -23,7 +23,7 @@ class AppTestCase(TestCase):
 
     def tearDown(self):
         db.session.remove()
-        if not self.models:
+        if self.models is None:
             db.drop_all()    
         else:
             for model in self.models:

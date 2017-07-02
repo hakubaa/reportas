@@ -80,7 +80,7 @@ class TestListView(AppTestCase):
         dbrequest = db.session.query(DBRequest).first()
         self.assertIsNotNone(dbrequest)
         data = json.loads(dbrequest.data)
-        self.assertEqual(data["company"], company.id)
+        self.assertEqual(data["company_id"], company.id)
 
 
 class TestDetailView(AppTestCase):
@@ -113,7 +113,7 @@ class TestDetailView(AppTestCase):
         self.assertEqual(dbrequest.action, "update")
         self.assertEqual(dbrequest.user, user)
         self.assertEqual(data["id"], company.reprs[0].id)
-        self.assertEqual(data["company"], company.id)
+        self.assertEqual(data["company_id"], company.id)
         self.assertEqual(data["value"], "New Test Repr")
 
     @create_and_login_user(pass_user=True)

@@ -7,7 +7,6 @@ import dateutil
 from app import db
 from app.rapi import api
 from app.rapi.util import DatetimeEncoder
-import app.rapi.resources as res
 import db.models as models
 from db.models import Company, Report
 from app.models import Permission, Role, User, DBRequest
