@@ -4,15 +4,13 @@ from sqlalchemy import (
 	Column, Integer, String, DateTime, Boolean, Float,
 	UniqueConstraint, CheckConstraint
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
 
-from db.core import Model
+from db.core import Model, VersionedModel
 
 
-class Company(Model):
-	__tablename__ = "companies"
-
+class Company(VersionedModel):
 	id = Column(Integer, primary_key=True)
 	
 	name = Column(String, nullable=False)
@@ -27,13 +25,6 @@ class Company(Model):
 	fax = Column(String)
 	telephone = Column(String)
 	sector = Column(String)
-
-	reports = relationship("Report", cascade="all,delete",
-		                   back_populates="company", lazy="dynamic")
-	records = relationship("Record", cascade="all,delete", 
-		                back_populates="company", lazy="dynamic")
-	reprs = relationship("CompanyRepr", cascade="all,delete", 
-		                 back_populates="company", lazy="joined")
 
 	def __repr__(self):
 		return "<Company({!r})>".format(self.name)
@@ -75,29 +66,28 @@ class Company(Model):
 		session.commit()
 
 
-class CompanyRepr(Model):
-	__tablename__ = "companyrepr"
-
+class CompanyRepr(VersionedModel):
 	id = Column(Integer, primary_key=True)
 	value = Column(String)
 
-	company_id = Column(Integer, ForeignKey("companies.id"))
-	company = relationship("Company", back_populates="reprs")
+	company_id = Column(Integer, ForeignKey("company.id"))
+	company = relationship(
+		"Company", 
+		backref=backref("reprs", lazy="joined", cascade="all, delete")
+	)
 
 
-class Report(Model):
-	__tablename__ = "reports"
-
+class Report(VersionedModel):
 	id = Column(Integer, primary_key=True)
 	timestamp = Column(DateTime, nullable=False)
 	timerange = Column(Integer, nullable=False)
 	consolidated = Column(Boolean, default=True)
 
-	company_id = Column(Integer, ForeignKey("companies.id"))
-	company = relationship("Company", back_populates="reports")
-
-	records = relationship("Record", cascade="all,delete", 
-		                back_populates="report", lazy="noload")
+	company_id = Column(Integer, ForeignKey("company.id"))
+	company = relationship(
+		"Company", 
+		backref=backref("reports", lazy="dynamic", cascade="all,delete")
+	) 
 
 	__table_args__ = (
     	UniqueConstraint("timestamp", "timerange", "company_id", 
@@ -114,22 +104,53 @@ class Report(Model):
 		return record
 
 
-class Record(Model):
-	__tablename__ = "records"
+class RecordType(VersionedModel):
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    statement = Column(String, nullable=False)
 
+    __table_args__ = (
+        CheckConstraint("statement in ('nls', 'bls', 'cfs')"),  
+    )
+
+    def __repr__(self):
+        return "<RecordType('{!s}')>".format(self.name)
+
+    @staticmethod
+    def insert_rtypes(session):
+        import parser.spec as spec
+        import db.util as util
+        util.upload_records_spec(session, spec.finrecords)
+        session.commit()
+
+
+class RecordTypeRepr(VersionedModel):
+	id = Column(Integer, primary_key=True)
+	lang = Column(String)
+	value = Column(String)
+
+	rtype_id = Column(Integer, ForeignKey("recordtype.id"))
+	rtype = relationship("RecordType", backref=backref("reprs", lazy="joined"))
+
+	
+class Record(VersionedModel):
 	id = Column(Integer, primary_key=True)
 	value = Column(Float, nullable=False)
 	timestamp = Column(DateTime, nullable=False)
 	timerange = Column(Integer, nullable=False)
 
-	rtype_id = Column(Integer, ForeignKey("records_dic.id"), nullable=False)
-	rtype = relationship("RecordType", back_populates="records", lazy="joined")
+	rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
+	rtype = relationship(
+		"RecordType", backref=backref("records", lazy="joined")
+	)
 
-	report_id = Column(Integer, ForeignKey("reports.id"))
-	report = relationship("Report", back_populates="records")
+	report_id = Column(Integer, ForeignKey("report.id"))
+	report = relationship("Report", backref=backref("records"))
 
-	company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
-	company = relationship("Company", back_populates="records", lazy="joined")
+	company_id = Column(Integer, ForeignKey("company.id"), nullable=False)
+	company = relationship(
+		"Company", backref=backref("records", lazy="joined")
+	)
 
 	__table_args__ = (
     	UniqueConstraint("timestamp", "timerange", "rtype_id", "company_id", 
@@ -157,40 +178,3 @@ class Record(Model):
 			obj.value = value
 
 		return obj
-
-
-class RecordType(Model):
-    __tablename__ = "records_dic"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
-    statement = Column(String, nullable=False)
-
-    records = relationship("Record", back_populates="rtype", lazy="dynamic")
-    reprs = relationship("RecordTypeRepr", back_populates="rtype", 
-    lazy="dynamic")
-
-    __table_args__ = (
-        CheckConstraint("statement in ('nls', 'bls', 'cfs')"),  
-    )
-
-    def __repr__(self):
-        return "<RecordType('{!s}')>".format(self.name)
-
-    @staticmethod
-    def insert_rtypes(session):
-        import parser.spec as spec
-        import db.util as util
-        util.upload_records_spec(session, spec.finrecords)
-        session.commit()
-
-
-class RecordTypeRepr(Model):
-	__tablename__ = "records_repr"
-
-	id = Column(Integer, primary_key=True)
-	lang = Column(String)
-	value = Column(String)
-
-	rtype_id = Column(Integer, ForeignKey("records_dic.id"))
-	rtype = relationship("RecordType", back_populates="reprs", lazy="joined")

@@ -1,9 +1,19 @@
+from sqlalchemy import orm
 import flask_sqlalchemy
-'''Created by Isaac Martin 2017. Licensed insofar as it can be according to the standard terms of the MIT license: https://en.wikipedia.org/wiki/MIT_License. The author accepts no liability for consequences resulting from the use of this software. '''
-class SQLAlchemy(flask_sqlalchemy.SQLAlchemy):
-    def __init__(self, app=None, use_native_unicode=True, session_options=None,
-                 metadata=None, query_class=flask_sqlalchemy.BaseQuery, model_class=flask_sqlalchemy.Model):
+from db.core.history_meta import Versioned, versioned_session
 
+'''
+Created by Isaac Martin 2017. Licensed insofar as it can be according to the 
+standard terms of the MIT license: https://en.wikipedia.org/wiki/MIT_License. 
+The author accepts no liability for consequences resulting from the use of 
+this software.
+'''
+class SQLAlchemy(flask_sqlalchemy.SQLAlchemy):
+    def __init__(
+        self, app=None, use_native_unicode=True, session_options=None,
+        metadata=None, query_class=flask_sqlalchemy.BaseQuery, 
+        model_class=flask_sqlalchemy.Model
+    ):
         self.use_native_unicode = use_native_unicode
         self.Query = query_class
         self.session = self.create_scoped_session(session_options)
@@ -64,3 +74,19 @@ class SQLAlchemy(flask_sqlalchemy.SQLAlchemy):
 
                     # if hasattr(c , 'rel_dynamic'):
                     #     c.rel_dynamic.prop.query_class = self.Query
+
+
+    def create_session(self, options):
+        """Create the session factory used by :meth:`create_scoped_session`.
+        The factory **must** return an object that SQLAlchemy recognizes as a session,
+        or registering session events may raise an exception.
+        Valid factories include a :class:`~sqlalchemy.orm.session.Session`
+        class or a :class:`~sqlalchemy.orm.session.sessionmaker`.
+        The default implementation creates a ``sessionmaker`` for :class:`SignallingSession`.
+        :param options: dict of keyword arguments passed to session class
+        """
+        session = orm.sessionmaker(
+            class_=flask_sqlalchemy.SignallingSession, db=self, **options
+        )
+        versioned_session(session)
+        return session

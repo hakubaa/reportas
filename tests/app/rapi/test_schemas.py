@@ -40,7 +40,7 @@ class CompanyReprSchemaTest(AppTestCase):
 
 
 class CompanySchemaTest(AppTestCase):
-    models = [models.Company, models.CompanyRepr]
+    models = [models.Company, models.CompanyRepr, models.Record]
 
     def test_name_attribute_is_required(self):
         data = {"isin": "#test"}

@@ -76,7 +76,9 @@ class CompanySchema(ma.ModelSchema):
 
     @validates("isin")
     def validate_isin(self, value):
-        (ret, ), = db.session.query(exists().where(models.Company.isin == value))
+        (ret, ), = db.session.query(
+            exists().where(models.Company.isin == value)
+        )
         if ret:
             raise ValidationError("ISIN not unique")
         return True
@@ -118,7 +120,9 @@ class RecordTypeSchema(ma.ModelSchema):
 
     @validates("name")
     def validate_name(self, value):
-        (ret,), = db.session.query(exists().where(models.RecordType.name == value))
+        (ret,), = db.session.query(
+            exists().where(models.RecordType.name == value)
+        )
         if ret:
             raise ValidationError("name not unique")
         return True
