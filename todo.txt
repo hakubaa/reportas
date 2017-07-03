@@ -19,3 +19,14 @@
   - transition from dbrequest to records in db
   - history of changes
   - 'many' in query_parameters
+
+versioning Objects with History Table: 
+http://docs.sqlalchemy.org/en/latest/orm/examples.html <- try this at home
+
+What next?
+
+- versioning objects with history table
+- rapi for identifying records/parsing text /api/parser?type=text/file
+- refactor UI panel for parsing text (angular - one more time)
+- panels for updating data - in every possible case
+

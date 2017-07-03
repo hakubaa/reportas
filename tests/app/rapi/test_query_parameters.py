@@ -10,7 +10,7 @@ from app import db, ma
 from app.rapi import rapi
 from app.rapi.base import ListView
 from app.rapi.util import DatetimeEncoder
-from app.models import User, Role
+from app.models import User, Role, DBRequest
 from db.core import Model
 
 from tests.app import AppTestCase, create_and_login_user
@@ -70,8 +70,8 @@ rapi.add_url_rule(
 
 ################################################################################
 
-class BaseQueryTest(AppTestCase):
-    models = (Student, EMail, User, Role)
+class QPTest(AppTestCase):
+    models = (Student, EMail, User, Role, DBRequest)
 
     def create_students(self):
         db.session.add_all([
@@ -157,6 +157,66 @@ class BaseQueryTest(AppTestCase):
         data = response.json
         self.assertEqual(data["count"], 2)
         self.assertEqual(data["results"][0]["age"], 15)
+
+    @create_and_login_user()
+    def test_create_many_objects_simultaneously(self):
+        response = self.client.post(
+            url_for("rapi.student_list"),
+            data = json.dumps([
+                {"age": 17, "name": "Python"},
+                {"age": 18, "name": "Noe"},
+                {"age": 19, "name": "Joe"}
+            ]),
+            query_string={"many": "T"}
+        )
+        self.assertEqual(response.status_code, 202)
+        dbrequests = db.session.query(DBRequest).all()
+        self.assertEqual(len(dbrequests), 3)
+        names = [ json.loads(req.data)["name"] for req in dbrequests ]
+        self.assertCountEqual(names, ["Python", "Noe", "Joe"])
+
+    @create_and_login_user()
+    def test_update_many_objects_simultaneously(self):
+        students = (
+            Student(name="Python", age=17),
+            Student(name="Neo", age=18),
+            Student(name="Joe", age=19)
+        )
+        db.session.add_all(students)
+        db.session.commit()
+        response = self.client.put(
+            url_for("rapi.student_list"),
+            data = json.dumps([
+                {"id": student.id, "age": student.age + 1}
+                for student in students
+            ]),
+            query_string={"many": "TRUE"}
+        )
+        self.assertEqual(response.status_code, 202)
+        dbrequests = db.session.query(DBRequest).all()
+        self.assertEqual(len(dbrequests), 3)
+        names = [ json.loads(req.data)["age"] for req in dbrequests ]
+        self.assertCountEqual(names, [18, 19, 20])
+
+    @create_and_login_user()
+    def test_delete_many_objects_simultaneously(self):
+        students = (
+            Student(name="Python", age=17),
+            Student(name="Neo", age=18),
+            Student(name="Joe", age=19)
+        )
+        db.session.add_all(students)
+        db.session.commit()
+        response = self.client.delete(
+            url_for("rapi.student_list"),
+            data = json.dumps([{"id": student.id} for student in students]),
+            query_string={"many": "TRUE"}
+        )
+        self.assertEqual(response.status_code, 202)
+        dbrequests = db.session.query(DBRequest).all()
+        self.assertEqual(len(dbrequests), 3)
+        names = [ json.loads(req.data)["id"] for req in dbrequests ]
+        self.assertCountEqual(names, [student.id for student in students])    
 
 
 class ListTest(AppTestCase):

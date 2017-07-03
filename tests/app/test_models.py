@@ -103,6 +103,80 @@ class DBRequestTest(AppTestCase):
         cls = dbrequest._identify_class()
         self.assertIsNone(cls)
 
+    def test_errors_are_saved_in_dbrequest(self):
+        user = self.create_user()
+        dbrequest = DBRequest(
+            model="Student", user=user, action="create",
+            data=json.dumps({"age": 17})
+        )
+        db.session.add(dbrequest)
+        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        self.assertIsNotNone(dbrequest.errors)
+        errors_request = json.loads(dbrequest.errors)
+        self.assertIn("name", errors_request)
+        self.assertEqual(errors_request["name"], errors["name"])
+
+    def test_execute_updates_information_about_moderator(self):
+        user = self.create_user()
+        moderator = self.create_user(email="moderator@test.com")
+        dbrequest = DBRequest(
+            model="Student", user=user, action="create",
+            data=json.dumps({"age": 17, "name": "Python"})
+        )
+        db.session.add(dbrequest)
+        obj, errors = dbrequest.execute(
+            moderator=moderator, schema=StudentSchema(), comment="ok"
+        )
+        self.assertFalse(errors) # make sure there are no errors
+        
+        self.assertEqual(dbrequest.moderator, moderator)
+        self.assertEqual(dbrequest.moderator_action, "accept")
+        self.assertEqual(dbrequest.moderator_comment, "ok")
+
+    def test_reject_updates_information_about_moderator(self):
+        user = self.create_user()
+        moderator = self.create_user(email="moderator@test.com")
+        dbrequest = DBRequest(
+            model="Student", user=user, action="create",
+            data=json.dumps({"age": 17, "name": "Python"})
+        )
+        db.session.add(dbrequest)
+        obj, errors = dbrequest.reject(
+            moderator=moderator, comment="no this time"
+        )
+        self.assertFalse(errors) # make sure there are no errors
+        
+        self.assertEqual(dbrequest.moderator, moderator)
+        self.assertEqual(dbrequest.moderator_action, "reject")
+        self.assertEqual(dbrequest.moderator_comment, "no this time") 
+        
+    def test_update_request_returns_error_when_invalid_id(self):
+        user = self.create_user()
+        student = Student(age=17, name="Python 2")
+        db.session.add(student)
+        db.session.commit()
+        dbrequest = DBRequest(
+            model="Student", user=user, action="update",
+            comment="Create new student",
+            data=json.dumps({"age": 18, "id": student.id + 1})
+        )    
+        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        self.assertTrue(errors)
+        self.assertIn("id", errors)
+        
+    def test_delete_request_returns_error_when_invalid_id(self):
+        user = self.create_user()
+        student = Student(age=17, name="Python 2")
+        db.session.add(student)
+        db.session.commit()
+        dbrequest = DBRequest(
+            model="Student", user=user, action="delete",
+            data=json.dumps({"id": student.id + 1})
+        )    
+        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        self.assertTrue(errors)
+        self.assertIn("id", errors)
+
 
 class UserModelTest(unittest.TestCase):
 

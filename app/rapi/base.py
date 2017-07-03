@@ -26,6 +26,20 @@ class ViewUtilMixin(object):
     def modify_data(self, data):
         return data
 
+
+def create_http_request_handler(action, permissions=Permission.MODIFY_DATA):
+    '''Factory of methods to handle http requests (used in ListView).'''
+    def http_method(self, *args, **kwargs):
+        dbrequests = self.create_dbrequests(action, g.user, **kwargs)
+        db.session.add_all(dbrequests)
+        db.session.commit()
+        return jsonify({}), 202
+    return auth.login_required(permission_required(permissions)(http_method))
+
+
+class DetailView(ViewUtilMixin, MethodView):
+    model = None
+
     def create_dbrequest(self, action, user, **kwargs):
         data = dict()
         request_data = request.data.decode()
@@ -38,10 +52,6 @@ class ViewUtilMixin(object):
             model=self.model.__name__
         )
         return dbrequest
-
-
-class DetailView(ViewUtilMixin, MethodView):
-    model = None
 
     def get_object(self, id):
         obj = db.session.query(self.model).get(id)
@@ -79,6 +89,22 @@ class DetailView(ViewUtilMixin, MethodView):
 class ListView(ViewUtilMixin, MethodView):
     model = None
 
+    def create_dbrequests(self, action, user, **kwargs):
+        request_data = json.loads(request.data.decode())
+        many = request.args.get("many", "F").lower() in ("t", "true")
+        if not many: # change request_data into iterable
+            request_data = (request_data,)
+        
+        dbrequests = list()
+        for data in request_data:
+            data.update(kwargs)
+            data = self.modify_data(data)
+            dbrequests.append(
+                DBRequest(data=json.dumps(data), user=user, action=action, 
+                          model=self.model.__name__)
+            )
+        return dbrequests
+
     def get_objects(self, *args, **kwargs):
         objs = db.session.query(self.model)
         return objs
@@ -94,10 +120,6 @@ class ListView(ViewUtilMixin, MethodView):
             "count": len(data)
         }), 200
 
-    @auth.login_required
-    @permission_required(Permission.MODIFY_DATA)
-    def post(self, *args, **kwargs):
-        dbrequest = self.create_dbrequest("create", g.user, **kwargs)
-        db.session.add(dbrequest)
-        db.session.commit()
-        return jsonify({}), 202
+    post = create_http_request_handler("create")
+    delete = create_http_request_handler("delete")
+    put = create_http_request_handler("update")

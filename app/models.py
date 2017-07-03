@@ -31,17 +31,25 @@ class DBRequest(Model):
     comment = Column(String) # some additional info concerning request
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))
-    user = relationship("User", backref=backref("requests", lazy="dynamic"))
+    user = relationship(
+        "User", backref=backref("requests", lazy="dynamic"),
+        foreign_keys=(user_id,)
+    )
     
-    # moderator_id = Column(Integer, ForeignKey("users.id"))
-    # moderator = relationship("User", backref=backref("_requests", lazy="dynamic"))
-    # moderated_at = Column(DateTime, default=datetime.datetime.utcnow)
-    # moderator_action = Column(String)
-    # moderator_comment = Column(String)
+    errors = Column(String) # potential error when execute request in json format
+
+    moderator_id = Column(Integer, ForeignKey("users.id"))
+    moderator = relationship(
+        "User", backref=backref("_requests", lazy="dynamic"),
+        foreign_keys=(moderator_id,)
+    )
+    moderated_at = Column(DateTime)
+    moderator_action = Column(String)
+    moderator_comment = Column(String)
     
     __table_args__ = (
         CheckConstraint("action in ('create', 'update', 'delete')"),  
-        # CheckConstraint("moderator_action in ('commit', 'reject')")
+        CheckConstraint("moderator_action in ('accept', 'reject')")
     )
 
     def _identify_class(self):
@@ -57,36 +65,64 @@ class DBRequest(Model):
         if not session:
             return ValueError("DBRequest requires a session")
         return session
-
+    
     def _get_obj(self, id, session=None):
         cls = self._identify_class()
         if not cls:
             return NameError("model '%s' is not defined" % self.model)
         session = self._get_session(session)
         instance = session.query(cls).get(id)
+        errors = dict()
         if not instance:
-            return RuntimeError(
-                "'%s' with id='%d' does not exist".format(self.model, id)
-            )    
-        return instance
-    
-    def execute(self, moderator, schema=None, session=None, instance=None):
+            errors["id"] = "Not found."
+        return instance, errors
+
+    def _update_moderation_data(
+        self, moderator, action, comment=None, errors=None
+    ):
+        self.moderator = moderator
+        self.moderator_action = action
+        self.moderator_comment = comment
+        self.errors = json.dumps(errors)  
+        self.moderated_at = datetime.datetime.utcnow()
+
+    def execute(self, moderator, schema=None, session=None, instance=None,
+                comment=None):
         data = json.loads(self.data)
+        session = self._get_session(session)
+
+        instance = None
+        errors = dict()
+
         if self.action == "create":
-            return schema.load(data)
+            instance, errors = schema.load(data)
+            if not errors:
+                session.add(instance)
         elif self.action == "update":
-            instance = instance or self._get_obj(data["id"], session)
-            return schema.load(data, instance=instance, partial=True)
+            if not instance:
+                instance, errors = self._get_obj(data["id"], session)  
+            if not errors:
+                instance, errors = schema.load(
+                    data, instance=instance, partial=True
+                )
         elif self.action == "delete":
-            instance = instance or self._get_obj(data["id"], session)
-            session = self._get_session(session)
-            session.delete(instance)
-            return None, {}
+            if not instance:
+                instance, errors = self._get_obj(data["id"], session)
+            if not errors:
+                session.delete(instance)
         else:
             raise RuntimeError("action '%s' is not valid" % self.action)
 
-    def reject(self, moderator):
-        pass
+        self._update_moderation_data(
+            moderator, action="accept", comment=comment, errors=errors
+        )
+        return instance, errors
+
+    def reject(self, moderator, comment=None):
+        self._update_moderation_data(
+            moderator, action="reject", comment=comment
+        )
+        return None, None
 
 
 class File(Model):
