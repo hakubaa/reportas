@@ -1,4 +1,5 @@
 import json
+import os
 
 from flask import (
     current_app, make_response, render_template, jsonify, request, g, abort,
@@ -6,6 +7,8 @@ from flask import (
 )
 from flask.views import MethodView
 from flask_login import current_user
+from werkzeug.utils import secure_filename
+import requests
 
 from app import debugtoolbar, db
 from app.models import DBRequest, Permission
@@ -15,6 +18,7 @@ from app.user.auth import permission_required
 import db.models as models
 from app.rapi import schemas
 from app.rapi.base import DetailView, ListView
+from app.rapi import util as rutil
 
 
 class ReportListView(ListView):
@@ -259,7 +263,6 @@ def root():
         "rtypes": url_for("rapi.rtype_list")
     })
 
-
 rapi.add_url_rule(
     "/companies",  
     view_func=CompanyListView.as_view("company_list")
@@ -323,6 +326,80 @@ rapi.add_url_rule("/records", view_func=RecordListView.as_view("record_list"))
 rapi.add_url_rule("/records/<int:id>", 
                   view_func=RecordDetailView.as_view("record_detail"))
 
+
+def view_parse_text():
+    text =  request.data.decode()
+    if not text:
+        abort(400, "No data send with request")
+    
+    encoding = request.content_encoding or "utf-8"
+    try:
+        text = text.decode(encoding)
+    except AttributeError:
+        pass
+
+    spec_name = request.args.get("spec", "").lower()
+    if spec_name not in ("", "bls", "nls", "cfs"):
+        abort(400, "Unrecognized specification")
+
+    data = rutil.parse_text(db.session, text, spec_name)
+
+    return jsonify(data), 200  
+
+
+def view_parse_file():
+    file = request.files.get("file")
+    if not (file and file.filename != ""):
+        abort(400, "No file")
+
+    filename = secure_filename(file.filename)
+    if not rutil.allowed_file(filename):
+        abort(400, "File not supported")
+
+    # Save file to disc, it will be read by parser
+    filepath = os.path.join(current_app.config.get("UPLOAD_FOLDER"), filename)
+    file.save(filepath) 
+
+    data = rutil.parse_file(filepath, db.session)
+
+    return jsonify(data), 200
+
+
+def view_parse_url():
+    url = request.data.decode()
+    if not url:
+        abort(400, "No url send with request")
+
+    filename = secure_filename(url.split("/")[-1])
+    if not rutil.allowed_file(filename):
+        abort(400, "File not supported")
+
+    response = requests.get(url, stream=True)
+    if response.status_code != 200:
+        abort(400, "Unable to load file from given url")
+
+    filepath = os.path.join(current_app.config.get("UPLOAD_FOLDER"), filename)
+    with open(filepath, "wb") as f:
+        for chunk in response:
+            f.write(chunk)
+
+    data = rutil.parse_file(filepath, db.session)   
+
+    return jsonify(data), 200
+
+
+@rapi.route("/parser", methods=["POST"])
+@auth.login_required
+def parser():
+    data_type = request.args.get("type", "text")
+    if data_type == "text":
+        return view_parse_text()
+    elif data_type == "url":
+        return view_parse_url()
+    elif data_type == "file":
+        return view_parse_file()
+    else:
+        abort(400, "Unsupported type")
 
 
 # @rapi.after_request

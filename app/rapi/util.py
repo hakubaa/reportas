@@ -1,7 +1,11 @@
 import json
 
 from sqlalchemy.orm.query import Query
-from flask import request
+from flask import request, current_app
+
+import db.util as dbutil
+import parser.util as putil
+from parser.models import FinancialReport
 
 
 def apply_query_parameters(query):
@@ -47,3 +51,41 @@ class DatetimeEncoder(json.JSONEncoder):
             return super(DatetimeEncoder, obj).default(obj)
         except TypeError:
             return str(obj)
+
+
+def parse_text(session, text, spec_name=None):
+    if not spec_name:
+        spec = dbutil.get_records_reprs(session, "bls") +\
+                   dbutil.get_records_reprs(session, "nls") +\
+                   dbutil.get_records_reprs(session, "cfs")
+    elif spec_name in ("bls", "nls", "cfs"):
+        spec = dbutil.get_records_reprs(session, spec_name)
+
+    voc = dbutil.create_vocabulary(session)
+
+    records = putil.identify_records_in_text(text=text, spec=spec, voc=voc)
+    data = list()
+    for (name, sim), numbers, row_no in records:
+        data.append({"name": name, "numbers": numbers, "row_no": row_no})
+
+    return data
+
+
+def parse_file(filepath, session):
+    voc = dbutil.create_vocabulary(session)
+
+    spec = dict(
+        bls=dbutil.get_records_reprs(session, "bls"),
+        nls=dbutil.get_records_reprs(session, "nls"),
+        cfs=dbutil.get_records_reprs(session, "cfs")
+    )
+    cspec = dbutil.get_companies_reprs(session)
+
+    doc = FinancialReport(filepath, spec=spec, voc=voc, cspec=cspec)
+
+    return doc.as_dict()
+
+
+def allowed_file(filename):
+    exts = current_app.config.get("ALLOWED_EXTENSIONS")
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in exts

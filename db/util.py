@@ -109,32 +109,32 @@ def upload_records_spec(session, spec):
 
 
 def get_records_reprs(session, statement, lang="PL", n=1, min_len=2, 
-	                     remove_non_alphabetic=True):
-	'''Get list of items representations for selected statement.'''
-	spec = list()
-	records = session.query(RecordTypeRepr).join(RecordType).\
-	              filter(RecordType.statement.ilike(statement), 
-	              	     RecordTypeRepr.lang.ilike(lang)
-	              ).all()
-	for record in records:
-		nigrams = find_ngrams(
-			putil.remove_non_ascii(record.value), n=n, min_len=min_len,
-			remove_non_alphabetic=remove_non_alphabetic
-		)
-		spec.append(dict(id=record.rtype.name, ngrams=nigrams))
+                         remove_non_alphabetic=True):
+    '''Get list of items representations for selected statement.'''
+    spec = list()
+    records = session.query(RecordTypeRepr).join(RecordType).\
+                  filter(RecordType.statement.ilike(statement), 
+                         RecordTypeRepr.lang.ilike(lang)
+                  ).all()
+    for record in records:
+        nigrams = find_ngrams(
+            putil.remove_non_ascii(record.value), n=n, min_len=min_len,
+            remove_non_alphabetic=remove_non_alphabetic
+        )
+        spec.append(dict(id=record.rtype.name, ngrams=nigrams))
 
-	return spec
+    return spec
 
 
 def get_companies_reprs(session):
 	'''Return list of companies (isin) with their reprpresentations.'''
-	keys = ("isin", "repr")
-	values = session.query(Company.isin, Company.fullname).\
+	keys = ("isin", "repr", "id")
+	values = session.query(Company.isin, Company.fullname, Company.id).\
 			     filter(Company.fullname != "").all()
 	cspec = list(map(lambda item: dict(zip(keys, item)), values))
 
-	keys = ("repr", "isin")
-	values = session.query(CompanyRepr.value, Company.isin).\
+	keys = ("repr", "isin", "id")
+	values = session.query(CompanyRepr.value, Company.isin, Company.id).\
 	             join(Company).filter(CompanyRepr.value != "").all()
 	cspec.extend(map(lambda item: dict(zip(keys, item)), values))
 

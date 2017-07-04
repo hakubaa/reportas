@@ -126,7 +126,7 @@ class RecordType(VersionedModel):
 
 class RecordTypeRepr(VersionedModel):
 	id = Column(Integer, primary_key=True)
-	lang = Column(String)
+	lang = Column(String, default="PL")
 	value = Column(String)
 
 	rtype_id = Column(Integer, ForeignKey("recordtype.id"))

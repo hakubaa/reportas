@@ -197,18 +197,21 @@ class RecordsExtractor(UserDict):
         self.records = self._remove_column_with_note_reference(records)
 
         self.records_map = dict() 
-        for rid, nums, pages in self.records:
-            self.records_map.update(
-                itertools.zip_longest(
-                    map(lambda x: self.input_rows[x][0] + first_row_number, 
-                        pages), 
-                    (rid[0],), fillvalue=rid[0])
-            )
+        self.rows_map = dict()
+        for rid, nums, rows in self.records:
+            adjusted_rows = [
+                self.input_rows[row][0] + first_row_number for row in rows
+            ]
+            # map(lambda x: self.input_rows[x][0] + first_row_number, rows)
+            self.rows_map.update(itertools.zip_longest(
+                adjusted_rows, (rid[0],), fillvalue=rid[0]
+            ))
+            self.records_map[rid[0]] = adjusted_rows
 
         self.records_source = dict()
-        for (rid, rsim), nums, pages in self.records:
+        for (rid, rsim), nums, rows in self.records:
             content = operator.itemgetter(
-                *list(map(lambda x: self.input_rows[x][0], pages))
+                *list(map(lambda x: self.input_rows[x][0], rows))
             )(self.input_text.split("\n"))
             if not isinstance(content, str):
                 content = "\n".join(content)
@@ -482,11 +485,31 @@ class FinancialReport(Document):
         self.company = self._recognize_company(cspec)
 
     @property
+    def records(self):
+        recs = dict()
+        for stm in (self.bls, self.nls, self.cfs):
+            try:
+                recs.update(stm)
+            except AttributeError:
+                pass
+        return recs  
+
+    @property
     def records_map(self):
         rmap = dict()
         for stm in (self.bls, self.nls, self.cfs):
             try:
                 rmap.update(stm.records_map)
+            except AttributeError:
+                pass
+        return rmap
+
+    @property
+    def rows_map(self):
+        rmap = dict()
+        for stm in (self.bls, self.nls, self.cfs):
+            try:
+                rmap.update(stm.rows_map)
             except AttributeError:
                 pass
         return rmap
@@ -505,7 +528,7 @@ class FinancialReport(Document):
     def cfs(self):
         if not hasattr(self, "_cfs"):
             self._cfs = self._extract_records(
-                self.cfs_pages, self.spec["cfs"], self.voc
+                self.cfs_pages, self.spec.get("cfs", None), self.voc
             )
         return self._cfs
 
@@ -513,7 +536,7 @@ class FinancialReport(Document):
     def nls(self):
         if not hasattr(self, "_nls"):
             self._nls = self._extract_records(
-                self.nls_pages, self.spec["nls"], self.voc
+                self.nls_pages, self.spec.get("nls", None), self.voc
             )
         return self._nls
 
@@ -521,7 +544,7 @@ class FinancialReport(Document):
     def bls(self):
         if not hasattr(self, "_bls"):
             self._bls = self._extract_records(
-                self.bls_pages, self.spec["bls"], self.voc
+                self.bls_pages, self.spec.get("bls", None), self.voc
             )
         return self._bls
 
@@ -652,6 +675,7 @@ class FinancialReport(Document):
 
     def _extract_records(self, pages, spec, voc):
         if not spec: # empty spec, nothing can be done
+            warnings.warn("No specification.")
             return None
 
         if not isinstance(pages, Iterable):
@@ -677,3 +701,57 @@ class FinancialReport(Document):
             )
 
         return records
+
+    def as_dict(self):
+        '''Convert report to dictionary.'''
+        data = dict()
+        data["company"] = self.company
+        data["timerange"] = self.timerange
+        data["timestamp"] = self.timestamp
+
+        data_nls = dict()
+        data_nls["pages"] = self.nls_pages
+        if self.nls:
+            data_nls["units_of_measure"] = self.nls.uom
+            data_nls["columns"] = [
+                {"timerange": timerange, "timestamp": datetime(year, month, day)}
+                for timerange, (year, month, day) in self.nls.names
+            ]
+            data_nls["records"] = list()
+            for key, value in self.nls.items():
+                record = {"name": key, "values": value, 
+                          "rows": self.nls.records_map[key]}
+                data_nls["records"].append(record)
+        data["nls"] = data_nls
+
+        data_bls = dict()
+        data_bls["pages"] = self.bls_pages
+        if self.bls:
+            data_bls["units_of_measure"] = self.bls.uom
+            data_bls["columns"] = [
+                {"timerange": timerange, "timestamp": datetime(year, month, day)}
+                for timerange, (year, month, day) in self.bls.names
+            ]
+            data_bls["records"] = list()
+            for key, value in self.bls.items():
+                record = {"name": key, "values": value, 
+                          "rows": self.bls.records_map[key]}
+                data_bls["records"].append(record)
+        data["bls"] = data_bls
+
+        data_cfs = dict()
+        data_cfs["pages"] = self.cfs_pages
+        if self.cfs:
+            data_cfs["units_of_measure"] = self.cfs.uom
+            data_cfs["columns"] = [
+                {"timerange": timerange, "timestamp": datetime(year, month, day)}
+                for timerange, (year, month, day) in self.cfs.names
+            ]
+            data_cfs["records"] = list()
+            for key, value in self.cfs.items():
+                record = {"name": key, "values": value, 
+                          "rows": self.cfs.records_map[key]}
+                data_cfs["records"].append(record)
+        data["cfs"] = data_cfs
+
+        return data
