@@ -1,7 +1,8 @@
 __all__ = [
     "CompanyReprSchema", "CompanySchema", "CompanySimpleSchema", 
     "RecordTypeSchema", "RecordTypeReprSchema", "RecordTypeSimpleSchema",
-    "RecordSchema", "ReportSchema"
+    "RecordSchema", "ReportSchema", "RecordFormulaSchema",
+    "FormulaComponentSchema"
 ]
 
 
@@ -17,7 +18,8 @@ from app import ma, db
 from app.rapi import api
 import db.models as models
 from db.models import (
-    Company, CompanyRepr, RecordType, RecordTypeRepr, Record, Report
+    Company, CompanyRepr, RecordType, RecordTypeRepr, Record, Report,
+    RecordFormula, FormulaComponent
 )
 
 
@@ -60,19 +62,13 @@ class CompanyReprSchema(ma.ModelSchema):
 class CompanySchema(ma.ModelSchema):
     class Meta:
         model = models.Company
+        exclude = ("version",)
+
     reprs = fields.Nested(
         CompanyReprSchema, only=("id", "value"), many=True
     )
     records = ma.Hyperlinks(ma.URLFor("rapi.company_record_list", id="<id>"))
     reports = ma.Hyperlinks(ma.URLFor("rapi.company_report_list", id="<id>"))
-    # name = field_for(
-    #     models.Company, "name", required=True,
-    #     error_messages={"required": "Name is required."}
-    # )
-    # isin = field_for(
-    #     models.Company, "isin", required=True,
-    #     error_messages={"required": "ISIN is required."}
-    # )
 
     @validates("isin")
     def validate_isin(self, value):
@@ -88,6 +84,7 @@ class CompanySimpleSchema(ma.ModelSchema):
     class Meta:
         model = Company
         fields = ("id", "isin", "name", "ticker", "uri", "fullname")
+
     uri = ma.Hyperlinks(ma.URLFor("rapi.company_detail", id='<id>'))
 
 
@@ -105,10 +102,10 @@ class RecordTypeReprSchema(ma.ModelSchema):
 class RecordTypeSchema(ma.ModelSchema):
     class Meta:
         model = RecordType
-    # name = field_for(
-    #     RecordType, "name", required=True,
-    #     error_messages={"required": "Name is required."}
-    # )
+        exclude = ("records", "version", "revcomponents")
+
+    formulas = ma.Hyperlinks(ma.URLFor("rapi.rtype_formula_list", rid="<id>"))
+
     statement = field_for(
         RecordType, "statement", required=True,
         error_messages={"required": "Statement is required."},
@@ -132,12 +129,14 @@ class RecordTypeSimpleSchema(ma.ModelSchema):
     class Meta:
         model = RecordType
         fields = ("id", "name", "statement", "uri")
+
     uri = ma.Hyperlinks(ma.URLFor("rapi.rtype_detail", id='<id>'))
 
 
 class RecordSchema(ma.ModelSchema):
     class Meta:
         model = Record
+        exclude = ("version",)
 
     rtype = fields.Nested(
         RecordTypeSchema, only=("name", "statement"), many=False
@@ -206,7 +205,67 @@ class RecordSchema(ma.ModelSchema):
 class ReportSchema(ma.ModelSchema):
     class Meta:
         model = Report
+        exclude = ("version",)
 
     timestamp = fields.DateTime("%Y-%m-%d", required=True)
     records = ma.Hyperlinks(ma.URLFor("rapi.report_record_list", id="<id>"))
     company = ma.Hyperlinks(URLFor("rapi.company_detail", id="<company_id>"))
+
+
+class FormulaComponentSchema(ma.ModelSchema):
+    class Meta:
+        model = FormulaComponent
+        exclude = ("version",)
+        
+    formula_id = field_for(
+        FormulaComponent, "formula_id", required=True,
+        error_messages={"required": "Formula is required."}
+    )   
+    rtype_id = field_for(
+        FormulaComponent, "rtype_id", required=True,
+        error_messages={"required": "RecordType is required."}
+    )
+    
+    rtype = fields.Nested(RecordTypeSchema, only=("name"), many=False)
+    
+    @validates("rtype_id")
+    def validate_rtype(self, value):
+        (ret, ), = db.session.query(exists().where(RecordType.id == value))
+        if not ret:
+            raise ValidationError(
+                "RecordType with id '{}' does not exist.".format(value)
+            )
+        return True
+        
+    @validates("formula_id")
+    def validate_formula(self, value):
+        (ret, ), = db.session.query(exists().where(RecordFormula.id == value))
+        if not ret:
+            raise ValidationError(
+                "RecordFormula with id '{}' does not exist.".format(value)
+            )
+        return True 
+        
+        
+class RecordFormulaSchema(ma.ModelSchema):
+    class Meta:
+        model = RecordFormula
+        fields = ("components", "id", "rtype_id")
+        
+    rtype_id = field_for(
+        RecordFormula, "rtype_id", required=True,
+        error_messages={"required": "RecordType is required."}
+    )   
+    
+    components = fields.Nested(
+        FormulaComponentSchema, only=("rtype", "sign", "rtype_id"), many=True
+    )
+
+    @validates("rtype_id")
+    def validate_rtype(self, value):
+        (ret, ), = db.session.query(exists().where(RecordType.id == value))
+        if not ret:
+            raise ValidationError(
+                "RecordType with id '{}' does not exist.".format(value)
+            )
+        return True

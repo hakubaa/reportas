@@ -11,7 +11,6 @@ import db.models as models
 
 
 class CompanyReprSchemaTest(AppTestCase):
-    models = [models.Company, models.CompanyRepr]
 
     def test_company_id_attribute_is_required(self):
         data = {"value": "Test Value"}
@@ -40,7 +39,6 @@ class CompanyReprSchemaTest(AppTestCase):
 
 
 class CompanySchemaTest(AppTestCase):
-    models = [models.Company, models.CompanyRepr, models.Record]
 
     def test_name_attribute_is_required(self):
         data = {"isin": "#test"}
@@ -100,7 +98,6 @@ class CompanySchemaTest(AppTestCase):
 
 
 class CompanySimpleSchemaTest(AppTestCase):
-    models = [models.Company, models.CompanyRepr]
 
     def test_deserialized_data_contains_uri_to_full_version(self):
         company = models.Company(name="TEST", isin="#TEST")
@@ -113,10 +110,6 @@ class CompanySimpleSchemaTest(AppTestCase):
 
 
 class RecordTypeSchemaTest(AppTestCase):
-    models = [
-        models.RecordType, models.RecordTypeRepr, models.Record,
-        models.Company, models.CompanyRepr
-    ]
 
     def test_name_attribute_is_required(self):
         data = {"statement": "bls"}
@@ -170,10 +163,6 @@ class RecordTypeSchemaTest(AppTestCase):
 
 
 class RecordTypeSimpleSchemaTest(AppTestCase):
-    models = [
-        models.RecordType, models.RecordTypeRepr, models.Record,
-        models.Company, models.CompanyRepr
-    ]
 
     def test_deserialized_data_contains_uri_to_full_version(self):
         rtype = models.RecordType(name="TEST", statement="bls")
@@ -186,10 +175,6 @@ class RecordTypeSimpleSchemaTest(AppTestCase):
 
 
 class RecordSchemaTest(AppTestCase):
-    models = [
-        models.RecordType, models.RecordTypeRepr, models.Record,
-        models.Company, models.CompanyRepr, models.Report
-    ]
 
     def test_company_id_attribute_is_required(self):
         data = {
@@ -340,10 +325,6 @@ class RecordSchemaTest(AppTestCase):
 
 
 class ReportSchemaTest(AppTestCase):
-    models = [
-        models.RecordType, models.RecordTypeRepr, models.Record,
-        models.Company, models.CompanyRepr, models.Report
-    ]
 
     def test_timerange_attribute_is_required(self):
         data = { "timestamp": "2015-03-31" }
@@ -372,3 +353,90 @@ class ReportSchemaTest(AppTestCase):
         self.assertEqual(
             data["records"], url_for("rapi.report_record_list", id=report.id)
         )
+
+
+def create_formula():
+    total_assets = models.RecordType(name="TOTAL_ASSETS", statement="bls")
+    current_assets = models.RecordType(name="CURRENT_ASSETS", statement="bls")
+    fixed_assets = models.RecordType(name="FIXED_ASSETS", statement="bls")
+    db.session.add_all((total_assets, current_assets, fixed_assets))
+    db.session.flush()    
+    
+    formula = models.RecordFormula(rtype=total_assets)
+    formula.add_component(rtype=current_assets, sign=1)
+    formula.add_component(rtype=fixed_assets, sign=1)
+    db.session.add(formula)
+    db.session.commit()
+    
+    return formula
+        
+        
+class RecordFormulaTest(AppTestCase):
+    
+    def test_rtype_attribute_is_required(self):
+        data = {}
+        obj, errors = RecordFormulaSchema().load(data)
+        self.assertTrue(errors)
+        self.assertIn("rtype_id", errors)
+
+    def test_rtype_has_to_exist_in_db(self):
+        data = {"rtype_id": 10}
+        obj, errors = RecordFormulaSchema().load(data, session=db.session)
+        self.assertTrue(errors)
+        self.assertIn("rtype_id", errors)
+        
+    def test_load_creates_new_formula(self):
+        rtype = models.RecordType(name="TEST TYPE", statement="nls")
+        db.session.add(rtype)
+        db.session.flush()
+        
+        data = {"rtype_id": rtype.id}
+        obj, errors = RecordFormulaSchema().load(data, session=db.session)
+        db.session.add(obj)
+        db.session.commit()
+        
+        formula = db.session.query(models.RecordFormula).one()
+        self.assertEqual(formula.rtype_id, rtype.id)
+
+    def test_deserialized_formula_contains_list_of_components(self):
+        formula = create_formula()
+        data = RecordFormulaSchema().dump(formula).data
+        
+        self.assertEqual(len(data["components"]), 2)
+        values = [ item["rtype"] for item in data["components"] ]
+        self.assertCountEqual(values, ["CURRENT_ASSETS", "FIXED_ASSETS"])
+        
+        
+class FormulaComponentTest(AppTestCase):
+    
+    def test_rtype_attribute_is_required(self):
+        data = {}
+        obj, errors = FormulaComponentSchema().load(data)
+        self.assertTrue(errors)
+        self.assertIn("rtype_id", errors)
+        
+    def test_rtype_has_to_exist_in_db(self):
+        formula = create_formula()
+        data = {"rtype_id": 10, "formula_id": formula.id}
+        obj, errors = FormulaComponentSchema().load(data, session=db.session)
+        self.assertTrue(errors)
+        self.assertIn("rtype_id", errors)
+        
+    def test_formula_attribute_is_required(self):
+        data = {}
+        obj, errors = FormulaComponentSchema().load(data)
+        self.assertTrue(errors)
+        self.assertIn("formula_id", errors)
+        
+    def test_formula_has_to_exist_in_db(self):
+        data = {"formula_id": 10}
+        obj, errors = FormulaComponentSchema().load(data, session=db.session)
+        self.assertTrue(errors)
+        self.assertIn("formula_id", errors)
+        
+    def test_deserialized_data_contains_data_of_record_type(self):
+        formula = create_formula()
+        component = formula.components[0]
+        data = FormulaComponentSchema().dump(component).data
+        self.assertIn("rtype", data)
+        self.assertEqual(data["rtype"], component.rtype.name)

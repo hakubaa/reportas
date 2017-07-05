@@ -138,6 +138,10 @@ class Record(VersionedModel):
 	value = Column(Float, nullable=False)
 	timestamp = Column(DateTime, nullable=False)
 	timerange = Column(Integer, nullable=False)
+	synthetic = Column(Boolean, default=False, nullable=False)
+
+	#dependencies
+    #impacts
 
 	rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
 	rtype = relationship(
@@ -178,3 +182,52 @@ class Record(VersionedModel):
 			obj.value = value
 
 		return obj
+
+
+class RecordFormula(VersionedModel):
+    id = Column(Integer, primary_key=True)
+    
+    rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
+    rtype = relationship(
+        "RecordType", backref=backref("formulas", lazy="dynamic")
+    )
+    
+    def __repr__(self):
+        cls_name = self.__class__.__name__
+        right_side = self.rtype.name
+        left_side = ''.join(
+             (' - ' if component.sign == -1 else ' + ') + component.rtype.name
+            for component in self.components
+        )
+        if left_side.startswith(" + "):
+            left_side = left_side[3:]
+        return "%s<%s, %s>" % (cls_name, right_side, left_side)
+        
+    def add_component(self, component=None, **kwargs):
+        if not component:
+            component = FormulaComponent(**kwargs)
+        self.components.append(component)
+    
+
+class FormulaComponent(VersionedModel):
+    id = Column(Integer, primary_key=True)
+    
+    formula_id = Column(
+        Integer, ForeignKey("recordformula.id"), nullable=False
+    )
+    formula = relationship(
+        "RecordFormula", backref=backref("components", lazy="joined")
+    )
+    
+    rtype_id = Column(
+        Integer, ForeignKey("recordtype.id"), nullable=False
+    )
+    rtype = relationship(
+        "RecordType", backref=backref("revcomponents", lazy="joined")
+    )
+    
+    sign = Column(Integer, default=1, nullable=False)
+    
+    __table_args__ = (
+        CheckConstraint("sign in (-1, 0, 1)"),  
+    )

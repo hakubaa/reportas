@@ -99,6 +99,86 @@ class RecordTypeReprDetailView(DetailView):
         return data
 
 
+class RecordFormulaListView(ListView):
+    model = models.RecordFormula
+    schema = schemas.RecordFormulaSchema
+    
+    def get_objects(self, rid):
+        rtype = db.session.query(models.RecordType).get(rid)
+        if not rtype:
+            abort(404)
+        return rtype.formulas
+        
+    def modify_data(self, data):
+        data["rtype_id"] = data["rid"]
+        del data["rid"]
+        return data
+
+
+class RecordFormulaDetailView(DetailView):
+    model = models.RecordFormula
+    schema = schemas.RecordFormulaSchema
+
+    def get_object(self, rid, fid):
+        formula = db.session.query(models.RecordFormula).filter(
+            models.RecordFormula.rtype_id == rid,
+            models.RecordFormula.id == fid
+        ).first()
+        if not formula:
+            abort(404)
+        return formula
+
+    def modify_data(self, data):
+        rtype_id = data["rid"]
+        data["rtype_id"] = rtype_id
+        data["id"] = data["fid"]
+        del data["rid"]
+        del data["fid"]
+        return data
+
+
+class FormulaComponentListView(ListView):
+    model = models.FormulaComponent
+    schema = schemas.FormulaComponentSchema
+    
+    def get_objects(self, rid, fid):
+        formula = db.session.query(models.RecordFormula).filter(
+            models.RecordFormula.rtype_id == rid,
+            models.RecordFormula.id == fid
+        ).first()
+        if not formula:
+            abort(404)
+        return formula.components
+        
+    def modify_data(self, data):
+        data["formula_id"] = data["fid"]
+        del data["rid"]
+        del data["fid"]
+        return data 
+
+
+class FormulaComponentDetailView(DetailView):
+    model = models.FormulaComponent
+    schema = schemas.FormulaComponentSchema
+
+    def get_object(self, rid, fid, cid):
+        component = db.session.query(self.model).filter(
+            models.FormulaComponent.formula_id == fid,
+            models.FormulaComponent.id == cid
+        ).first()
+        if not component:
+            abort(404)
+        return component
+
+    def modify_data(self, data):
+        data["formula_id"] = data["fid"]
+        data["id"] = data["cid"]
+        del data["rid"]
+        del data["fid"]
+        del data["cid"]
+        return data
+
+
 class CompanyRecordListView(ListView):
     model = models.Record
     schema = schemas.RecordSchema
@@ -309,6 +389,24 @@ rapi.add_url_rule("/rtypes/<int:id>/reprs",
                   view_func=RecordTypeReprListView.as_view("rtype_repr_list"))
 rapi.add_url_rule("/rtypes/<int:id>/reprs/<int:rid>",
                   view_func=RecordTypeReprDetailView.as_view("rtype_repr_detail"))
+
+rapi.add_url_rule(
+    "/rtypes/<int:rid>/formulas",
+    view_func=RecordFormulaListView.as_view("rtype_formula_list")
+)
+rapi.add_url_rule(
+    "/rtypes/<int:rid>/formulas/<int:fid>",
+    view_func=RecordFormulaDetailView.as_view("rtype_formula_detail")
+)
+
+rapi.add_url_rule(
+    "/rtypes/<int:rid>/formulas/<int:fid>/components",
+    view_func=FormulaComponentListView.as_view("formula_component_list")
+)
+rapi.add_url_rule(
+    "/rtypes/<int:rid>/formulas/<int:fid>/components/<int:cid>",
+    view_func=FormulaComponentDetailView.as_view("formula_component_detail")
+)
 
 
 rapi.add_url_rule("/reports", view_func=ReportListView.as_view("report_list"))
