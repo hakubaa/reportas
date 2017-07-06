@@ -33,12 +33,15 @@
     }
 
     #report-content tr,
-    #report-content td 
+    #report-content td
     { 
         font-family: "Courier New", Courier, monospace;
         font-size: 0.9em;
         /*border: 1px solid black;*/
     }
+/*    td.content {
+        white-space: pre;
+    }*/
     #report-content th {
         /*border: 1px solid black;*/
         padding: 5px 0px;
@@ -251,9 +254,9 @@
                                 <td class="selector"><input type="checkbox"></td>
                                 <td class="pageno">{{page_no}}</td>
                                 <td class="field">
-                                    <span>{{report.records_map.get(doc_row, None)}}</span>
+                                    <span>{{report.rows_map.get(doc_row, None)}}</span>
                                 </td>
-                                <td class="content"><input type="text" value="{{content}}"></td>
+                                <td class="content">{{content}}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -679,6 +682,16 @@
                 $input.insertBefore($(this));
             });
             $div.append($button);
+
+            $button = $(
+                "<button/>", {class: "btn btn-danger btn-xs", type: "button"}
+            );
+            $button.append($("<span/>",{class: "glyphicon glyphicon-minus"}));
+            $button.click(function() {
+                var $lastInput = $(this).parent().find("input").last();
+                $lastInput.remove();
+            });
+            $div.append($button);      
 
             $formGroup.append($div);
             $form.append($formGroup);

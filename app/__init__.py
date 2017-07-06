@@ -4,11 +4,14 @@ from flask_marshmallow import Marshmallow
 from flask_debugtoolbar import DebugToolbarExtension
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_bootstrap import Bootstrap
+from flask_migrate import Migrate
 
 from app.patch.sqlalchemy import SQLAlchemy
 from config import config
 
 from db.core import Base
+
 
 db = SQLAlchemy()
 db.register_base(Base)
@@ -20,31 +23,36 @@ login_manager = LoginManager()
 
 
 def create_app(config_name, **kwargs):
-	app = Flask(__name__)
-	app.config.from_object(config[config_name])
-	config[config_name].init_app(app)
+    app = Flask(__name__)
+    app.config.from_object(config[config_name])
+    config[config_name].init_app(app)
 
-	db.init_app(app)
-	ma.init_app(app)
-	debugtoolbar.init_app(app)
-	mail.init_app(app)
+    db.init_app(app)
+    ma.init_app(app)
+    debugtoolbar.init_app(app)
+    mail.init_app(app)
+    migrate = Migrate(app, db)
+    Bootstrap(app)
 
-	from app.models import AnonymousUser
-	login_manager.session_protection = "strong"
-	login_manager.login_view = "user.login"
-	login_manager.anonymous_user = AnonymousUser
-	login_manager.init_app(app)
+    from app.models import AnonymousUser
+    login_manager.session_protection = "strong"
+    login_manager.login_view = "user.login"
+    login_manager.anonymous_user = AnonymousUser
+    login_manager.init_app(app)
 
-	from app.main import main as main_blueprint
-	app.register_blueprint(main_blueprint)
+    from app.home import home as home_blueprint
+    app.register_blueprint(home_blueprint)
 
-	from app.reports import reports as reports_blueprint
-	app.register_blueprint(reports_blueprint, url_prefix="/reports")
+    from app.reports import reports as reports_blueprint
+    app.register_blueprint(reports_blueprint, url_prefix="/reports")
 
-	from app.rapi import rapi as rapi_blueprint
-	app.register_blueprint(rapi_blueprint, url_prefix="/api")
+    from app.rapi import rapi as rapi_blueprint
+    app.register_blueprint(rapi_blueprint, url_prefix="/api")
 
-	from app.user import user as user_blueprint
-	app.register_blueprint(user_blueprint, url_prefix="/user")
+    from app.user import user as user_blueprint
+    app.register_blueprint(user_blueprint, url_prefix="/user")
 
-	return app
+    from app.dbmd import dbmd as dbmd_blueprint
+    app.register_blueprint(dbmd_blueprint, url_prefix="/dbmd")
+
+    return app

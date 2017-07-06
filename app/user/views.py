@@ -11,11 +11,6 @@ from app import db
 from app.user import auth
 
 
-@user_blueprint.route("/test", methods=["GET"])
-def test():
-    return render_template("user/test.html")
-
-
 @user_blueprint.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
@@ -23,7 +18,7 @@ def login():
         user = db.session.query(User).filter_by(email=form.email.data).first() 
         if user is not None and user.verify_password(form.password.data):
             login_user(user, form.remember_me.data)
-            return redirect(get_redirect_target() or url_for("main.index"))
+            return redirect(get_redirect_target() or url_for("home.homepage"))
         flash("Invalid username or password.")
     return render_template("user/login.html", form=form)
 
@@ -33,7 +28,7 @@ def login():
 def logout():
     logout_user()
     flash("You have been logged out.")
-    return redirect(get_redirect_target() or url_for("main.index"))
+    return redirect(get_redirect_target() or url_for("home.homepage"))
 
 
 @user_blueprint.route("/register", methods=["GET", "POST"])
@@ -60,12 +55,12 @@ def register():
 @login_required
 def confirm(token):
     if current_user.confirmed:
-        return redirect(url_for("main.index"))
+        return redirect(url_for("home.homepage"))
     if current_user.confirm(token):
         flash("You have confirmed your account. Thanks!")
     else:
         flash("The confirmation link is invalid or has expired.")
-    return redirect(url_for("main.index"))
+    return redirect(url_for("home.homepage"))
 
 
 @user_blueprint.before_app_request
@@ -90,7 +85,7 @@ def resend_confirmation():
     send_email(current_user.email, "Confirm Your Account", 
                "user/email/confirm", user=current_user, token=token)
     flash("A new confirmation email has been sent to you by email.")
-    return redirect(url_for("main.index"))
+    return redirect(url_for("home.homepage"))
     
 
 @user_blueprint.route("/token")

@@ -1,36 +1,16 @@
+{% import "bootstrap/utils.html" as utils %}
+{% import "bootstrap/wtf.html" as wtf %}
 {% extends "base.html" %}
-
 {% block title %}Login{% endblock %}
-
 {% block body %}
-    <div class="page-header">
-        <h2>Login</h2>
-    </div>
-    <form method="post">
-        {{ form.csrf_token }}
-        <div class="form-group {% if form.email.errors %} has-error {% endif %}">
-            <label>{{form.email.label}}</label>
-            {{ form.email(class="form-control") }}
-            {% if form.email.errors %}
-                <span class="help-block">
-                    {{ form.email.errors|join("; ") }}
-                </span>
-            {% endif %}
-        </div>
-        <div class="form-group {% if form.password.errors %} has-error {% endif %}">
-            <label>{{form.password.label}}</label>
-            {{ form.password(class="form-control") }}
-            {% if form.password.errors %}
-                <span class="help-block">
-                    {{ form.password.errors|join("; ") }}
-                </span>
-            {% endif %}
-        </div>
-        <div class="checkbox">
-            <label>
-                {{ form.remember_me() }} Keep me logged in
-            </label>
-        </div>
-        {{ form.submit(class="btn btn-default") }}
-    </form>
+<div class="content-section">
+  <br/>
+  {{ utils.flashed_messages() }}
+  <br/>
+  <div class="center">
+    <h1>Login to your account</h1>
+    <br/>
+    {{ wtf.quick_form(form) }}
+  </div>
+</div>
 {% endblock %}

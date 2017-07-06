@@ -79,8 +79,8 @@ class Role(Model):
 
 class User(UserMixin, Model):
     id = Column(Integer, primary_key=True)
-    email = Column(String(64), unique=True, index=True)
-    name = Column(String(64), unique=True, index=True)
+    email = Column(String(64), unique=True, index=True, nullable=False)
+    name = Column(String(64), unique=True, index=True, nullable=False)
     password_hash = Column(String(128))
     confirmed = Column(Boolean, default=False)
 

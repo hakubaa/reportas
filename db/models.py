@@ -223,7 +223,7 @@ class FormulaComponent(VersionedModel):
         Integer, ForeignKey("recordtype.id"), nullable=False
     )
     rtype = relationship(
-        "RecordType", backref=backref("revcomponents", lazy="joined")
+        "RecordType", backref=backref("revformulas", lazy="joined")
     )
     
     sign = Column(Integer, default=1, nullable=False)

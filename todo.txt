@@ -32,3 +32,40 @@ What next?
 - algorithm for creating new formulas on the base of existing ones (reversed formulas)
 - algorithm for creating sintetic records (on the base of other records in accordance
   with defined formulas and on the base of data from different timeranges and timestamps)
+
+
+
+openstock.com (Open Stock)
+
+- Baza danych (dbmp - database management panel)
+    - API + Opis API
+    - Zardządzanie danymi (wgrywanie, usuwanie, modifikacja)
+    - Przeglądanie bazy danych
+    - Pobieranie danych z bazy (csv, txt)
+    - Parser do raportów
+- Panel analityczny (analytics)
+    - Analiza danych finansowych
+    - Wskaźniki finansowe
+    - Przygotowywanie analiz w ujęci jednospółkowym oraz analizy porównawncze
+    - Wyszukiwanie spółek spełniających zawiłe kryteria (np. nieprzerwany wzrost
+        sprzedaży w ostatnich 5 kwartałach)
+    - Panel do tworzenia analiz, które będą mogły być później opublikowane w
+      'Raporty & Analizy' według określonych schematów. 
+- Raport & Analizy (analyses)
+- Twój portfel (portfolio)
+
+
+
+RecordFormula:
+- calculate (instance method)
+    - accepts Records and returns new Record calculated in accordance with formulas
+    - records must encompass the same timerange and end at the same timestamp
+    - returns None, when it was not possible
+- transform/derive (instance method)
+    - create new formula which explain given component
+- classmethod for looking for formulas to calculate specific fields
+- how to represent formula uniqness (unique left side and right side)
+- formula trace (unambiguous identification of formula) - update with ORM Events
+
+Function which acceps timestamp, timerange, type of record and try to calculate Record it
+regardless of the method.

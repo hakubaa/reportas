@@ -120,7 +120,7 @@ def parser():
     try: 
         company = db.session.query(Company).\
               filter_by(isin=report.company["isin"]).one()
-    except (NoResultFound, AttributeError, KeyError):
+    except Exception:
         company = None
 
     try:
