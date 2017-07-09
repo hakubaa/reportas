@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_restful import Api
 from flask_marshmallow import Marshmallow
 from flask_debugtoolbar import DebugToolbarExtension
@@ -54,5 +54,9 @@ def create_app(config_name, **kwargs):
 
     from app.dbmd import dbmd as dbmd_blueprint
     app.register_blueprint(dbmd_blueprint, url_prefix="/dbmd")
+
+    @app.errorhandler(401)
+    def unathorized_access(error):
+        return render_template("401.html"), 401
 
     return app

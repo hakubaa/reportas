@@ -1,0 +1,34 @@
+{% import "bootstrap/utils.html" as utils %}
+{% extends "base.html" %}
+{% block title %}Database Management Dashboard{% endblock %}
+
+{% block body %}
+<div class="content-section">
+    <ul>
+        <li>
+            Financial Data
+            <ul>
+                <li>Records</li>
+                <li>Records Types</li>
+                <li>Reports</li>
+            </ul>
+        </li>
+        <li>
+            Companies & Sectors
+            <ul>
+                <li><a href="{{ url_for('dbmd.list_companies') }}">Companies</a></li>
+                <li>Sectors</li>
+            </ul>
+        </li>
+        <li>Makroeconomic Data</li>
+        <li>Stock Exchage Quotations</li>
+        <li>
+            Geographic Data
+            <ul>
+                <li>Countries</li>
+                <li>Districts</li>
+            </ul>
+        </li>
+    </ul>
+</div>
+{% endblock %}

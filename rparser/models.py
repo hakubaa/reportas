@@ -19,8 +19,8 @@ import pandas as pd
 import numpy as np
 from dateutil.relativedelta import relativedelta
 
-from parser.nlp import NGram, find_ngrams, cos_similarity, STOP_WORDS
-import parser.util as util
+from rparser.nlp import NGram, find_ngrams, cos_similarity, STOP_WORDS
+import rparser.util as util
 
 
 class Document:

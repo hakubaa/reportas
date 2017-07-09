@@ -1,4 +1,4 @@
-- recognition of unit money
+﻿- recognition of unit money
 - check errors and warnings for reports listed in fields_identification.py
 - web-based interface for uploaindg report (validation)
 - web-crawler for searching pdf/zip files wtih financial reports
@@ -69,3 +69,53 @@ RecordFormula:
 
 Function which acceps timestamp, timerange, type of record and try to calculate Record it
 regardless of the method.
+
+
+
+
+- create separate model for sector - Sector
+	- many-to-many relation with companies, which can operatoe in many secots
+- create separate model for country - Country
+	- filter companies by country
+- create separate model for district - District
+	- filter companies by distirct
+- create spearate model for stock exchanges - StockExchange (eg. Warsaw Stock Exchange)
+	- companies can be lisited on many stocks simulataneously
+- create separate models for macroeconomic data
+	- similar as in case of Records (but to keep macreoconomic data)
+	- relation with countries or entities (e.g. European Union)
+	- it will be very helpful when developming predictive models
+
+
+- Flask-WhooshAlchemy for indexing models
+	- https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-x-full-text-search
+
+
+- split data into different categories: 
+	- Financial Data
+		- Records
+		- Record Types
+			- Record Type Reprs
+			- Formulas
+		- Reports
+	- Macroeconomic Data
+	- Stock Exchange Quotations
+	- Geographic Data
+		- Countires
+		- Districts
+	- Companies
+		- Companies
+			- Company Reprs
+		- Sectors
+
+
+- create abstract classes on the base of Django-Class base views:
+	- SingleObjectMixin
+	- ListView
+	- DetailView
+	- EditView
+	- CreateView
+	- UpdateView
+	- DeleteView
+		- can show also list of related collections (e.g. representations of companies)
+		  with edit and delete buttons

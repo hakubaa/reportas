@@ -50,6 +50,13 @@ class AppTestCase(TestCase):
     def logout_user(self):
         return self.client.get(url_for("user.logout"), follow_redirects=True)
 
+    def assertInContent(self, response, text):
+        page_text = response.get_data().decode(
+            encoding=response.content_encoding or "utf-8",
+            errors="ignore"
+        )
+        self.assertIn(text, page_text)
+
 
 def create_basic_httpauth_header(name, password):
     headers = {

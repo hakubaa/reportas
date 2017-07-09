@@ -4,8 +4,8 @@ from sqlalchemy.orm.query import Query
 from flask import request, current_app
 
 import db.util as dbutil
-import parser.util as putil
-from parser.models import FinancialReport
+import rparser.util as putil
+from rparser.models import FinancialReport
 
 
 def apply_query_parameters(query):

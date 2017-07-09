@@ -34,12 +34,12 @@
                       0
                   </td>
                   <td>
-                    <a href="#">
+                    <a href="{{ url_for('dbmd.edit_company', id=company.id) }}">
                       <i class="fa fa-pencil"></i> Edit 
                     </a>
                   </td>
                   <td>
-                    <a href="#">
+                    <a href="{{ url_for('dbmd.delete_company', id=company.id) }}">
                       <i class="fa fa-trash"></i> Delete 
                     </a>
                   </td>
@@ -54,7 +54,7 @@
             <h3> No companies have been added. </h3>
             <hr class="intro-divider">
         {% endif %}
-          <a href="#" class="btn btn-default btn-lg">
+          <a href="{{ url_for('dbmd.add_company') }}" class="btn btn-default btn-lg">
             <i class="fa fa-plus"></i>
             Add Company
           </a>

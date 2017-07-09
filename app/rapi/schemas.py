@@ -79,6 +79,15 @@ class CompanySchema(ma.ModelSchema):
             raise ValidationError("ISIN not unique")
         return True
 
+    @validates("name")
+    def validate_name(self, value):
+        (ret, ), = db.session.query(
+            exists().where(models.Company.name == value)
+        )
+        if ret:
+            raise ValidationError("Name not unique")
+        return True
+
 
 class CompanySimpleSchema(ma.ModelSchema):
     class Meta:

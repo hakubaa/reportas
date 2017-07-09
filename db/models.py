@@ -56,7 +56,7 @@ class Company(VersionedModel):
 		util.upload_companies(session, data_companies)
 		session.commit()
 
-		import parser.cspec as cspec
+		import rparser.cspec as cspec
 
 		for comp in cspec.companies:
 			company = session.query(Company).filter_by(isin=comp["isin"]).one()
@@ -118,7 +118,7 @@ class RecordType(VersionedModel):
 
     @staticmethod
     def insert_rtypes(session):
-        import parser.spec as spec
+        import rparser.spec as spec
         import db.util as util
         util.upload_records_spec(session, spec.finrecords)
         session.commit()

@@ -46,7 +46,7 @@
             <ul class="nav navbar-nav">
               <li><a href="#">Analyses</a></li>
               {% if current_user.is_authenticated %}
-                  <li><a href="#">Database</a></li>
+                  <li><a href="{{ url_for('dbmd.index') }}">Database</a></li>
                   <li><a href="#">Analytics</a></li>
                   <li><a href="#">Portfolio</a></li>
               {% endif %}
@@ -81,7 +81,7 @@
                         <li><a href="#">Analyses</a></li>
                         {% if current_user.is_authenticated %}
                           <li class="footer-menu-divider">⋅</li>
-                          <li><a href="#">Database</a></li>
+                          <li><a href="{{ url_for('dbmd.index') }}">Database</a></li>
                           <li class="footer-menu-divider">⋅</li>
                           <li><a href="#">Analytics</a></li>
                           <li class="footer-menu-divider">⋅</li>

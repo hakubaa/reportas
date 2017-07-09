@@ -17,8 +17,8 @@ from db.util import get_companies_reprs, get_records_reprs, create_vocabulary
 import db.util as dbutil
 from db.core.util import get_or_create
 
-from parser.models import FinancialReport
-import parser.util as putil
+from rparser.models import FinancialReport
+import rparser.util as putil
 
 
 

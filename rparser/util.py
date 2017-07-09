@@ -17,7 +17,7 @@ from functools import reduce
 import numpy as np
 from dateutil.parser import parse
 
-from parser.nlp import find_ngrams, cos_similarity
+from rparser.nlp import find_ngrams, cos_similarity
 
 
 RE_NUMBER = re.compile(r"^(?:\+|-|\()?(?: )?\d+(?:(?: |\.)\d{3})*(?:[,]\d+)?(?:\))?$")

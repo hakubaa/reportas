@@ -14,9 +14,9 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.ensemble import RandomForestClassifier
 
 
-from parser.nlp import NGram
-from parser.models import Document
-from parser.util import find_ngrams, find_numbers
+from rparser.nlp import NGram
+from rparser.models import Document
+from rparser.util import find_ngrams, find_numbers
 
 
 # 1) Load reports

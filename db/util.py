@@ -10,8 +10,8 @@ from bs4 import BeautifulSoup
 from db.models import (
 	Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr
 )
-from parser.nlp import find_ngrams
-import parser.util as putil
+from rparser.nlp import find_ngrams
+import rparser.util as putil
 
 
 def upload_companies(session, data):
