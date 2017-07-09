@@ -46,7 +46,45 @@ class ListCompaniesViewTest(AppTestCase):
         companies = self.get_context_variable("companies")
         self.assertIsNotNone(companies)
         self.assertEqual(len(companies), 2)
+
+    def test_unauthenticated_users_are_redirected_to_login_page(self):
+        response = self.client.get(url_for("dbmd.list_companies"), 
+                                   follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(urlparse(response.location).path, url_for("user.login"))
         
+
+class CompanyDetailViewTest(AppTestCase):
+
+    def create_company(self, name="TEST", isin="#TEST"):
+        company = models.Company(name=name, isin=isin)
+        db.session.add(company)
+        db.session.commit()
+        return company
+
+    @create_and_login_user()
+    def test_for_rendering_proper_template(self):
+        company = self.create_company()
+        
+        self.client.get(url_for("dbmd.company_detail", id=company.id))
+        
+        self.assert_template_used("dbmd/companies/company_detail.html") 
+        
+    @create_and_login_user()
+    def test_for_passing_companies_to_template(self):
+        company = self.create_company()
+        
+        self.client.get(url_for("dbmd.company_detail", id=company.id))
+        
+        company_ref = self.get_context_variable("company")
+        self.assertEqual(company, company_ref)
+
+    @create_and_login_user
+    def test_for_rendering_404_when_company_does_not_exist(self):
+        self.client.get(url_for("dbmd.company_detail", id=1))
+        
+        self.assert_template_used("dbmd/404.html") 
+
 
 class AddCompanyViewTest(AppTestCase):
     
@@ -97,8 +135,8 @@ class AddCompanyViewTest(AppTestCase):
         form = self.get_context_variable("form")
         self.assertInContent(response, "TICKER#123")
         self.assertInContent(response, "OPENSTOCK")
-        
-        
+
+
 class EditCompanyViewTest(AppTestCase):
     
     def create_company(self, isin="#TEST", name="TEST"):
@@ -171,7 +209,7 @@ class EditCompanyViewTest(AppTestCase):
         )
         form = self.get_context_variable("form")
         self.assertInContent(response, "TICKER#123")
-        
+
 
 class DeleteCompanyViewTest(AppTestCase):
     
