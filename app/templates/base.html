@@ -12,9 +12,11 @@
   <title>Reportas - {% block title %}{% endblock %}</title>
 
   <!-- Bootstrap -->
+
+
   <link href="{{ url_for('static', filename='vendors/normalize.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
-  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap-theme.min.css') }}" rel="stylesheet">
   <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 
   <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
@@ -23,13 +25,18 @@
     <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
     <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
   <![endif]-->
-
+  <style>
+    body { padding-top: 80px; }
+  </style>
+  {% block head_css %}{% endblock %}
   {% block head %}{% endblock %}
 	{% block styles %}{% endblock %}
 	{% block scripts %}{% endblock %}
+  {% block head_tail %}{% endblock %}
 </head>
 
 <body>
+  <div class="container">
     <nav class="navbar navbar-default navbar-fixed-top topnav" role="navigation">
         <div class="container topnav">
           <div class="navbar-header">
@@ -46,7 +53,7 @@
             <ul class="nav navbar-nav">
               <li><a href="#">Analyses</a></li>
               {% if current_user.is_authenticated %}
-                  <li><a href="{{ url_for('dbmd.index') }}">Database</a></li>
+                  <li><a href="{{ url_for('admin.index') }}">Database</a></li>
                   <li><a href="#">Analytics</a></li>
                   <li><a href="#">Portfolio</a></li>
               {% endif %}
@@ -64,12 +71,11 @@
         </div>
     </nav>
 
-    <div class="wrapper">
-      {% block body %}
-      {% endblock %}
-      <div class="push"></div>
-    </div>
+    {% block page_body %}
+    {% endblock %}
+  </div>
 
+    {% block footer %}
     <footer>
         <div class="container">
             <div class="row">
@@ -81,7 +87,7 @@
                         <li><a href="#">Analyses</a></li>
                         {% if current_user.is_authenticated %}
                           <li class="footer-menu-divider">⋅</li>
-                          <li><a href="{{ url_for('dbmd.index') }}">Database</a></li>
+                          <li><a href="{{ url_for('admin.index') }}">Database</a></li>
                           <li class="footer-menu-divider">⋅</li>
                           <li><a href="#">Analytics</a></li>
                           <li class="footer-menu-divider">⋅</li>
@@ -102,11 +108,13 @@
             </div>
         </div>
     </footer>
-
+    {% endblock %}
 
     <script src="{{ url_for('static', filename='vendors/jquery-3.2.1.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendors/bootstrap/js/bootstrap.min.js') }}"></script>
+    {% block tail_js %}{% endblock %}
     {% block body_scripts %}{% endblock %}
+    {% block tail %}{% endblock %}
 </body>
 
 </html>

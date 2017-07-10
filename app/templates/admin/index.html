@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% block title %}Database Management Dashboard{% endblock %}
 
-{% block body %}
+{% block page_body %}
 <div class="content-section">
     <ul>
         <li>
@@ -16,7 +16,7 @@
         <li>
             Companies & Sectors
             <ul>
-                <li><a href="{{ url_for('dbmd.list_companies') }}">Companies</a></li>
+                <li><a href="{{ url_for('company.index_view') }}">Companies</a></li>
                 <li>Sectors</li>
             </ul>
         </li>

@@ -1,6 +1,14 @@
-from flask import Blueprint
+from flask_admin import Admin
 
-# dbmd - database management dashboard
-dbmd = Blueprint("dbmd", __name__)
+from app.dbmd.base import AdminIndexView
+
+
+dbmd = Admin(
+    index_view=AdminIndexView(
+        template="admin/index.html",
+        url="/dbmd"
+    ),
+    template_mode="bootstrap3"
+)
 
 from app.dbmd import views

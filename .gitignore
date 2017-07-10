@@ -11,3 +11,4 @@ reportas.sublime-project
 migrations/versions
 uploads*
 /reports/
+dbmd_old

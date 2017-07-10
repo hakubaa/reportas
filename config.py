@@ -17,6 +17,8 @@ class Config:
 	MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
 	MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
 
+	FLASK_ADMIN_SWATCH = "readable" #"paper", "readable", "slate"
+
 	@staticmethod
 	def init_app(app):
 		pass
