@@ -119,3 +119,65 @@ regardless of the method.
 	- DeleteView
 		- can show also list of related collections (e.g. representations of companies)
 		  with edit and delete buttons
+
+
+
+
+11.07.2017
+
+- to do
+    - compare ma.ModelSchema with ModelSchema from sqlalchemy_marshmallow
+        - if ok move schemas to db
+        - if ok move DBRecordFactory to db
+        
+- done
+    - create DBRecordFactory (app/factories.py)
+    - write tests for DBRecordFActory (app/test_factories.py)
+    
+    
+
+
+- to create nested forms one have to define additional models in inline_models
+    - how to add related model to model that do not exist
+    - there should be relation between dbrequests and models, polimorphic
+        relation is required (possible?)
+    - dependent request - request which execution depends on the execution
+        of other request (parent request)
+        
+        Example:
+        
+        User actions:
+        1. User makes request to create record type.
+        2. User adds several representation for defined record type (each 
+           representation is send via separate request).
+          
+        Moderator actions: 
+        1. Moderator opens request for creation of record type.
+        2. Moderator sees request concerning creation of record type as well
+           as all related requests.
+        3. Moderator can rejecte selected dependent request what does not mean 
+           he will reject the parent request.
+        4. Moderator accept the request.
+        
+        Server actions:
+        1. Server executes the requst.
+        2. Srrver creates the main object - RecordType.
+        3. Server executes dependent requests. Server modifieds data in each
+           request in accordance with defined relation between created models.
+        4. Server recognize relation on it's own. Analyse the relations between
+           models. If there is no relation nothing is going to change. When
+           there is a relation additional acctions are taking place. 
+        5. There will be only many-to-one relation at the beginning. Do not know
+           whether other type of relations are required.
+        6. Great - write tests for this.
+        7. In main panel show only main requests (those without defined parent
+           request).
+           
+        Super!!! Write tests!!!
+        - I need factory: session,
+        - two methods: create, update
+        
+        
+- move schemas to db
+- serializers
+

@@ -34,60 +34,6 @@ def upload_companies(session, data):
 			session.add(instance)
 
 
-def upload_report(session, doc, bls=True, nls=True, cfs=True,
-	              override=False):
-	'''Upload report to db.'''
-	company = session.query(Company).filter_by(isin=doc.company["isin"]).one()
-
-	if override: # override previous data
-		report = session.query(Report).filter_by(
-			timestamp=doc.timestamp, timerange=doc.timerange, company=company
-		).first()
-		if report:
-			session.delete(report)
-			session.commit()
-
-	report = Report.create(
-		session, timestamp=doc.timestamp, timerange=doc.timerange,
-		company=company
-	)
-
-	# collect data for uploading
-	data = []
-	if bls: data.append({"items": doc.bls.items(), "names": doc.bls.names})
-	if nls: data.append({"items": doc.nls.items(), "names": doc.nls.names})
-	if cfs: data.append({"items": doc.cfs.items(), "names": doc.cfs.names})
-
-	for record in data:
-		# get names of columns and convert to more convinent form
-		colnames = list(itertools.starmap( 
-			lambda tr, ts: {        
-				"timerange": tr, 
-				"timestamp": datetime(ts[0], ts[1], ts[2])
-			}, 
-			record["names"]
-		))
-		for key, values in record["items"]:
-			if len(values) != len(colnames): # skip incomplete records
-				warnings.warn(
-					"Different number of values and names for '{}' in "
-					"'{!r}'".format(key, doc)
-				)
-				continue
-
-			rtype = RecordType.get_or_create(session, name=key)
-
-			for metadata, value in zip(colnames, values):
-				Record.create_or_update(
-					session, rtype=rtype, value=value, 
-					timestamp=metadata["timestamp"], 
-					timerange=metadata["timerange"], 
-					report=report, company=company, override=override
-				)
-
-	return report
-
-
 def upload_records_spec(session, spec):
 	'''
 	Create RecordType & RecordTypeRepr records in db in accordance with 

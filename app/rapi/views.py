@@ -16,56 +16,56 @@ from app.rapi import api, rapi
 from app.user import auth
 from app.user.auth import permission_required
 import db.models as models
-from app.rapi import schemas
+from app.rapi import serializers
 from app.rapi.base import DetailView, ListView
 from app.rapi import util as rutil
 
 
 class ReportListView(ListView):
     model = models.Report
-    schema = schemas.ReportSchema
+    schema = serializers.ReportSchema
 
 
 class ReportDetailView(DetailView):
     model = models.Report
-    schema = schemas.ReportSchema
+    schema = serializers.ReportSchema
 
 
 class CompanyListView(ListView):
     model = models.Company
-    schema = schemas.CompanySimpleSchema
-    schema_post = schemas.CompanySchema
+    schema = serializers.CompanySimpleSchema
+    schema_post = serializers.CompanySchema
 
 
 class CompanyDetailView(DetailView):
     model = models.Company
-    schema = schemas.CompanySchema
+    schema = serializers.CompanySchema
 
 
 class RecordListView(ListView):
     model = models.Record
-    schema = schemas.RecordSchema
+    schema = serializers.RecordSchema
 
 
 class RecordDetailView(DetailView):
     model = models.Record
-    schema = schemas.RecordSchema
+    schema = serializers.RecordSchema
 
 
 class RecordTypeListView(ListView):
     model = models.RecordType
-    schema = schemas.RecordTypeSimpleSchema
-    schema_post = schemas.RecordTypeSchema
+    schema = serializers.RecordTypeSimpleSchema
+    schema_post = serializers.RecordTypeSchema
     
 
 class RecordTypeDetailView(DetailView):
     model = models.RecordType
-    schema = schemas.RecordTypeSchema
+    schema = serializers.RecordTypeSchema
 
 
 class RecordTypeReprListView(ListView):
     model = models.RecordTypeRepr
-    schema = schemas.RecordTypeReprSchema
+    schema = serializers.RecordTypeReprSchema
 
     def get_objects(self, id):
         rtype = db.session.query(models.RecordType).get(id)
@@ -81,7 +81,7 @@ class RecordTypeReprListView(ListView):
 
 class RecordTypeReprDetailView(DetailView):
     model = models.RecordTypeRepr
-    schema = schemas.RecordTypeReprSchema
+    schema = serializers.RecordTypeReprSchema
 
     def get_object(self, rid, id):
         rtype_repr = db.session.query(models.RecordTypeRepr).filter(
@@ -101,7 +101,7 @@ class RecordTypeReprDetailView(DetailView):
 
 class RecordFormulaListView(ListView):
     model = models.RecordFormula
-    schema = schemas.RecordFormulaSchema
+    schema = serializers.RecordFormulaSchema
     
     def get_objects(self, rid):
         rtype = db.session.query(models.RecordType).get(rid)
@@ -117,7 +117,7 @@ class RecordFormulaListView(ListView):
 
 class RecordFormulaDetailView(DetailView):
     model = models.RecordFormula
-    schema = schemas.RecordFormulaSchema
+    schema = serializers.RecordFormulaSchema
 
     def get_object(self, rid, fid):
         formula = db.session.query(models.RecordFormula).filter(
@@ -139,7 +139,7 @@ class RecordFormulaDetailView(DetailView):
 
 class FormulaComponentListView(ListView):
     model = models.FormulaComponent
-    schema = schemas.FormulaComponentSchema
+    schema = serializers.FormulaComponentSchema
     
     def get_objects(self, rid, fid):
         formula = db.session.query(models.RecordFormula).filter(
@@ -159,7 +159,7 @@ class FormulaComponentListView(ListView):
 
 class FormulaComponentDetailView(DetailView):
     model = models.FormulaComponent
-    schema = schemas.FormulaComponentSchema
+    schema = serializers.FormulaComponentSchema
 
     def get_object(self, rid, fid, cid):
         component = db.session.query(self.model).filter(
@@ -181,7 +181,7 @@ class FormulaComponentDetailView(DetailView):
 
 class CompanyRecordListView(ListView):
     model = models.Record
-    schema = schemas.RecordSchema
+    schema = serializers.RecordSchema
 
     def get_objects(self, id):
         company = db.session.query(models.Company).get(id)
@@ -197,7 +197,7 @@ class CompanyRecordListView(ListView):
 
 class CompanyRecordDetailView(DetailView):
     model = models.Record
-    schema = schemas.RecordSchema
+    schema = serializers.RecordSchema
 
     def get_object(self, id, rid):
         record = db.session.query(models.Record).filter(
@@ -219,7 +219,7 @@ class CompanyRecordDetailView(DetailView):
 
 class CompanyReprListView(ListView):
     model = models.CompanyRepr
-    schema = schemas.CompanyReprSchema
+    schema = serializers.CompanyReprSchema
 
     def get_objects(self, id):
         company = db.session.query(models.Company).get(id)
@@ -235,7 +235,7 @@ class CompanyReprListView(ListView):
 
 class CompanyReprDetailView(DetailView):
     model = models.CompanyRepr
-    schema = schemas.CompanyReprSchema
+    schema = serializers.CompanyReprSchema
 
     def get_object(self, id, rid):
         record = db.session.query(models.CompanyRepr).filter(
@@ -257,7 +257,7 @@ class CompanyReprDetailView(DetailView):
 
 class CompanyReportListView(ListView):
     model = models.Report
-    schema = schemas.ReportSchema
+    schema = serializers.ReportSchema
 
     def get_objects(self, id):
         company = db.session.query(models.Company).get(id)
@@ -273,7 +273,7 @@ class CompanyReportListView(ListView):
 
 class CompanyReportDetailView(DetailView):
     model = models.Report
-    schema = schemas.ReportSchema
+    schema = serializers.ReportSchema
 
     def get_object(self, id, rid):
         record = db.session.query(models.Report).filter(
@@ -295,7 +295,7 @@ class CompanyReportDetailView(DetailView):
 
 class ReportRecordListView(ListView):
     model = models.Record
-    schema = schemas.RecordSchema
+    schema = serializers.RecordSchema
 
     def get_objects(self, id):
         report = db.session.query(models.Report).get(id)
@@ -311,7 +311,7 @@ class ReportRecordListView(ListView):
 
 class ReportRecordDetailView(DetailView):
     model = models.Record
-    schema = schemas.RecordSchema
+    schema = serializers.RecordSchema
 
     def get_object(self, id, rid):
         record = db.session.query(models.Record).filter(
