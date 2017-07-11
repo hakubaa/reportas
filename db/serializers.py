@@ -11,8 +11,10 @@ from marshmallow.validate import OneOf
 from sqlalchemy import exists, and_
 
 import db.models as models
+from db import records_factory
 
 
+@records_factory.register_schema()
 class CompanyReprSchema(ModelSchema):
     class Meta:
         model = models.CompanyRepr
@@ -34,7 +36,8 @@ class CompanyReprSchema(ModelSchema):
             )
         return True
 
-        
+
+@records_factory.register_schema()    
 class CompanySchema(ModelSchema):
     class Meta:
         model = models.Company
@@ -63,12 +66,14 @@ class CompanySchema(ModelSchema):
         return True
 
 
+@records_factory.register_schema()
 class CompanySimpleSchema(ModelSchema):
     class Meta:
         model = models.Company
         fields = ("id", "isin", "name", "ticker", "uri", "fullname")
 
 
+@records_factory.register_schema()
 class RecordTypeReprSchema(ModelSchema):
     class Meta:
         model = models.RecordTypeRepr
@@ -80,6 +85,7 @@ class RecordTypeReprSchema(ModelSchema):
     )   
 
 
+@records_factory.register_schema()
 class RecordTypeSchema(ModelSchema):
     class Meta:
         model = models.RecordType
@@ -104,12 +110,14 @@ class RecordTypeSchema(ModelSchema):
         return True
 
 
+@records_factory.register_schema()
 class RecordTypeSimpleSchema(ModelSchema):
     class Meta:
         model = models.RecordType
         fields = ("id", "name", "statement", "uri")
 
 
+@records_factory.register_schema()
 class RecordSchema(ModelSchema):
     class Meta:
         model = models.Record
@@ -182,6 +190,7 @@ class RecordSchema(ModelSchema):
         return True
 
 
+@records_factory.register_schema()
 class ReportSchema(ModelSchema):
     class Meta:
         model = models.Report
@@ -190,6 +199,7 @@ class ReportSchema(ModelSchema):
     timestamp = fields.DateTime("%Y-%m-%d", required=True)
 
 
+@records_factory.register_schema()
 class FormulaComponentSchema(ModelSchema):
     class Meta:
         model = models.FormulaComponent
@@ -228,7 +238,8 @@ class FormulaComponentSchema(ModelSchema):
             )
         return True 
         
-        
+
+@records_factory.register_schema() 
 class RecordFormulaSchema(ModelSchema):
     class Meta:
         model = models.RecordFormula
