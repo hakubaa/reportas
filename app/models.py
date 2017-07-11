@@ -12,6 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
+from sqlalchemy.orm.properties import RelationshipProperty
 from flask_login import UserMixin, AnonymousUserMixin
 from flask import current_app
 
@@ -145,6 +146,14 @@ class AnonymousUser(AnonymousUserMixin):
         return False
 
 
+# Flask-Login requires to set user_loader callback. This callback is used to 
+# reload the user object from the user ID stored in the session. It should 
+# take the unicode ID of a user, and return the corresponding user object. 
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.query(User).get(int(user_id))
+
+
 class DBRequest(Model):
     id = Column(Integer, primary_key=True)
     data = Column(String, nullable=False) # data in json format
@@ -171,6 +180,11 @@ class DBRequest(Model):
     moderator_action = Column(String)
     moderator_comment = Column(String)
     
+    parent_request_id = Column(Integer, ForeignKey("dbrequest.id"))
+    subrequests = relationship(
+        "DBRequest", backref=backref("parent_request", remote_side=[id])
+    )
+
     __table_args__ = (
         CheckConstraint("action in ('create', 'update', 'delete')"),  
         CheckConstraint("moderator_action in ('accept', 'reject')")
@@ -210,37 +224,82 @@ class DBRequest(Model):
         self.errors = json.dumps(errors)  
         self.moderated_at = datetime.datetime.utcnow()
 
-    def execute(self, moderator, schema=None, session=None, instance=None,
-                comment=None):
+    def execute_create(self, factory, **data):
+        return factory.create(self.model, **data)
+
+    def execute_update(self, factory, **data):
+        instance, errors = self._get_obj(data["id"], factory.session)  
+        if not errors:
+            instance, errors = factory.update(instance, **data)   
+        return instance, errors
+
+    def execute_delete(self, factory, **data):
+        instance, errors = self._get_obj(data["id"], factory.session)
+        if not errors:
+            factory.session.delete(instance) 
+        return instance, errors
+
+    def execute_request(self, factory):
+        action_method = dict(
+            create=self.execute_create,
+            update=self.execute_update,
+            delete=self.execute_delete
+        )  
+
         data = json.loads(self.data)
-        session = self._get_session(session)
+        data["factory"] = factory
 
-        instance = None
-        errors = dict()
-
-        if self.action == "create":
-            instance, errors = schema.load(data)
-            if not errors:
-                session.add(instance)
-        elif self.action == "update":
-            if not instance:
-                instance, errors = self._get_obj(data["id"], session)  
-            if not errors:
-                instance, errors = schema.load(
-                    data, instance=instance, partial=True
-                )
-        elif self.action == "delete":
-            if not instance:
-                instance, errors = self._get_obj(data["id"], session)
-            if not errors:
-                session.delete(instance)
-        else:
+        try:
+            instance, errors = action_method[self.action](**data)
+        except KeyError:
             raise RuntimeError("action '%s' is not valid" % self.action)
 
-        self._update_moderation_data(
-            moderator, action="accept", comment=comment, errors=errors
-        )
         return instance, errors
+
+
+    def _find_related_models(self, model_cls):
+        relations = {
+            prop.mapper.class_: prop.key
+            for prop in model_cls.__mapper__.iterate_properties
+            if isinstance(prop, RelationshipProperty)
+        }
+        return relations
+
+    def _get_relations_key(self, parent, child):
+        parent_relationships = self._find_related_models(parent)
+        return parent_relationships.get(child, None)
+
+    def execute(self, moderator, factory, comment=None):
+        parent_model = factory.get_model(self.model)
+        parent_instance = None
+
+        results = list()
+        for request in [self] + self.subrequests:
+            instance, errors = request.execute_request(factory)
+
+            results.append((instance, errors))
+            request._update_moderation_data(
+                moderator, action="accept", comment=comment, 
+                errors=errors
+            )
+
+            if not errors:
+                # Add relation between objects
+                if request != self:
+                    request_model = factory.get_model(request.model)
+                    relations_key = self._get_relations_key(
+                        parent_model, request_model
+                    )
+                    if relations_key and parent_instance:
+                        getattr(parent_instance, relations_key).append(instance)
+                else:
+                    parent_instance = instance
+            else:
+                # Stop execution when main request failed
+                if request == self:
+                    break
+
+        return results
 
     def reject(self, moderator, comment=None):
         self._update_moderation_data(
@@ -248,10 +307,5 @@ class DBRequest(Model):
         )
         return None, None
 
-        
-# Flask-Login requires to set user_loader callback. This callback is used to 
-# reload the user object from the user ID stored in the session. It should 
-# take the unicode ID of a user, and return the corresponding user object. 
-@login_manager.user_loader
-def load_user(user_id):
-    return db.session.query(User).get(int(user_id))
+    def add_subrequest(self, request):
+        self.subrequests.append(request)

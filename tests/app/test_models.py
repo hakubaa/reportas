@@ -3,15 +3,19 @@ from unittest.mock import patch
 import json
 
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, backref
+from marshmallow_sqlalchemy import ModelSchema
 
 from app.models import User, Role, Permission, AnonymousUser, DBRequest
 from tests.app import AppTestCase
 from app import db, ma
+
+from db import records_factory
 from db.core import Model
 
 ################################################################################
-# CREATE MODELS FOR TESTS
+# CREATE ADDITIONAL MODELS & METHODS FOR TESTS
 ################################################################################
 
 class Student(Model):
@@ -21,23 +25,57 @@ class Student(Model):
     age = Column(Integer)
     name = Column(String, nullable=False)
 
-class StudentSchema(ma.ModelSchema):
+
+class Account(Model):
+    __tablename__ = "accounts"
+
+    id = Column(Integer, primary_key=True)
+    balance = Column(Integer, default=0)
+
+    student_id = Column(Integer, ForeignKey("students.id"))
+    student = relationship("Student", backref="accounts")
+
+
+@records_factory.register_schema()
+class StudentSchema(ModelSchema):
     class Meta:
         model = Student
 
+
+@records_factory.register_schema()
+class AccountSchema(ModelSchema):
+    class Meta:
+        model = Account
+
+
+def create_related_requests(session, user, data={"name": "Python", "age": 17}):
+    main_request = DBRequest(
+        model="Student", user=user, action="create", data=json.dumps(data)
+    )
+    subrequest = DBRequest(
+        model="Account", user=user, action="create",
+        data=json.dumps({"balance": 100})
+    )
+    session.add_all((main_request, subrequest))
+    main_request.add_subrequest(subrequest)
+    session.commit()
+    return main_request, subrequest
+    
 ################################################################################
 
+
 class DBRequestTest(AppTestCase):
-    models = [DBRequest, Student, User, Role]
+    models = [DBRequest, Student, User, Role, Account]
 
     def setUp(self):
         super().setUp()
+        records_factory.session = db.session
         Role.insert_roles()
 
     def create_user(self, email="test@test.com", password="test",
-                    role_name="User"):
+                    role_name="User", name="Test"):
         role = db.session.query(Role).filter_by(name=role_name).one()
-        user = User(email=email, password=password, role=role)
+        user = User(email=email, password=password, role=role, name=name)
         db.session.add(user)
         db.session.commit()
         return user
@@ -49,7 +87,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 17, "name": "Python"})
         )
-        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        obj, errors = dbrequest.execute(user, records_factory)[0]
         db.session.add(obj)
         self.assertTrue(db.session.query(Student).count(), 1)
 
@@ -63,7 +101,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 18, "name": "Python 3", "id": student.id})
         )    
-        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        obj, errors = dbrequest.execute(user, records_factory)[0]
         db.session.commit()
         student = db.session.query(Student).one()
         self.assertEqual(student.age, 18)
@@ -79,7 +117,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"id": student.id})
         )    
-        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        obj, errors = dbrequest.execute(user, records_factory)[0]
         db.session.commit()
         self.assertEqual(db.session.query(Student).count(), 0)
 
@@ -110,7 +148,7 @@ class DBRequestTest(AppTestCase):
             data=json.dumps({"age": 17})
         )
         db.session.add(dbrequest)
-        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        obj, errors = dbrequest.execute(user, records_factory)[0]
         self.assertIsNotNone(dbrequest.errors)
         errors_request = json.loads(dbrequest.errors)
         self.assertIn("name", errors_request)
@@ -118,15 +156,13 @@ class DBRequestTest(AppTestCase):
 
     def test_execute_updates_information_about_moderator(self):
         user = self.create_user()
-        moderator = self.create_user(email="moderator@test.com")
+        moderator = self.create_user(email="moderator@test.com", name="Moder")
         dbrequest = DBRequest(
             model="Student", user=user, action="create",
             data=json.dumps({"age": 17, "name": "Python"})
         )
         db.session.add(dbrequest)
-        obj, errors = dbrequest.execute(
-            moderator=moderator, schema=StudentSchema(), comment="ok"
-        )
+        obj, errors = dbrequest.execute(moderator, records_factory, comment="ok")[0]
         self.assertFalse(errors) # make sure there are no errors
         
         self.assertEqual(dbrequest.moderator, moderator)
@@ -135,7 +171,7 @@ class DBRequestTest(AppTestCase):
 
     def test_reject_updates_information_about_moderator(self):
         user = self.create_user()
-        moderator = self.create_user(email="moderator@test.com")
+        moderator = self.create_user(email="moderator@test.com", name="Moder")
         dbrequest = DBRequest(
             model="Student", user=user, action="create",
             data=json.dumps({"age": 17, "name": "Python"})
@@ -160,7 +196,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 18, "id": student.id + 1})
         )    
-        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        obj, errors = dbrequest.execute(user, records_factory)[0]
         self.assertTrue(errors)
         self.assertIn("id", errors)
         
@@ -173,9 +209,51 @@ class DBRequestTest(AppTestCase):
             model="Student", user=user, action="delete",
             data=json.dumps({"id": student.id + 1})
         )    
-        obj, errors = dbrequest.execute(moderator=user, schema=StudentSchema())
+        obj, errors = dbrequest.execute(user, records_factory)[0]
         self.assertTrue(errors)
         self.assertIn("id", errors)
+
+    def test_add_subrequest_appends_dependent_request_to_main_request(self):
+        user = self.create_user()
+        
+        main_request, subrequest = create_related_requests(db.session, user)
+        
+        self.assertEqual(len(main_request.subrequests), 1)
+        self.assertEqual(main_request.subrequests[0], subrequest)
+        self.assertEqual(subrequest.parent_request, main_request)
+        
+    def test_execute_executes_subrequests(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(db.session, user)
+        
+        main_request.execute(user, records_factory)
+       
+        self.assertEqual(db.session.query(Student).count(), 1)
+        self.assertEqual(db.session.query(Account).count(), 1)
+
+    def test_execute_creates_relation_with_subrequests(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(db.session, user)
+        
+        main_request.execute(user, records_factory)    
+        
+        student = db.session.query(Student).one()
+        account = db.session.query(Account).one()
+
+        self.assertIn(account, student.accounts)
+        self.assertEqual(account.student, student)   
+
+    def test_request_execution_stops_when_main_request_fails(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17} # noe name
+        ) 
+
+        results = main_request.execute(user, records_factory)
+
+        self.assertIn("name", results[0][1])
+        self.assertEqual(db.session.query(Student).count(), 0)
+        self.assertEqual(db.session.query(Account).count(), 0)
 
 
 class UserModelTest(unittest.TestCase):
@@ -206,7 +284,7 @@ class UserModelTest(unittest.TestCase):
     @patch("app.models.current_app")
     def test_for_generating_valid_confirmation_token(self, mock_app):
         mock_app.config = dict(SECRET_KEY=b'TEST')
-        user = User(email="tet@test.test", id=1)
+        user = User(email="tet@test.test", id=1, name="Test")
         token = user.generate_token()
         data = Serializer(b'TEST').loads(token)
         self.assertEqual(data.get("id"), user.id)
@@ -215,7 +293,7 @@ class UserModelTest(unittest.TestCase):
     @patch("app.models.db")
     def test_for_confirming_account_with_token(self, db_mock, mock_app):
         mock_app.config = dict(SECRET_KEY=b'TEST')
-        user = User(email="tet@test.test", id=1)
+        user = User(email="tet@test.test", id=1, name="Test")
         token = user.generate_token()
         self.assertTrue(user.confirm(token))
 
@@ -223,7 +301,7 @@ class UserModelTest(unittest.TestCase):
     @patch("app.models.db")
     def test_confirmation_fails_when_invalid_token(self, db_mock, mock_app):
         mock_app.config = dict(SECRET_KEY=b'TEST')
-        user = User(email="tet@test.test", id=1)
+        user = User(email="tet@test.test", id=1, name="Test")
         token = user.generate_token()
         self.assertFalse(user.confirm(b"sdkfjsdfkjs.dfksdfj"))
 

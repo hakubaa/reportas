@@ -25,6 +25,12 @@ class DBRecordFactory():
             raise RuntimeError(msg)
 
         return schema
+
+    def get_model(self, model_cls):
+        for model in self.models.keys():
+            if model.__name__ == model_cls:
+                return model
+        return None
     
     def create(self, model_cls, **kwargs):
         schema = self.get_schema(model_cls)()

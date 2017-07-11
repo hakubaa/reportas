@@ -1,5 +1,8 @@
-"""Unit tests illustrating usage of the ``history_meta.py``
-module functions."""
+"""
+Unit tests illustrating usage of the ``history_meta.py``
+module functions.
+source: sqlalchemy
+"""
 
 from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base

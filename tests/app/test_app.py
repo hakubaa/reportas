@@ -34,11 +34,6 @@ class AppTestCase(unittest.TestCase):
 	def test_app_is_testing(self):
 		self.assertTrue(current_app.config["TESTING"])
 
-	def test_registration_blueprint_main(self):
-		self.assertIn("main", self.app.blueprints)
-		from app.main import main as main_blueprint
-		self.assertEqual(main_blueprint, self.app.blueprints["main"])
-
 	def test_registration_blueprint_report(self):
 		self.assertIn("reports", self.app.blueprints)
 		from app.reports import reports as reports_blueprint
