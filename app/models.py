@@ -161,15 +161,16 @@ class DBRequest(Model):
     # meta data
     model = Column(String) # model affected by data
     action = Column(String, nullable=False) # create, update, delete
-    comment = Column(String) # some additional info concerning request
+    comment = Column(String) 
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     user_id = Column(Integer, ForeignKey("user.id"))
     user = relationship(
         "User", backref=backref("requests", lazy="dynamic"),
         foreign_keys=(user_id,)
     )
-    
-    errors = Column(String) # potential error when execute request in json format
+
+    instance_id = Column(Integer)
+    errors = Column(String)
 
     moderator_id = Column(Integer, ForeignKey("user.id"))
     moderator = relationship(
@@ -190,56 +191,52 @@ class DBRequest(Model):
         CheckConstraint("moderator_action in ('accept', 'reject')")
     )
 
-    def _identify_class(self):
-        for frame_info in inspect.getouterframes(inspect.currentframe()):
-            try:
-                return frame_info.frame.f_globals[self.model]
-            except KeyError:
-                pass
-        return None
+    @property
+    def executed(self):
+        return self.moderator_action == "accept"
 
-    def _get_session(self, session=None):
-        session = session or sqlalchemy_inspect(self).session
-        if not session:
-            return ValueError("DBRequest requires a session")
-        return session
-    
-    def _get_obj(self, id, session=None):
-        cls = self._identify_class()
-        if not cls:
-            return NameError("model '%s' is not defined" % self.model)
-        session = self._get_session(session)
-        instance = session.query(cls).get(id)
-        errors = dict()
-        if not instance:
-            errors["id"] = "Not found."
-        return instance, errors
+    @property
+    def rejected(self):
+        return self.moderator_action == "reject"
 
-    def _update_moderation_data(
-        self, moderator, action, comment=None, errors=None
-    ):
-        self.moderator = moderator
-        self.moderator_action = action
-        self.moderator_comment = comment
-        self.errors = json.dumps(errors)  
-        self.moderated_at = datetime.datetime.utcnow()
+    def add_subrequest(self, request):
+        self.subrequests.append(request)
 
-    def execute_create(self, factory, **data):
-        return factory.create(self.model, **data)
+    def reject(self, moderator, comment=None):
+        for request in [self] + self.subrequests:
+            if not (request.executed or request.rejected):
+                request.update_moderation_info(
+                    moderator, action="reject", comment=comment
+                )
 
-    def execute_update(self, factory, **data):
-        instance, errors = self._get_obj(data["id"], factory.session)  
-        if not errors:
-            instance, errors = factory.update(instance, **data)   
-        return instance, errors
+    def execute(self, moderator, factory, comment=None):
+        results = list()
+        parent_request = self
+        parent_instance = None
 
-    def execute_delete(self, factory, **data):
-        instance, errors = self._get_obj(data["id"], factory.session)
-        if not errors:
-            factory.session.delete(instance) 
-        return instance, errors
+        for request in [parent_request] + parent_request.subrequests:
+            if request.executed:
+                instance, errors = request.get_instance(factory.session)
+            else:
+                instance, errors = request.execute_request(
+                    factory, moderator, comment
+                )
+                results.append((instance, errors))
 
-    def execute_request(self, factory):
+            if errors and request == parent_request:
+                # Do not execute subrequests when parent request have failed.
+                # There is no sense. Current design assumes many-to-one
+                # relation.
+                break 
+
+            if request == parent_request:
+                parent_instance = instance
+            elif not errors:
+                self.append_to_collection(parent_instance, instance)
+
+        return results
+
+    def execute_request(self, factory, moderator, comment):
         action_method = dict(
             create=self.execute_create,
             update=self.execute_update,
@@ -247,65 +244,88 @@ class DBRequest(Model):
         )  
 
         data = json.loads(self.data)
-        data["factory"] = factory
+        data["factory"] = factory # positional parameter for action method
 
         try:
             instance, errors = action_method[self.action](**data)
         except KeyError:
             raise RuntimeError("action '%s' is not valid" % self.action)
 
+        self.update_moderation_info(
+            moderator, action="accept", comment=comment, 
+            errors=errors, instance=instance
+        )  
+
         return instance, errors
 
+    def execute_create(self, factory, **data):
+        instance, errors = factory.create(self.model, **data)
+        if not errors:
+            factory.session.flush()
+        return instance, errors
 
-    def _find_related_models(self, model_cls):
+    def execute_update(self, factory, **data):
+        instance, errors = self.get_instance(factory.session, id=data["id"])  
+        if not errors:
+            instance, errors = factory.update(instance, **data)   
+        return instance, errors
+
+    def execute_delete(self, factory, **data):
+        instance, errors = self.get_instance(factory.session, id=data["id"])
+        if not errors:
+            factory.session.delete(instance) 
+        return instance, errors
+
+    def update_moderation_info(
+        self, moderator, action, comment=None, errors=None, instance=None
+    ):
+        self.moderator = moderator
+        self.moderator_action = action
+        self.moderator_comment = comment
+        self.errors = json.dumps(errors)  
+        if not errors and instance:
+            self.instance_id = instance.id
+        self.moderated_at = datetime.datetime.utcnow()
+
+    def get_instance(self, session, id=None):
+        model_cls = self.identify_class()
+        if not model_cls:
+            return NameError("model '%s' is not defined" % self.model)
+        instance = session.query(model_cls).get(id or self.instance_id)
+        errors = dict()
+        if not instance:
+            errors["id"] = "Not found."
+        return instance, errors
+
+    def identify_class(self):
+        for frame_info in inspect.getouterframes(inspect.currentframe()):
+            try:
+                return frame_info.frame.f_globals[self.model]
+            except KeyError:
+                pass
+        return None
+
+    def append_to_collection(self, parent_instance, child_instance):
+        if parent_instance is None or child_instance is None:
+            return False
+
+        relation_attr = self.get_attr_with_relation(
+            parent_instance.__class__, child_instance.__class__
+        )
+        if relation_attr:
+            getattr(parent_instance, relation_attr).append(child_instance)
+            return True
+
+        return False
+
+    def get_attr_with_relation(self, parent, child):
+        parent_relationships = self.find_related_models(parent)
+        return parent_relationships.get(child, None)
+
+    def find_related_models(self, model_cls):
         relations = {
             prop.mapper.class_: prop.key
             for prop in model_cls.__mapper__.iterate_properties
             if isinstance(prop, RelationshipProperty)
         }
         return relations
-
-    def _get_relations_key(self, parent, child):
-        parent_relationships = self._find_related_models(parent)
-        return parent_relationships.get(child, None)
-
-    def execute(self, moderator, factory, comment=None):
-        parent_model = factory.get_model(self.model)
-        parent_instance = None
-
-        results = list()
-        for request in [self] + self.subrequests:
-            instance, errors = request.execute_request(factory)
-
-            results.append((instance, errors))
-            request._update_moderation_data(
-                moderator, action="accept", comment=comment, 
-                errors=errors
-            )
-
-            if not errors:
-                # Add relation between objects
-                if request != self:
-                    request_model = factory.get_model(request.model)
-                    relations_key = self._get_relations_key(
-                        parent_model, request_model
-                    )
-                    if relations_key and parent_instance:
-                        getattr(parent_instance, relations_key).append(instance)
-                else:
-                    parent_instance = instance
-            else:
-                # Stop execution when main request failed
-                if request == self:
-                    break
-
-        return results
-
-    def reject(self, moderator, comment=None):
-        self._update_moderation_data(
-            moderator, action="reject", comment=comment
-        )
-        return None, None
-
-    def add_subrequest(self, request):
-        self.subrequests.append(request)

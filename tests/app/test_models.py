@@ -128,7 +128,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 17, "name": "Python"})
         )
-        cls = dbrequest._identify_class()
+        cls = dbrequest.identify_class()
         self.assertEqual(cls, Student)
 
     def test_identify_class_returns_None_when_class_does_not_exist(self):
@@ -138,7 +138,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 17, "name": "Python"})
         )
-        cls = dbrequest._identify_class()
+        cls = dbrequest.identify_class()
         self.assertIsNone(cls)
 
     def test_errors_are_saved_in_dbrequest(self):
@@ -169,18 +169,29 @@ class DBRequestTest(AppTestCase):
         self.assertEqual(dbrequest.moderator_action, "accept")
         self.assertEqual(dbrequest.moderator_comment, "ok")
 
-    def test_reject_updates_information_about_moderator(self):
+    def test_execute_saves_in_request_id_of_coressponding_object(self):
         user = self.create_user()
-        moderator = self.create_user(email="moderator@test.com", name="Moder")
         dbrequest = DBRequest(
             model="Student", user=user, action="create",
             data=json.dumps({"age": 17, "name": "Python"})
         )
         db.session.add(dbrequest)
-        obj, errors = dbrequest.reject(
-            moderator=moderator, comment="no this time"
+        obj, errors = dbrequest.execute(user, records_factory)[0]
+        db.session.commit()
+
+        self.assertEqual(dbrequest.instance_id, obj.id)
+
+    def test_reject_updates_information_about_moderator(self):
+        user = self.create_user()
+        moderator = self.create_user(email="moderator@test.com", name="Moder")
+
+        dbrequest = DBRequest(
+            model="Student", user=user, action="create",
+            data=json.dumps({"age": 17, "name": "Python"})
         )
-        self.assertFalse(errors) # make sure there are no errors
+        db.session.add(dbrequest)
+        dbrequest.reject(moderator=moderator, comment="no this time")
+        db.session.commit()
         
         self.assertEqual(dbrequest.moderator, moderator)
         self.assertEqual(dbrequest.moderator_action, "reject")
@@ -254,6 +265,90 @@ class DBRequestTest(AppTestCase):
         self.assertIn("name", results[0][1])
         self.assertEqual(db.session.query(Student).count(), 0)
         self.assertEqual(db.session.query(Account).count(), 0)
+
+    def test_executed_subrequest_are_ommitted(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17, "name": "Python"}
+        ) 
+        subrequest.execute(user, records_factory)
+
+        results = main_request.execute(user, records_factory)
+        db.session.commit()
+
+        self.assertEqual(db.session.query(Student).count(), 1)
+        self.assertEqual(db.session.query(Account).count(), 1)
+
+    def test_for_updating_relation_to_parent_object(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17, "name": "Python"}
+        ) 
+
+        subrequest.execute(user, records_factory)
+        db.session.commit()
+
+        results = main_request.execute(user, records_factory)
+        db.session.commit()
+
+        account = db.session.query(Account).first()
+        student = db.session.query(Student).first()
+        self.assertEqual(account.student, student)
+        self.assertIn(account, student.accounts)
+
+    def test_execute_subrequests_when_main_request_already_executed(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17, "name": "Python"}
+        ) 
+        main_request.execute(user, records_factory)   
+        db.session.commit()
+
+        main_request.execute(user, records_factory)
+        db.session.commit()
+
+        self.assertEqual(db.session.query(Student).count(), 1)
+        self.assertEqual(db.session.query(Account).count(), 1) 
+
+        account = db.session.query(Account).first()
+        student = db.session.query(Student).first()
+        self.assertEqual(account.student, student)
+        self.assertIn(account, student.accounts)
+
+    def test_reject_rejectes_subqueries(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(db.session, user)
+        
+        main_request.reject(user)
+
+        self.assertEqual(main_request.moderator_action, "reject")
+        self.assertEqual(subrequest.moderator_action, "reject")
+
+    def test_reject_does_not_reject_executed_subqueries(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(db.session, user)
+        
+        subrequest.execute(user, records_factory)
+        db.session.commit()
+        
+        main_request.reject(user)
+        db.session.commit()
+
+        self.assertEqual(main_request.moderator_action, "reject")
+        self.assertEqual(subrequest.moderator_action, "accept") 
+
+    def test_reject_request_cannot_be_rejected_once_more(self):  
+        user = self.create_user()
+        moderator = self.create_user(email="hoho@cos.com", name="hoho")
+        main_request, subrequest = create_related_requests(db.session, user)
+
+        subrequest.reject(moderator)
+        db.session.commit()
+
+        subrequest.reject(user)
+        db.session.commit()
+
+        self.assertEqual(subrequest.moderator, moderator)
 
 
 class UserModelTest(unittest.TestCase):
