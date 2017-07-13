@@ -7,6 +7,7 @@ from flask_admin.contrib import sqla
 from flask_admin.babel import gettext
 
 from app.models import DBRequest
+from app.rapi.util import DatetimeEncoder
 
 
 class FlaskLoginMixin(object):
@@ -39,7 +40,7 @@ class DBRequestMixin(object):
         dbrequest = DBRequest(
             action=action, user=self.get_user(),
             model=self.get_model_name(), 
-            data = json.dumps(self.modify_data(data))
+            data = json.dumps(self.modify_data(data), cls=DatetimeEncoder)
         )
         self.session.add(dbrequest)
         try:

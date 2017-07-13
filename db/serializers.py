@@ -14,12 +14,23 @@ import db.models as models
 from db import records_factory
 
 
+class MyInteger(fields.Integer):
+    '''Extends Integer to not raise invalid integer for "" strings.'''
+
+    def _format_num(self, value):
+        """Return the number value for value, given this field's `num_type`."""
+        if value is None or value == "":
+            return None
+        return self.num_type(value)
+
+
 @records_factory.register_schema()
 class CompanyReprSchema(ModelSchema):
     class Meta:
         model = models.CompanyRepr
         fields = ("id", "value", "company_id")
 
+    id = MyInteger()
     company_id = field_for(
         models.CompanyRepr, "company_id", required=True,
         error_messages={"required": "Company is required."}
@@ -43,12 +54,16 @@ class CompanySchema(ModelSchema):
         model = models.Company
         exclude = ("version",)
 
+    id = MyInteger()
     reprs = fields.Nested(
         CompanyReprSchema, only=("id", "value"), many=True
     )
 
     @validates("isin")
     def validate_isin(self, value):
+        if self.instance and self.instance.isin == value:
+            return True
+
         (ret, ), = self.session.query(
             exists().where(models.Company.isin == value)
         )
@@ -58,6 +73,9 @@ class CompanySchema(ModelSchema):
 
     @validates("name")
     def validate_name(self, value):
+        if self.instance and self.instance.name == value:
+            return True
+
         (ret, ), = self.session.query(
             exists().where(models.Company.name == value)
         )
@@ -66,11 +84,12 @@ class CompanySchema(ModelSchema):
         return True
 
 
-@records_factory.register_schema()
 class CompanySimpleSchema(ModelSchema):
     class Meta:
         model = models.Company
         fields = ("id", "isin", "name", "ticker", "uri", "fullname")
+
+    id = MyInteger()
 
 
 @records_factory.register_schema()
@@ -79,6 +98,7 @@ class RecordTypeReprSchema(ModelSchema):
         model = models.RecordTypeRepr
         fields = ("id", "value", "lang", "rtype_id")
 
+    id = MyInteger()
     rtype_id = field_for(
         models.RecordTypeRepr, "rtype_id", required=True,
         error_messages={"required": "RecordType is required."}
@@ -91,6 +111,7 @@ class RecordTypeSchema(ModelSchema):
         model = models.RecordType
         exclude = ("records", "version", "revcomponents")
 
+    id = MyInteger()
     statement = field_for(
         models.RecordType, "statement", required=True,
         error_messages={"required": "Statement is required."},
@@ -102,6 +123,9 @@ class RecordTypeSchema(ModelSchema):
 
     @validates("name")
     def validate_name(self, value):
+        if self.instance and self.instance.name == value:
+            return True
+
         (ret,), = self.session.query(
             exists().where(models.RecordType.name == value)
         )
@@ -110,11 +134,12 @@ class RecordTypeSchema(ModelSchema):
         return True
 
 
-@records_factory.register_schema()
 class RecordTypeSimpleSchema(ModelSchema):
     class Meta:
         model = models.RecordType
         fields = ("id", "name", "statement", "uri")
+
+    id = MyInteger()
 
 
 @records_factory.register_schema()
@@ -123,6 +148,7 @@ class RecordSchema(ModelSchema):
         model = models.Record
         exclude = ("version",)
 
+    id = MyInteger()
     rtype = fields.Nested(
         RecordTypeSchema, only=("name", "statement"), many=False
     )
@@ -176,6 +202,16 @@ class RecordSchema(ModelSchema):
                 "company_id" in data and "rtype_id" in data):
             return False
 
+        if (self.instance 
+            and (
+                self.instance.timerange == data["timerange"] and
+                self.instance.timestamp == data["timestamp"] and
+                self.instance.company_id == data["company_id"] and
+                self.instance.rtype_id == data["rtype_id"]
+            )
+        ):
+            return True
+
         (ret, ), = self.session.query(exists().where(and_(
             models.Record.timerange == data["timerange"],
             models.Record.timestamp == data["timestamp"],
@@ -194,8 +230,9 @@ class RecordSchema(ModelSchema):
 class ReportSchema(ModelSchema):
     class Meta:
         model = models.Report
-        exclude = ("version",)
+        exclude = ("version",)  
 
+    id = MyInteger()
     timestamp = fields.DateTime("%Y-%m-%d", required=True)
 
 
@@ -205,6 +242,7 @@ class FormulaComponentSchema(ModelSchema):
         model = models.FormulaComponent
         exclude = ("version",)
         
+    id = MyInteger()
     formula_id = field_for(
         models.FormulaComponent, "formula_id", required=True,
         error_messages={"required": "Formula is required."}
@@ -244,7 +282,8 @@ class RecordFormulaSchema(ModelSchema):
     class Meta:
         model = models.RecordFormula
         fields = ("components", "id", "rtype_id")
-        
+
+    id = MyInteger()
     rtype_id = field_for(
         models.RecordFormula, "rtype_id", required=True,
         error_messages={"required": "RecordType is required."}

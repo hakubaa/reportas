@@ -6,19 +6,20 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from marshmallow_sqlalchemy import ModelSchema
+from marshmallow import fields
 
 from app.models import User, Role, Permission, AnonymousUser, DBRequest
 from tests.app import AppTestCase
 from app import db, ma
 
 from db import records_factory
-from db.core import Model
+from db.core import Model, VersionedModel
 
 ################################################################################
 # CREATE ADDITIONAL MODELS & METHODS FOR TESTS
 ################################################################################
 
-class Student(Model):
+class Student(VersionedModel):
     __tablename__ = "students"
 
     id = Column(Integer, primary_key=True)
@@ -26,14 +27,20 @@ class Student(Model):
     name = Column(String, nullable=False)
 
 
-class Account(Model):
+class Account(VersionedModel):
     __tablename__ = "accounts"
 
     id = Column(Integer, primary_key=True)
-    balance = Column(Integer, default=0)
+    balance = Column(Integer, nullable=False)
 
     student_id = Column(Integer, ForeignKey("students.id"))
     student = relationship("Student", backref="accounts")
+
+
+@records_factory.register_schema()
+class AccountSchema(ModelSchema):
+    class Meta:
+        model = Account
 
 
 @records_factory.register_schema()
@@ -41,11 +48,9 @@ class StudentSchema(ModelSchema):
     class Meta:
         model = Student
 
-
-@records_factory.register_schema()
-class AccountSchema(ModelSchema):
-    class Meta:
-        model = Account
+    accounts = fields.Nested(
+        AccountSchema, only=("id", "balance"), many=True
+    )
 
 
 def create_related_requests(session, user, data={"name": "Python", "age": 17}):
@@ -349,6 +354,32 @@ class DBRequestTest(AppTestCase):
         db.session.commit()
 
         self.assertEqual(subrequest.moderator, moderator)
+
+    def test_execute_creates_related_models(self):
+        user = self.create_user()
+
+        data = {
+            "accounts": [{"balance": 100}, {"balance": 0}], 
+            "name": "TEST", "age": 17
+        } 
+        dbrequest = DBRequest(
+            model="Student", user=user, action="create",
+            comment="Create new student",data=json.dumps(data)
+        )    
+        db.session.add(dbrequest)
+        db.session.commit()
+
+        obj, errors = dbrequest.execute(user, records_factory)[0]
+        db.session.commit()
+
+        accounts = db.session.query(Account).all()
+        self.assertEqual(accounts[0].student, obj)
+        self.assertEqual(accounts[0].balance, 100)
+        self.assertEqual(accounts[1].student, obj)
+        self.assertEqual(accounts[1].balance, 0)
+
+        student = db.session.query(Student).one()
+        self.assertEqual(len(student.accounts), 2)
 
 
 class UserModelTest(unittest.TestCase):

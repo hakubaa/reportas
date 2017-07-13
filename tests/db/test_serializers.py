@@ -5,6 +5,14 @@ from datetime import datetime
 from tests.db import DbTestCase
 from db.serializers import *  
 import db.models as models
+from db.core import Model
+
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, backref
+from marshmallow import fields
+from marshmallow_sqlalchemy import field_for, ModelSchema
 
 
 class CompanyReprSchemaTest(DbTestCase):
@@ -80,6 +88,63 @@ class CompanySchemaTest(DbTestCase):
         self.assertEqual(len(data["reprs"]), 3)
         values = [ item["value"] for item in data["reprs"] ]
         self.assertCountEqual(values, ["Repr #1", "Repr #2", "Repr #3"])
+
+    def test_create_new_company_with_reprs(self):
+        '''
+        The test requires to fix fields.py file in marshmallow package.
+        Inherti session form parent object.
+        '''
+        data = {
+            "reprs": [{"value": "TEST TEST"}, {"value": "TESTOWO"}], 
+            "isin": "TEST", "name": "TEST"
+        } 
+        obj, errors = CompanySchema().load(data, session=self.db.session)
+        self.db.session.add(obj)
+        self.db.session.commit()
+
+        self.assertTrue(self.db.session.query(models.CompanyRepr).count(), 2)
+
+        creprs = self.db.session.query(models.CompanyRepr).all()
+        self.assertEqual(creprs[0].company, obj)
+        self.assertEqual(creprs[1].company, obj)
+
+        company = self.db.session.query(models.Company).one()
+        self.assertEqual(len(company.reprs), 2)
+
+    def test_update_related_model_by_updating_parent_model(self):
+        data = {
+            "reprs": [{"value": "TEST TEST"}, {"value": "TESTOWO"}], 
+            "isin": "TEST", "name": "TEST"
+        } 
+        obj, errors = CompanySchema().load(data, session=self.db.session)
+        self.db.session.add(obj)
+        self.db.session.commit()
+
+        crepr = obj.reprs[0]
+        data = {
+            "reprs": [{"id": crepr.id, "value": "NEW REPR #1"}], 
+        }       
+        obj, errors = CompanySchema().load(
+            data, instance=obj,session=self.db.session, partial=True
+        )
+        self.db.session.commit()
+
+        self.assertEqual(len(obj.reprs), 1)
+        self.assertEqual(obj.reprs[0].value, "NEW REPR #1")
+
+    def test_uniqness_is_not_validated_when_updating_instance(self):
+        company = models.Company(name="TEST", isin="#TEST")
+        self.db.session.add(company)
+        self.db.session.commit()
+
+        data = {"name": "TEST", "ticker": "TEST", "isin": "#TEST"}
+        obj, errors = CompanySchema().load(
+            data, instance=company, session=self.db.session, partial=True
+        )
+        self.db.session.commit()
+
+        self.assertFalse(errors)
+        self.assertEqual(obj.ticker, "TEST")
 
 
 class RecordTypeSchemaTest(DbTestCase):
