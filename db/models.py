@@ -68,7 +68,7 @@ class Company(VersionedModel):
 
 class CompanyRepr(VersionedModel):
 	id = Column(Integer, primary_key=True)
-	value = Column(String)
+	value = Column(String, nullable=False)
 
 	company_id = Column(Integer, ForeignKey("company.id"))
 	company = relationship(
@@ -127,7 +127,7 @@ class RecordType(VersionedModel):
 class RecordTypeRepr(VersionedModel):
 	id = Column(Integer, primary_key=True)
 	lang = Column(String, default="PL")
-	value = Column(String)
+	value = Column(String, nullable=False)
 
 	rtype_id = Column(Integer, ForeignKey("recordtype.id"))
 	rtype = relationship("RecordType", backref=backref("reprs", lazy="joined"))

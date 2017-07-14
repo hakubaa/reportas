@@ -27,7 +27,7 @@ class ViewUtilMixin(object):
         return data
 
 
-def create_http_request_handler(action, permissions=Permission.MODIFY_DATA):
+def create_http_request_handler(action, permissions=Permission.CREATE_REQUESTS):
     '''Factory of methods to handle http requests (used in ListView).'''
     def http_method(self, *args, **kwargs):
         dbrequests = self.create_dbrequests(action, g.user, **kwargs)
@@ -60,7 +60,7 @@ class DetailView(ViewUtilMixin, MethodView):
         return obj
 
     @auth.login_required
-    @permission_required(Permission.READ_DATA)
+    @permission_required(Permission.BROWSE_DATA)
     def get(self, *args, **kwargs):
         obj = self.get_object(*args, **kwargs)
         schema = self.get_schema()
@@ -68,7 +68,7 @@ class DetailView(ViewUtilMixin, MethodView):
         return jsonify(data), 200
 
     @auth.login_required
-    @permission_required(Permission.MODIFY_DATA)
+    @permission_required(Permission.CREATE_REQUESTS)
     def delete(self, *args, **kwargs):
         obj = self.get_object(*args, **kwargs)
         dbrequest = self.create_dbrequest("delete", g.user, **kwargs)
@@ -77,7 +77,7 @@ class DetailView(ViewUtilMixin, MethodView):
         return jsonify({}), 202
 
     @auth.login_required
-    @permission_required(Permission.MODIFY_DATA)
+    @permission_required(Permission.CREATE_REQUESTS)
     def put(self, *args, **kwargs):
         obj = self.get_object(*args, **kwargs)
         dbrequest = self.create_dbrequest("update", g.user, **kwargs)
@@ -110,7 +110,7 @@ class ListView(ViewUtilMixin, MethodView):
         return objs
 
     @auth.login_required
-    @permission_required(Permission.READ_DATA)
+    @permission_required(Permission.BROWSE_DATA)
     def get(self, *args, **kwargs):
         objs = apply_query_parameters(self.get_objects(*args, **kwargs))
         schema = self.get_schema()

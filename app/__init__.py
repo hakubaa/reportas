@@ -65,4 +65,8 @@ def create_app(config_name, **kwargs):
     def unathorized_access(error):
         return render_template("401.html"), 401
 
+    @app.errorhandler(403)
+    def forbidden_access(e):
+        return render_template("403.html"), 403
+
     return app

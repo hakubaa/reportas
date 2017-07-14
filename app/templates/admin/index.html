@@ -8,9 +8,9 @@
         <li>
             Financial Data
             <ul>
-                <li>Records</li>
-                <li>Records Types</li>
-                <li>Reports</li>
+                <li><a href="{{ url_for('record.index_view') }}">Records</a></li>
+                <li><a href="{{ url_for('recordtype.index_view') }}">Records Types</a></li>
+                <li><a href="{{ url_for('report.index_view') }}">Reports</a></li>
             </ul>
         </li>
         <li>
@@ -29,6 +29,17 @@
                 <li>Districts</li>
             </ul>
         </li>
+        {% if current_user.is_administrator or current_user.has_role("moderator") %}
+            <li>
+                Administration
+                <ul>
+                    {% if current_user.is_administrator %}
+                        <li><a href="{{ url_for('dbmd_user.index_view') }}">Users</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('dbrequest.index_view') }}">DB Requests</a></li>
+                </ul>
+            </li>
+        {% endif %}
     </ul>
 </div>
 {% endblock %}

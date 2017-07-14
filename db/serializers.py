@@ -104,6 +104,17 @@ class RecordTypeReprSchema(ModelSchema):
         error_messages={"required": "RecordType is required."}
     )   
 
+    @validates("rtype_id")
+    def validate_rtype(self, value):
+        (ret, ), = self.session.query(
+            exists().where(models.RecordType.id == value)
+        )
+        if not ret:
+            raise ValidationError(
+                "RecordType with id '{}' does not exist.".format(value)
+            )
+        return True
+        
 
 @records_factory.register_schema()
 class RecordTypeSchema(ModelSchema):
@@ -235,7 +246,12 @@ class ReportSchema(ModelSchema):
     id = MyInteger()
     timestamp = fields.DateTime("%Y-%m-%d", required=True)
 
-
+    records = fields.Nested(
+        RecordSchema, 
+        many=True
+    )
+    
+    
 @records_factory.register_schema()
 class FormulaComponentSchema(ModelSchema):
     class Meta:

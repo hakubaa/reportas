@@ -1,7 +1,6 @@
 import json
 
-from flask import url_for, redirect, request, flash
-from flask_admin import base as admin_base
+from flask import url_for, redirect, request, flash, abort
 from flask_login import current_user
 from flask_admin.contrib import sqla
 from flask_admin.babel import gettext
@@ -10,13 +9,69 @@ from app.models import DBRequest
 from app.rapi.util import DatetimeEncoder
 
 
-class FlaskLoginMixin(object):
+class PermissionRequiredMixin(object):
+    default_permissions = 0x00
+    create_view_permissions = None
+    edit_view_permissions = None
+    delete_view_permissions = None
+    index_view_permissions = None
+    details_view_permissions = None
 
-    def is_accessible(self):
-        return current_user.is_authenticated
+    def _handle_view(self, name, **kwargs):
+        if not current_user.is_authenticated:
+            return self.unauthorized_access()
 
-    def inaccessible_callback(self, name, **kwargs):
+        permissions = self.get_permissions(name)
+        if not current_user.can(permissions):
+            return self.forbidden_access()
+
+        return None #access granted
+
+    def unauthorized_access(self):
         return redirect(url_for("user.login", next=request.url))
+
+    def forbidden_access(self):
+        return abort(403)
+
+    def get_permissions(self, name):
+        if name.startswith("index"):
+            return self.index_view_permissions or self.default_permissions
+
+        if name.startswith("create"):
+            return self.create_view_permissions or self.default_permissions
+
+        if name.startswith("edit") or name.startswith("update"):
+            return self.edit_view_permissions or self.default_permissions
+
+        if name.startswith("delete"):
+            return self.delete_view_permissions or self.default_permissions
+
+        if name.startswith("detail"):
+            return self.details_view_permissions or self.default_permissions
+
+        return self.default_permissions
+
+    @property
+    def can_create(self):
+        return self.check_permission("create")
+
+    @property
+    def can_edit(self):
+        return self.check_permission("edit") 
+
+    @property
+    def can_delete(self):
+        return self.check_permission("delete") 
+
+    def check_permission(self, action):
+        if not current_user or not current_user.is_authenticated:
+            return False
+
+        permissions = self.get_permissions(action)
+        if not current_user.can(permissions):
+            return False
+
+        return True
 
 
 class DBRequestMixin(object):
@@ -66,11 +121,3 @@ class DBRequestMixin(object):
     def delete_model(self, model):
         data = dict(id=model.id)
         return self._create_dbrequest("delete", data)
-        
-
-class AdminIndexView(FlaskLoginMixin, admin_base.AdminIndexView):
-    pass
-    
-
-class ModelView(FlaskLoginMixin, sqla.ModelView):
-    pass

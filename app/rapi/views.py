@@ -334,7 +334,7 @@ class ReportRecordDetailView(DetailView):
 
 @rapi.route("/")
 @auth.login_required
-@permission_required(Permission.READ_DATA)
+@permission_required(Permission.BROWSE_DATA)
 def root():
     return jsonify({
         "companies": url_for("rapi.company_list"),

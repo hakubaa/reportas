@@ -132,7 +132,7 @@ class CompanySchemaTest(DbTestCase):
         self.assertEqual(len(obj.reprs), 1)
         self.assertEqual(obj.reprs[0].value, "NEW REPR #1")
 
-    def test_uniqness_is_not_validated_when_updating_instance(self):
+    def test_uniqness_is_not_validated_when_updating(self):
         company = models.Company(name="TEST", isin="#TEST")
         self.db.session.add(company)
         self.db.session.commit()
@@ -145,8 +145,52 @@ class CompanySchemaTest(DbTestCase):
 
         self.assertFalse(errors)
         self.assertEqual(obj.ticker, "TEST")
+        
+    def test_id_field_in_reprs_with_empty_string_is_ignored(self):
+        data = {
+            "name": "TEST", "isin": "#TEST",
+            "reprs": [{"value": "TEST REPR", "id": ""}]
+        }
+        
+        obj, errors = CompanySchema().load(data, session=self.db.session)
+        
+        self.assertFalse(errors)
 
 
+class RecordTypeReprSchemaTest(DbTestCase):
+
+    def test_rtype_id_attribute_is_required(self):
+        data = {"value": "Test Value", "lang": "PL"}
+        
+        obj, errors = RecordTypeReprSchema().load(data, session=self.db.session)
+        
+        self.assertTrue(errors)
+        self.assertIn("rtype_id", errors)
+
+    def test_rtype_has_to_exist_in_db(self):
+        data = {"value": "Test Value", "rtype_id": 1, "lang": "PL"}
+        
+        obj, errors = RecordTypeReprSchema().load(data, session=self.db.session)
+        
+        self.assertTrue(errors)
+        self.assertIn("rtype_id", errors)
+
+    def test_load_creates_new_recordtype_repr(self):
+        rtype = models.RecordType(name="NETPROFIT", statement="nls")
+        self.db.session.add(rtype)
+        self.db.session.commit()
+        
+        data = {"value": "NET PROFIT", "rtype_id": rtype.id, "lang": "PL"}
+        obj, errors = RecordTypeReprSchema().load(data, session=self.db.session)
+        self.db.session.add(obj)
+        self.db.session.commit()
+        
+        rtype_repr = self.db.session.query(models.RecordTypeRepr).first()
+        self.assertIsNotNone(rtype_repr)
+        self.assertEqual(rtype_repr.value, data["value"])
+        self.assertEqual(rtype_repr.rtype, rtype)
+        
+        
 class RecordTypeSchemaTest(DbTestCase):
 
     def test_name_attribute_is_required(self):
@@ -198,8 +242,51 @@ class RecordTypeSchemaTest(DbTestCase):
         self.assertEqual(len(data["reprs"]), 3)
         values = [ item["value"] for item in data["reprs"] ]
         self.assertCountEqual(values, ["Repr #1", "Repr #2", "Repr #3"])
+        
+    def test_create_new_record_type_with_reprs(self):
+        data = {
+            "name": "NETPROFIT", "statement": "nls",
+            "reprs": [{"value": "NET INCOME"}, {"value": "NET PROFIT"}]
+        }
+        
+        obj, errors = RecordTypeSchema().load(data=data, session=self.db.session)
+        self.db.session.add(obj)
+        self.db.session.commit()
+        
+        self.assertEqual(self.db.session.query(models.RecordType).count(), 1)
+        self.assertEqual(self.db.session.query(models.RecordTypeRepr).count(), 2)
+        
+        rtype = self.db.session.query(models.RecordType).one()
+        
+        self.assertEqual(len(rtype.reprs), 2)
+        self.assertIn(rtype.reprs[0].value, ["NET INCOME", "NET PROFIT"])
+        self.assertIn(rtype.reprs[1].value, ["NET INCOME", "NET PROFIT"])
+        
+    def test_invalid_repr_makes_impossible_to_create_record_type(self):
+        data = {
+            "name": "NETPROFIT", "statement": "nls",
+            # no value for repr
+            "reprs": [{"lang": "PL"}, {"value": "NET PROFIT", "lang": "PL"}]
+        } 
+        
+        obj, errors = RecordTypeSchema().load(data=data, session=self.db.session)
 
+        self.assertTrue(errors)
+        self.assertIn("reprs", errors)
+        self.assertIn(0, errors["reprs"])
+        self.assertEqual(self.db.session.query(models.RecordType).count(), 0)
 
+    def test_empty_id_field_in_reprs_with_is_ignored(self):
+        data = {
+            "name": "NET PROFIT", "statement": "nls",
+            "reprs": [{"value": "TEST REPR", "id": "", "lang": "PL"}]
+        }
+        
+        obj, errors = RecordTypeSchema().load(data, session=self.db.session)
+
+        self.assertFalse(errors)
+        
+        
 class RecordSchemaTest(DbTestCase):
 
     def test_company_id_attribute_is_required(self):
@@ -343,8 +430,72 @@ class ReportSchemaTest(DbTestCase):
         obj, errors = ReportSchema().load(data, session=self.db.session)
         self.assertTrue(errors)
         self.assertIn("timestamp", errors)
+        
+    def test_create_report_with_records(self):
+        rtype = models.RecordType(name="NETPROFIT", statement="nls")
+        self.db.session.add(rtype)
+        company = models.Company(isin="#TEST", name="TEST")
+        self.db.session.add(company)
+        self.db.session.flush()
+        
+        data = {
+            "timestamp": "2015-03-31", "timerange": 12,
+            "records": [
+                {
+                    "value": 100, "timerange": 12, "timestamp": "2015-03-31", 
+                    "rtype_id": rtype.id, "company_id": company.id
+                },
+                {
+                    "value": 150, "timerange": 12, "timestamp": "2014-03-31",
+                    "rtype_id": rtype.id, "company_id": company.id
+                }
+            ],
+            "company_id": company.id
+        }
+        report, errors = ReportSchema().load(data, session=self.db.session)
 
-
+        
+        self.assertFalse(errors) 
+        
+        self.db.session.add(report)
+        self.db.session.commit()
+        
+        records = self.db.session.query(models.Record).all()
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0].company_id, company.id)
+        self.assertEqual(records[0].rtype_id, rtype.id)
+        self.assertEqual(records[0].value, 100)
+        self.assertEqual(records[0].timerange, 12)
+        self.assertEqual(records[1].company_id, company.id)
+        self.assertEqual(records[1].rtype_id, rtype.id)
+        self.assertEqual(records[1].value, 150)
+        self.assertEqual(records[1].timerange, 12)
+        
+    def test_invalid_record_makes_impossible_to_create_report(self):
+        rtype = models.RecordType(name="NETPROFIT", statement="nls")
+        self.db.session.add(rtype)
+        company = models.Company(isin="#TEST", name="TEST")
+        self.db.session.add(company)
+        self.db.session.flush()
+        
+        data = {
+            "timestamp": "2015-03-31", "timerange": 12,
+            "records": [
+                {
+                    "value": 100, "timerange": 12, "timestamp": "2015-03-31", 
+                    "rtype_id": rtype.id + 1, #invalid rtype 
+                    "company_id": company.id
+                }
+            ],
+            "company_id": company.id
+        }
+        report, errors = ReportSchema().load(data, session=self.db.session) 
+        
+        self.assertTrue(errors)
+        self.assertIn("records", errors)
+        self.assertIn("rtype_id", errors["records"][0])
+        
+        
 def create_formula(session):
     total_assets = models.RecordType(name="TOTAL_ASSETS", statement="bls")
     current_assets = models.RecordType(name="CURRENT_ASSETS", statement="bls")

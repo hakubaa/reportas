@@ -30,11 +30,12 @@ class File(Model):
 
 
 class Permission:
-    READ_DATA = 0x01
-    MODIFY_DATA = 0x02
-    MODERATE_DATA = 0x40 
-    ADMINISTER = 0x80
-
+    BROWSE_DATA = 0x01
+    CREATE_REQUESTS = 0x02
+    BROWSE_REQUESTS = 0x04
+    EXECUTE_REQUESTS = 0x08
+    ADMINISTER = 0x16
+    
 
 class Role(Model):
     id = Column(Integer, primary_key=True)
@@ -46,16 +47,17 @@ class Role(Model):
     def insert_roles():
         roles = {
             "Visitor": (
-                Permission.READ_DATA, False
+                Permission.BROWSE_DATA, False
             ),
             "User": (
-                Permission.READ_DATA |
-                Permission.MODIFY_DATA, True
+                Permission.BROWSE_DATA |
+                Permission.CREATE_REQUESTS, True
             ),
             "Moderator": (
-                Permission.READ_DATA |
-                Permission.MODIFY_DATA |
-                Permission.MODERATE_DATA, False
+                Permission.BROWSE_DATA |
+                Permission.CREATE_REQUESTS |
+                Permission.BROWSE_REQUESTS |
+                Permission.EXECUTE_REQUESTS, False
             ),
             "Administrator": (0xff, False)
         }
@@ -118,6 +120,9 @@ class User(UserMixin, Model):
     def can(self, permissions):
         return self.role is not None and \
                    (self.role.permissions & permissions) == permissions
+
+    def has_role(self, name):
+        return self.role.name.lower() == name.lower()
 
     @property
     def is_administrator(self):
