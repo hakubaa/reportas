@@ -244,6 +244,10 @@ class ReportSchema(ModelSchema):
         exclude = ("version",)  
 
     id = MyInteger()
+    company_id = field_for(
+        models.Report, "company_id", required=True,
+        error_messages={"required": "Company is required."}
+    ) 
     timestamp = fields.DateTime("%Y-%m-%d", required=True)
 
     records = fields.Nested(

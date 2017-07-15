@@ -19,7 +19,7 @@ from db.core import Model, VersionedModel
 # CREATE ADDITIONAL MODELS & METHODS FOR TESTS
 ################################################################################
 
-class Student(VersionedModel):
+class Student(Model):
     __tablename__ = "students"
 
     id = Column(Integer, primary_key=True)
@@ -27,7 +27,7 @@ class Student(VersionedModel):
     name = Column(String, nullable=False)
 
 
-class Account(VersionedModel):
+class Account(Model):
     __tablename__ = "accounts"
 
     id = Column(Integer, primary_key=True)
@@ -448,8 +448,8 @@ class RoleModelTest(AppTestCase):
     def test_permissions_of_user(self):
         Role.insert_roles()
         user_role = db.session.query(Role).filter_by(name="User").one()
-        self.assertTrue(user_role.permissions & Permission.READ_DATA)
-        self.assertTrue(user_role.permissions & Permission.MODIFY_DATA)
+        self.assertTrue(user_role.permissions & Permission.BROWSE_DATA)
+        self.assertTrue(user_role.permissions & Permission.CREATE_REQUESTS)
 
     def test_administrator_has_all_permissions(self):
         Role.insert_roles()
@@ -466,7 +466,7 @@ class UserRoleTest(AppTestCase):
                     role=moderator)
         db.session.add(user)
         db.session.commit()
-        self.assertTrue(user.can(Permission.MODERATE_DATA))
+        self.assertTrue(user.can(Permission.EXECUTE_REQUESTS))
 
     def test_is_administrator_returns_true_for_administrator(self):
         Role.insert_roles()
@@ -479,4 +479,4 @@ class UserRoleTest(AppTestCase):
 
     def test_anonymouse_user_cannot_read_data(self):
         user = AnonymousUser()
-        self.assertFalse(user.can(Permission.READ_DATA))
+        self.assertFalse(user.can(Permission.BROWSE_DATA))

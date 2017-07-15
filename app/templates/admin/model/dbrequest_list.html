@@ -1,0 +1,12 @@
+{% extends 'admin/model/list.html' %}
+
+{% block list_row_actions %}
+    {{ super() }}
+    <form class="icon" method="POST" action="/dbmd/dbrequest/action/">
+        <input id="action" name="action" value="accept" type="hidden">
+        <input name="rowid" value="{{ get_pk_value(row) }}" type="hidden">
+        <button title="Accept">
+            <span class="fa fa-check glyphicon glyphicon-ok"></span>
+        </button>
+    </form>
+{% endblock %}

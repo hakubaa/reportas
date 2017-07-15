@@ -7,12 +7,14 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import (
 	Column, Integer, String, DateTime, Boolean, Float,
-	UniqueConstraint, CheckConstraint
+	UniqueConstraint, CheckConstraint, and_, or_
 )
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm.properties import RelationshipProperty
+from sqlalchemy.ext.hybrid import hybrid_property
 from flask_login import UserMixin, AnonymousUserMixin
 from flask import current_app
 
@@ -204,6 +206,22 @@ class DBRequest(Model):
     def rejected(self):
         return self.moderator_action == "reject"
 
+    @hybrid_property
+    def outcome(self):
+        if not self.executed:
+            return None
+        if self.errors is None or self.errors == "{}":
+            return True
+        else:
+            return False
+
+    @outcome.expression
+    def outcome(cls):
+        return and_(
+            cls.moderator_action == "accept", 
+            or_(cls.errors is None, cls.errors == "{}")
+        )
+
     def add_subrequest(self, request):
         self.subrequests.append(request)
 
@@ -221,7 +239,9 @@ class DBRequest(Model):
 
         for request in [parent_request] + parent_request.subrequests:
             if request.executed:
-                instance, errors = request.get_instance(factory.session)
+                instance, errors = request.get_instance(
+                    factory.session, factory.get_model(request.model)
+                )
             else:
                 instance, errors = request.execute_request(
                     factory, moderator, comment
@@ -251,10 +271,20 @@ class DBRequest(Model):
         data = json.loads(self.data)
         data["factory"] = factory # positional parameter for action method
 
+        instance = None
         try:
             instance, errors = action_method[self.action](**data)
         except KeyError:
             raise RuntimeError("action '%s' is not valid" % self.action)
+        except SQLAlchemyError as e:
+            factory.session.rollback()
+            errors = {"database": str(e.orig) }
+        except Exception as e:
+            factory.session.rollback()
+            errors = {
+                "system": "Internal system error.  If the problem persists, "
+                "contact the administrator."
+            }
 
         self.update_moderation_info(
             moderator, action="accept", comment=comment, 
@@ -270,13 +300,19 @@ class DBRequest(Model):
         return instance, errors
 
     def execute_update(self, factory, **data):
-        instance, errors = self.get_instance(factory.session, id=data["id"])  
+        instance, errors = self.get_instance(
+            session=factory.session, 
+            model_cls=factory.get_model(self.model), id=data["id"]
+        )
         if not errors:
             instance, errors = factory.update(instance, **data)   
         return instance, errors
 
     def execute_delete(self, factory, **data):
-        instance, errors = self.get_instance(factory.session, id=data["id"])
+        instance, errors = self.get_instance(
+            session=factory.session, 
+            model_cls=factory.get_model(self.model), id=data["id"]
+        )
         if not errors:
             factory.session.delete(instance) 
         return instance, errors
@@ -292,10 +328,7 @@ class DBRequest(Model):
             self.instance_id = instance.id
         self.moderated_at = datetime.datetime.utcnow()
 
-    def get_instance(self, session, id=None):
-        model_cls = self.identify_class()
-        if not model_cls:
-            return NameError("model '%s' is not defined" % self.model)
+    def get_instance(self, session, model_cls, id=None):
         instance = session.query(model_cls).get(id or self.instance_id)
         errors = dict()
         if not instance:

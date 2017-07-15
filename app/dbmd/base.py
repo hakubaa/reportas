@@ -16,6 +16,7 @@ class PermissionRequiredMixin(object):
     delete_view_permissions = None
     index_view_permissions = None
     details_view_permissions = None
+    action_view_permissions = None
 
     def _handle_view(self, name, **kwargs):
         if not current_user.is_authenticated:
@@ -49,6 +50,9 @@ class PermissionRequiredMixin(object):
         if name.startswith("detail"):
             return self.details_view_permissions or self.default_permissions
 
+        if name.startswith("action"):
+            return self.action_view_permissions or self.default_permissions
+
         return self.default_permissions
 
     @property
@@ -62,6 +66,10 @@ class PermissionRequiredMixin(object):
     @property
     def can_delete(self):
         return self.check_permission("delete") 
+
+    @property
+    def can_action(self):
+        return self.check_permission("action")
 
     def check_permission(self, action):
         if not current_user or not current_user.is_authenticated:

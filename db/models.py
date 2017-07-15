@@ -1,8 +1,8 @@
 import operator
 
 from sqlalchemy import (
-	Column, Integer, String, DateTime, Boolean, Float,
-	UniqueConstraint, CheckConstraint
+	Column, Integer, String, Boolean, Float,
+	UniqueConstraint, CheckConstraint, Date
 )
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
@@ -11,59 +11,60 @@ from db.core import Model, VersionedModel
 
 
 class Company(VersionedModel):
-	id = Column(Integer, primary_key=True)
-	
-	name = Column(String, nullable=False)
-	isin = Column(String, unique=True, nullable=False)
-	ticker = Column(String)
-	fullname = Column(String)
-	district = Column(String)
-	webpage = Column(String)
-	email = Column(String)
-	address = Column(String)
-	debut = Column(DateTime)
-	fax = Column(String)
-	telephone = Column(String)
-	sector = Column(String)
+    id = Column(Integer, primary_key=True)
 
-	def __repr__(self):
-		return "<Company({!r})>".format(self.name)
+    name = Column(String, nullable=False)
+    isin = Column(String, unique=True, nullable=False)
+    ticker = Column(String)
+    fullname = Column(String)
+    district = Column(String)
+    webpage = Column(String)
+    email = Column(String)
+    address = Column(String)
+    debut = Column(Date)
+    fax = Column(String)
+    telephone = Column(String)
+    sector = Column(String)
 
-	@staticmethod
-	def insert_companies(session):
-		from scraper.util import get_info_about_companies, get_list_of_companies
-		import db.util as util
+    def __repr__(self):
+        return "<Company({!r})>".format(self.name)
 
-		companies = get_list_of_companies()
-		companies_db = session.query(Company.isin).all()
-		if companies_db:
-			companies_db = list(zip(*companies_db))[0]
+    def __str__(self):
+        return self.name
 
-		new_companies = filter(lambda cp: cp["isin"] not in companies_db, companies)
-		data_companies = get_info_about_companies(
-			filter(bool, map(operator.itemgetter("isin"), new_companies)),
-			max_workers=5
-		)
+    @staticmethod
+    def insert_companies(session):
+        from scraper.util import get_info_about_companies, get_list_of_companies
+        import db.util as util
 
-		for company in data_companies: # merge data with companies
-			try:
-				data = next(x for x in companies if x["isin"] == company["isin"])
-			except StopIteration:
-				pass
-			else:
-				company.update(data)
+        companies = get_list_of_companies()
+        companies_db = session.query(Company.isin).all()
+        if companies_db:
+            companies_db = list(zip(*companies_db))[0]
 
-		util.upload_companies(session, data_companies)
-		session.commit()
+        new_companies = filter(lambda cp: cp["isin"] not in companies_db, companies)
+        data_companies = get_info_about_companies(
+            filter(bool, map(operator.itemgetter("isin"), new_companies)),
+            max_workers=5
+        )
 
-		import rparser.cspec as cspec
+        for company in data_companies: # merge data with companies
+            try:
+                data = next(x for x in companies if x["isin"] == company["isin"])
+            except StopIteration:
+                pass
+            else:
+                company.update(data)
 
-		for comp in cspec.companies:
-			company = session.query(Company).filter_by(isin=comp["isin"]).one()
-			company.reprs.append(
-				CompanyRepr(value=comp["value"])
-			)
-		session.commit()
+        util.upload_companies(session, data_companies)
+        session.commit()
+
+        import rparser.cspec as cspec
+
+        for comp in cspec.companies:
+            company = session.query(Company).filter_by(isin=comp["isin"]).one()
+            company.reprs.append(CompanyRepr(value=comp["value"]))
+        session.commit()
 
 
 class CompanyRepr(VersionedModel):
@@ -78,30 +79,36 @@ class CompanyRepr(VersionedModel):
 
 
 class Report(VersionedModel):
-	id = Column(Integer, primary_key=True)
-	timestamp = Column(DateTime, nullable=False)
-	timerange = Column(Integer, nullable=False)
-	consolidated = Column(Boolean, default=True)
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(Date, nullable=False)
+    timerange = Column(Integer, nullable=False)
+    consolidated = Column(Boolean, default=True)
 
-	company_id = Column(Integer, ForeignKey("company.id"))
-	company = relationship(
-		"Company", 
-		backref=backref("reports", lazy="dynamic", cascade="all,delete")
-	) 
+    company_id = Column(Integer, ForeignKey("company.id"), nullable=False)
+    company = relationship(
+        "Company", 
+        backref=backref("reports", lazy="joined", cascade="all,delete")
+    ) 
 
-	__table_args__ = (
-    	UniqueConstraint("timestamp", "timerange", "company_id", 
-    		             name='_timestamp_timerange_company'),
+    __table_args__ = (
+    UniqueConstraint("timestamp", "timerange", "company_id", 
+	                name='_timestamp_timerange_company'),
     )
 
-	def __repr__(self):
-		return "<Report({!r}, {!r})>".format(self.timestamp, self.timerange)
+    def __repr__(self):
+        return "<Report({!r}, {!r})>".format(self.timestamp, self.timerange)
 
-	def add_record(self, record=None, **kwargs):
-		if not record:
-			record = Record(**kwargs)
-		self.records.append(record)
-		return record
+    def __str__(self):
+        output = "Report({}, {}, {:%Y-%m-%d})".format(
+            str(self.company), self.timerange, self.timestamp
+        )
+        return output
+
+    def add_record(self, record=None, **kwargs):
+        if not record:
+        	record = Record(**kwargs)
+        self.records.append(record)
+        return record
 
 
 class RecordType(VersionedModel):
@@ -115,6 +122,9 @@ class RecordType(VersionedModel):
 
     def __repr__(self):
         return "<RecordType('{!s}')>".format(self.name)
+
+    def __str__(self):
+        return self.name
 
     @staticmethod
     def insert_rtypes(session):
@@ -136,7 +146,7 @@ class RecordTypeRepr(VersionedModel):
 class Record(VersionedModel):
 	id = Column(Integer, primary_key=True)
 	value = Column(Float, nullable=False)
-	timestamp = Column(DateTime, nullable=False)
+	timestamp = Column(Date, nullable=False)
 	timerange = Column(Integer, nullable=False)
 	synthetic = Column(Boolean, default=False, nullable=False)
 

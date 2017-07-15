@@ -13,10 +13,10 @@
 
   <!-- Bootstrap -->
 
-
   <link href="{{ url_for('static', filename='vendors/normalize.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap-theme.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendors/bootstrap-daterangepicker/css/daterangepicker.css') }}" rel="stylesheet">
   <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 
   <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
@@ -112,9 +112,9 @@
 
     <script src="{{ url_for('static', filename='vendors/jquery-3.2.1.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendors/bootstrap/js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendors/moment.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendors/bootstrap-daterangepicker/js/daterangepicker.js') }}"></script>
     {% block tail_js %}{% endblock %}
     {% block body_scripts %}{% endblock %}
     {% block tail %}{% endblock %}
 </body>
-
-</html>
