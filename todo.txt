@@ -5,6 +5,9 @@
 - models: sector, country, district, index
 - syntetic records
 - uploading files in reports (in record view)
+- dbmd tools:
+  - parser
+  - batch uploader
 
 
 - recognition of unit money
@@ -116,3 +119,8 @@ regardless of the method.
 		- Companies
 			- Company Reprs
 		- Sectors
+
+
+    <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap-theme.min.css') }}" rel="stylesheet">
+  
