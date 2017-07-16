@@ -249,7 +249,49 @@ class DeleteCompanyViewTest(AppTestCase):
             follow_redirects=False
         )
         self.assertRedirects(response, url_for("company.index_view"))
-    
+
+
+class CompanyViewFormTest(AppTestCase):
+
+    def test_non_empty_fields(self):
+        view = views.CompanyView(models.Company, db.session)
+        form = view.get_form()()
+
+        form.validate()
+
+        self.assertIn("isin", form.errors)
+        self.assertIn("name", form.errors)
+
+    def test_view_s_form_validate_with_proper_data(self):
+        view = views.CompanyView(models.Company, db.session)
+        form = view.get_form()()
+
+        form.process(formdata=MultiDict(dict(name="TEST", isin="#TEST")))
+       
+        self.assertTrue(form.validate())
+
+    def test_sector_is_transformed_to_sector_id(self):
+        sector = models.Sector(name="Media")
+        db.session.add(sector)
+        db.session.commit()
+
+        view = views.CompanyView(models.Company, db.session)
+        view.get_user = types.MethodType(lambda self: create_user(), view)
+        form = view.get_form()()
+
+        form.process(formdata=MultiDict(
+            dict(name="TEST", isin="#TEST", sector=str(sector.id))
+        ))
+        validation_outcome = form.validate() 
+
+        self.assertTrue(validation_outcome)
+
+        dbrequest = view.create_model(form)
+        data = json.loads(dbrequest.data)
+
+        self.assertIn("sector_id", data)
+        self.assertEqual(data["sector_id"], sector.id)
+
 
 class CreateRecordTypeViewTest(AppTestCase):
 

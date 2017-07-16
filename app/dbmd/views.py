@@ -6,6 +6,7 @@ from flask_admin.contrib import sqla
 from flask_admin.actions import action
 from flask_login import current_user
 from flask_admin.model import typefmt
+from flask_admin.form.upload import FileUploadField
 from wtforms.fields import TextAreaField, StringField
 
 from db import models, records_factory
@@ -41,6 +42,19 @@ class DBRequestBasedView(
 # VIEWS
 #-------------------------------------------------------------------------------
 
+class SectorView(DBRequestBasedView):
+    form_excluded_columns = ("version",)
+    column_searchable_list = ["name"]
+    column_filters = ["name"]
+    column_list = ("name",)
+    can_view_details = False
+
+    def modify_data(self, data):
+        if "companies" in data:
+            data["companies"] = [ company.id for company in data["companies"] ]
+        return data
+
+
 class CompanyView(DBRequestBasedView):
     inline_models = [
         (
@@ -49,13 +63,19 @@ class CompanyView(DBRequestBasedView):
         )
     ]
     
-    column_searchable_list = ["name", "ticker", "fullname", "sector"]
-    column_filters = ["sector", "debut"]
+    column_searchable_list = ["name", "ticker", "fullname", "sector.name"]
+    column_filters = ["debut", "sector.name"]
     column_list = (
-        "isin", "name", "webpage", "ticker", "sector", "debut", "fullname"
+        "isin", "name", "webpage", "ticker", "debut", "fullname", "sector"
     )
     column_labels = dict(fullname="Full Name")
     form_excluded_columns = ("version", "reports", "records")
+
+    def modify_data(self, data):
+        if "sector" in data:
+            data["sector_id"] = getattr(data["sector"], "id", None)
+            del data["sector"]
+        return data
 
 
 class RecordView(DBRequestBasedView):
@@ -80,6 +100,10 @@ class RecordView(DBRequestBasedView):
             data["company_id"] = getattr(data["company"], "id", None)
             del data["company"]
 
+        if "report" in data:
+            data["report_id"] = getattr(data["report"], "id", None)
+            del data["report"]
+            
         return data
 
 
@@ -116,7 +140,17 @@ class ReportView(DBRequestBasedView):
 
     column_filters = ["timerange", "timestamp", "company"]
     column_list = ["company", "timerange", "timestamp", "consolidated"]
+
+    form_args = dict(file=dict(validators=[]))
+    form_columns = ["company", "timestamp", "timerange", "consolidated"]
     form_excluded_columns = ("version")
+    form_overrides = dict(file=FileUploadField)
+
+    form_widget_args = {
+        "file": {
+           "class": " "
+        }
+    }
 
     def modify_data(self, data):
         if "company" in data:
@@ -133,7 +167,10 @@ class ReportView(DBRequestBasedView):
                     record["rtype_id"] = getattr(record["rtype"], "id", None)
                     del record["rtype"]
         return data
-    
+
+    def on_model_change(self, form, model, is_created):
+        pass
+
 
 class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
     create_view_permissions = Permission.ADMINISTER

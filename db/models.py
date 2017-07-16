@@ -10,6 +10,17 @@ from sqlalchemy.schema import ForeignKey
 from db.core import Model, VersionedModel
 
 
+class Sector(VersionedModel):
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+
+    def __repr__(self):
+        return "<Sector({!r})>".format(self.name)
+
+    def __str__(self):
+        return self.name
+
+
 class Company(VersionedModel):
     id = Column(Integer, primary_key=True)
 
@@ -24,7 +35,9 @@ class Company(VersionedModel):
     debut = Column(Date)
     fax = Column(String)
     telephone = Column(String)
-    sector = Column(String)
+
+    sector_id = Column(Integer, ForeignKey("sector.id"))
+    sector = relationship("Sector", backref=backref("companies", lazy="joined"))
 
     def __repr__(self):
         return "<Company({!r})>".format(self.name)
@@ -62,8 +75,9 @@ class Company(VersionedModel):
         import rparser.cspec as cspec
 
         for comp in cspec.companies:
-            company = session.query(Company).filter_by(isin=comp["isin"]).one()
-            company.reprs.append(CompanyRepr(value=comp["value"]))
+            company = session.query(Company).filter_by(isin=comp["isin"]).first()
+            if company:
+                company.reprs.append(CompanyRepr(value=comp["value"]))
         session.commit()
 
 
@@ -83,6 +97,7 @@ class Report(VersionedModel):
     timestamp = Column(Date, nullable=False)
     timerange = Column(Integer, nullable=False)
     consolidated = Column(Boolean, default=True)
+    file = Column(String)
 
     company_id = Column(Integer, ForeignKey("company.id"), nullable=False)
     company = relationship(

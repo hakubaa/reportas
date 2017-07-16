@@ -1,6 +1,6 @@
 import unittest
 import unittest.mock as mock
-from datetime import datetime
+from datetime import datetime, date
 
 from tests.db import DbTestCase
 from db.serializers import *  
@@ -43,6 +43,26 @@ class CompanyReprSchemaTest(DbTestCase):
         self.assertEqual(crepr.company, company)
 
 
+class SectorSchemaTest(DbTestCase):
+
+    def test_name_is_required(self):
+        data = {"value": "That's not the name."}
+        obj, errors = SectorSchema().load(data, session=self.db.session)
+        self.assertTrue(errors)
+        self.assertIn("name", errors)
+
+    def test_name_is_unique(self):
+        sector = models.Sector(name="Media")
+        self.db.session.add(sector)
+        self.db.session.commit()
+
+        data = {"name": "Media"}
+        obj, errors = SectorSchema().load(data, session=self.db.session)
+
+        self.assertTrue(errors)
+        self.assertIn("name", errors)
+
+
 class CompanySchemaTest(DbTestCase):
 
     def test_name_attribute_is_required(self):
@@ -63,6 +83,14 @@ class CompanySchemaTest(DbTestCase):
         obj, errors = CompanySchema().load(data, session=self.db.session)
         self.assertTrue(errors)
         self.assertIn("isin", errors)
+
+    def test_sector_has_to_exist_in_db(self):
+        data = {"isin": "#TEST", "name": "BLA", "sector_id": 1}
+
+        obj, errors = CompanySchema().load(data, session=self.db.session)
+
+        self.assertTrue(errors)
+        self.assertIn("sector_id", errors)
 
     def test_load_creates_new_company(self):
         data = {"name": "Test Name", "isin": "#ISIN"}
@@ -88,6 +116,17 @@ class CompanySchemaTest(DbTestCase):
         self.assertEqual(len(data["reprs"]), 3)
         values = [ item["value"] for item in data["reprs"] ]
         self.assertCountEqual(values, ["Repr #1", "Repr #2", "Repr #3"])
+
+    def test_deserialized_data_contains_sector_name(self):
+        sector = models.Sector(name="Media")
+        company = models.Company(name="TEST", isin="#TEST", sector=sector)
+        self.db.session.add_all((sector, company))
+        self.db.session.commit()
+
+        data = CompanySchema().dump(company).data
+
+        self.assertIn("sector", data)
+        self.assertEqual(data["sector"]["name"], "Media")
 
     def test_create_new_company_with_reprs(self):
         '''
@@ -380,7 +419,7 @@ class RecordSchemaTest(DbTestCase):
         self.assertEqual(record.rtype, rtype)
         self.assertEqual(record.company, company)
         self.assertEqual(record.timerange, 12)
-        self.assertEqual(record.timestamp, datetime(2015, 3, 31))
+        self.assertEqual(record.timestamp, date(2015, 3, 31))
 
     def test_deserialized_data_contains_type_of_record(self):
         company = models.Company(name="TEST", isin="TEST")
@@ -403,7 +442,7 @@ class RecordSchemaTest(DbTestCase):
         self.db.session.flush()
         record = models.Record(
             value=10, timerange=12, company=company, rtype=rtype, 
-            timestamp=datetime(2015, 3, 31)
+            timestamp=date(2015, 3, 31)
         )
         self.db.session.add(record)
         self.db.session.commit()

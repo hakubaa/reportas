@@ -27,8 +27,9 @@ class Config:
 class DevelopmentConfig(Config):
 	DEBUG = True
 	SQLALCHEMY_DATABASE_URI = (
-		os.environ.get('DEV_DATABASE_URL') 
-		or 'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
+		os.environ["DATABASE_URL"]
+		#os.environ.get('DEV_DATABASE_URL') 
+		#or 'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
 	)
 	UPLOAD_FOLDER = os.path.join(basedir, "uploads_dev")
 	DEBUG_TB_PROFILER_ENABLED = True
@@ -37,8 +38,7 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
 	TESTING = True
 	SQLALCHEMY_DATABASE_URI = (
-		os.environ.get('DEV_DATABASE_URL') 
-		or "sqlite:///:memory:"
+		"sqlite:///:memory:"
 		or 'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
 	)
 	UPLOAD_FOLDER = os.path.join(basedir, "uploads_test")
@@ -50,3 +50,5 @@ config = {
 	"testing": TestingConfig,
 	"default": DevelopmentConfig
 }
+
+#export DATABASE_URL="postgresql:///reportas

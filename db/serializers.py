@@ -2,7 +2,7 @@ __all__ = [
     "CompanyReprSchema", "CompanySchema", "CompanySimpleSchema", 
     "RecordTypeSchema", "RecordTypeReprSchema", "RecordTypeSimpleSchema",
     "RecordSchema", "ReportSchema", "RecordFormulaSchema",
-    "FormulaComponentSchema"
+    "FormulaComponentSchema", "SectorSchema"
 ]
 
 from marshmallow import validates, ValidationError, fields, validates_schema
@@ -48,6 +48,25 @@ class CompanyReprSchema(ModelSchema):
         return True
 
 
+@records_factory.register_schema()
+class SectorSchema(ModelSchema):
+    class Meta:
+        model = models.Sector
+        exclude = ("version",)
+
+    @validates("name")
+    def validate_name(self, value):
+        if self.instance and self.instance.isin == value:
+            return True
+
+        (ret, ), = self.session.query(
+            exists().where(models.Sector.name == value)
+        )
+        if ret:
+            raise ValidationError("name not unique")
+        return True
+
+
 @records_factory.register_schema()    
 class CompanySchema(ModelSchema):
     class Meta:
@@ -58,6 +77,8 @@ class CompanySchema(ModelSchema):
     reprs = fields.Nested(
         CompanyReprSchema, only=("id", "value"), many=True
     )
+    sector = fields.Nested(SectorSchema, only=("name",), many=False)
+    sector_id = field_for(models.Company, "sector_id")   
 
     @validates("isin")
     def validate_isin(self, value):
@@ -81,6 +102,15 @@ class CompanySchema(ModelSchema):
         )
         if ret:
             raise ValidationError("Name not unique")
+        return True
+
+    @validates("sector_id")
+    def validate_sector(self, value):
+        (ret,), = self.session.query(exists().where(models.Sector.id == value))
+        if not ret:
+            raise ValidationError(
+                "Sector with id '{}' does not exist.".format(value)
+            )
         return True
 
 
@@ -163,7 +193,7 @@ class RecordSchema(ModelSchema):
     rtype = fields.Nested(
         RecordTypeSchema, only=("name", "statement"), many=False
     )
-    timestamp = fields.DateTime("%Y-%m-%d", required=True)
+    timestamp = fields.Date("%Y-%m-%d", required=True)
     rtype_id = field_for(
         models.Record, "rtype_id", required=True,
         error_messages={"required": "RecordType is required."}

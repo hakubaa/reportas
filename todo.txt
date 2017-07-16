@@ -1,4 +1,13 @@
-﻿- recognition of unit money
+﻿TO DO:
+- parser
+    - refactor and write tests
+    - ui in dbmd
+- models: sector, country, district, index
+- syntetic records
+- uploading files in reports (in record view)
+
+
+- recognition of unit money
 - check errors and warnings for reports listed in fields_identification.py
 - web-based interface for uploaindg report (validation)
 - web-crawler for searching pdf/zip files wtih financial reports

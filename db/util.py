@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from bs4 import BeautifulSoup
 
 from db.models import (
-	Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr
+	Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr, Sector
 )
 from rparser.nlp import find_ngrams
 import rparser.util as putil
@@ -18,9 +18,15 @@ def upload_companies(session, data):
 	'''Update companies in db.'''
 	for item in data:
 		try:
+			sector_name = item.pop("sector", None)
 			instance = Company.get_or_create(
 				session, defaults=item, isin=item.get("isin", item.get("ISIN"))
 			)
+			session.add(instance)
+			if sector_name:
+				sector = Sector.get_or_create(session, name=sector_name)
+				session.add(sector)
+				instance.sector = sector
 		except KeyError:
 			warnings.warn(
 				"Record without ISIN number. Name: '{}'".
@@ -29,9 +35,7 @@ def upload_companies(session, data):
 			continue
 		if instance.id:
 			for key, value in item.items():
-				setattr(instance, key, value)	
-		else:
-			session.add(instance)
+				setattr(instance, key, value)				
 
 
 def upload_records_spec(session, spec):
