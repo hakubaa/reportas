@@ -186,9 +186,11 @@ class RecordsExtractor(UserDict):
         self.input_rows = util.extract_rows(text)
 
         temp_rows = [row[1] for row in deepcopy(self.input_rows)]
+
         temp_rows = util.preprocess_labels(temp_rows)
         if fix_white_spaces:
             temp_rows = util.fix_white_spaces(temp_rows, voc, recspec)
+            
         records = util.identify_records(
             temp_rows, recspec, require_numbers = require_numbers,
             min_csim=min_csim

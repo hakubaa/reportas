@@ -29,6 +29,72 @@ RE_LEADING_NUMBER = re.compile(
     r"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})))(\.|\)| )(?:\s)*"
 ) 
 
+
+def read_pdf(path, layout=True, first_page=None, last_page=None,
+             encoding=None):
+    '''Run pdftotext command and intercept output & errors.''' 
+    args = ["pdftotext", path, "-"]
+    if layout: args.append("-layout")
+    if first_page: args.extend(("-f", str(first_page)))
+    if last_page: args.extend(("-l", str(last_page)))
+    if encoding: args.extend(("-enc", encoding))
+
+    proc = subprocess.Popen(
+        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    outs, errs = proc.communicate()
+    return outs, errs
+
+
+def split_into_columns(rows):
+    # 1. Find the breaks to split text into columns.
+    width = Counter(map(len, rows)).most_common(1)[0][0]
+    mrows = [ list(row + ' '*width)[:width] for row in rows ]
+    trows = list(map(list, zip(*mrows)))
+
+    wsdist = [ sum(1 for item in row if item == ' ') for row in trows ]
+    avg_wsdist = sum(wsdist) / len(wsdist)
+    wsmap = [ index for index, val in enumerate(wsdist) if val > avg_wsdist]
+
+    series = [[(wsmap[0], wsdist[wsmap[0]])]]
+    prev_ws = wsmap[0]
+    for ws in wsmap[1:]:
+        if prev_ws + 1 == ws:
+            series[-1].append((ws, wsdist[ws]))
+        else:
+            series.append([(ws, wsdist[ws])])
+        prev_ws = ws
+
+    series = [ sr for sr in series if len(sr) > 2 ]
+
+    wsbreaks = list()
+    for sr in series:
+        max_ws = max(map(operator.itemgetter(1), sr))
+        msr = [ 
+            index for index, (pos, ws) in enumerate(sr) if max_ws - ws < 2 
+        ]
+        index = max([
+            (index, (sr[index-1][1] if index > 1 else sr[index][1]) + 
+            sr[index][1] + 
+            (sr[index+1][1] if index+1 < len(sr) else sr[index][1]))
+            for index in msr
+        ], key=operator.itemgetter(1))[0]
+        wsbreaks.append(operator.itemgetter(index)(sr)[0])
+
+    # 2. Split text in accordance with the breaks.
+    cols = [[] for _ in range(len(wsbreaks)+1)]
+    for row in rows:
+        breaks = sorted(list(set([0] + wsbreaks))) + [None]
+        for index, (lb, ub) in enumerate(zip(breaks[:-1], breaks[1:])):
+            cols[index].append(row[lb:ub])
+
+    # 3. Return not-empty cols
+    return [col for col in cols if len(col) > 0]
+
+
+
+
+
 def pdftotext(path, layout=True, first_page=None, last_page=None,
               encoding=None):
     '''Run pdftotext command and intercept output & errors.''' 
@@ -38,7 +104,9 @@ def pdftotext(path, layout=True, first_page=None, last_page=None,
     if last_page: args.extend(("-l", str(last_page)))
     if encoding: args.extend(("-enc", encoding))
 
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    proc = subprocess.Popen(
+        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     outs, errs = proc.communicate()
     return outs, errs
 
@@ -767,3 +835,5 @@ def identify_unit_of_measure(text):
         return 1000000
 
     return 1
+
+
