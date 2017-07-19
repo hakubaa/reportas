@@ -2,7 +2,10 @@ import unittest
 from unittest import mock
 import io
 
-from rparser.base import PDFFileIO, Document, FlawedTable, FinancialStatement
+from rparser.base import (
+    PDFFileIO, Document, UnevenTable, RecordsCollector,
+    FinancialStatement
+)
 from rparser.nlp import NGram
 
 
@@ -101,12 +104,12 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(rows[5], (5, 2, 1, "Page 2 Row 1"))
         
         
-class FlawedTableTest(unittest.TestCase):
+class UnevenTableTest(unittest.TestCase):
     
     def test_create_table_with_rows(self):
         text_table = "Label1\t10\t20\nLabel2\t120\t150"
         
-        table = FlawedTable(text_table, byrows=True)
+        table = UnevenTable(text_table)
 
         self.assertEqual(len(table), 2)
         self.assertEqual(table[0][0], "Label1")
@@ -116,107 +119,42 @@ class FlawedTableTest(unittest.TestCase):
     def test_each_row_can_have_different_number_of_cells(self):
         text_table = "Label1\t10\t20\nLabel2\t10\nLabel3\t\5\t6\t7"
         
-        table = FlawedTable(text_table, byrows=True)
+        table = UnevenTable(text_table)
         
         self.assertEqual(len(table), 3)
         self.assertEqual(len(table[0]), 3)
         self.assertEqual(len(table[1]), 2)
         self.assertEqual(len(table[2]), 4)
         
-    def test_empty_rows_are_ignored(self):
+    def test_empty_rows_are_not_ignored(self):
         text_table = "Label1\t10\t20\n\nLabel2\t5\t9"
         
-        table = FlawedTable(text_table, byrows=True)
+        table = UnevenTable(text_table)
         
-        self.assertEqual(len(table), 2)
+        self.assertEqual(len(table), 3)
         
-    def test_create_table_by_columns(self):
-        text_table = """
-        Label1    10    15
-        Label2   100   200
-        """
-        
-        table = FlawedTable(text_table, byrows=False)
-        
-        self.assertEqual(len(table), 2)
-        self.assertEqual(table[0][1], "10")
-        self.assertEqual(table[1][2], "200")
-
     def test_indexing_returns_selected_row(self):
-        text_table = """
-        Label1    10    15
+        text_table = '''Label1    10    15
         Label2   100   200
-        """
-        table = FlawedTable(text_table, byrows=False)
+        '''
+        table = UnevenTable(text_table)
 
         row = table[0]
 
         self.assertCountEqual(row, ["Label1", "10", "15"])
 
     def test_slicing_table_create_new_table(self):
-        text_table = """
-        Label1    10    15
-        Label2   100   200
-        """
-        table = FlawedTable(text_table, byrows=False)   
+        text_table = """Label1    10    15
+        Label2   100   200"""
+        table = UnevenTable(text_table)   
 
         new_table = table[1:]
 
-        self.assertIsInstance(new_table, FlawedTable)
+        self.assertIsInstance(new_table, UnevenTable)
         self.assertEqual(len(new_table), 1)
-        
-    def test_create_table_by_columns_copes_with_short_rows(self):
-        text_table = """
-        Label0    5
-        Label1    10    15
-        Label2   100   200
-        """
-        
-        table = FlawedTable(text_table, byrows=False)
-        
-        self.assertEqual(len(table), 3)
-        self.assertEqual(table[0][0], "Label0")
-        self.assertEqual(table[0][2], "")
-        self.assertEqual(table[2][2], "200")
 
 
-    @unittest.skip
-    def test_clean_labels_removes_reference_numbers_from_front(self):
-        text_table = """
-           Label1   20   120
-        1) Label2   5    15
-           Label3   10   150
-        2) Label4    1    2
-        """
-        
-        table = FlawedTable(text_table)
-        table.clean_lables()
-        
-        self.assertEqual(table[0][0], "Label1")
-        self.assertEqual(table[1][0], "Label2")
-        self.assertEqual(table[2][0], "Label3")
-        self.assertEqual(table[3][0], "Lable4")
-    
-
-class FinancialStatementTest(unittest.TestCase):
-
-    def create_table_clean(self):
-        text_table = """
-        REVENUE      100  200
-        NET PROFIT    10   20
-        TAX            5    2
-        """
-        table = FlawedTable(text_table)
-        return table
-
-    def create_table_broken(self):
-        text_table = """
-        REVE NUE      100  200
-        N ET PROF IT   10   20
-        TA X            5    2
-        """
-        table = FlawedTable(text_table)
-        return table
+class RecordsCollectorTest(unittest.TestCase):
 
     def get_records_spec(self):
         spec = [
@@ -242,7 +180,7 @@ class FinancialStatementTest(unittest.TestCase):
             {"ngrams": [NGram("loss")]}
         ]
 
-        fs = FinancialStatement.__new__(FinancialStatement) # do not init
+        fs = RecordsCollector.__new__(RecordsCollector) # do not init
         words = fs.extract_words_from_spec(spec)
 
         self.assertCountEqual(
@@ -255,19 +193,136 @@ class FinancialStatementTest(unittest.TestCase):
             {"ngrams": [NGram("sales"), NGram("revenues"), NGram("cost")]}      
         ]
 
-        fs = FinancialStatement.__new__(FinancialStatement) # do not init
+        fs = RecordsCollector.__new__(RecordsCollector) # do not init
         bigrams = fs.extract_bigrams_from_spec(spec)
 
         self.assertIn(NGram('sales', 'revenues'), bigrams)
         self.assertIn(NGram('revenues', 'cost'), bigrams)
         self.assertIn(NGram('net', 'profit'), bigrams)
-
-    def test_clean_lables_fix_white_spaces(self):
-        table = self.create_table_broken()
+        
+    def test_find_potential_labels_for_broken_label(self):
+        fs = RecordsCollector.__new__(RecordsCollector) # do not init
+        
+        voc = ["net", "profit", "revenues", "income"]
+        labels = fs.find_potential_labels("vnetscprofitss", voc)
+        
+        self.assertEqual(len(labels), 1)
+        self.assertEqual(labels[0], "net profit")
+        
+    def test_adjust_table_fixes_broken_labels(self):
         spec = self.get_records_spec()
+        table = UnevenTable("""
+        REVE NUE      100  200
+        N ET PROF IT   10   20
+        TA X            5    2
+        """)
 
-        fs = FinancialStatement(table, spec)
+        rc = RecordsCollector.__new__(RecordsCollector)
+        table = rc.adjust_table(table, spec)
+        
+        self.assertEqual(table[1][0], "REVENUE")
+        self.assertEqual(table[2][0], "NET PROFIT")
+        self.assertEqual(table[3][0], "TA X") # no word in specs  
+        
+    def test_adjust_table_removes_reference_notes(self):
+        spec = self.get_records_spec()
+        table = UnevenTable("""
+              Label1   20   120
+        I.    Label2   5    15
+              Label3   10   150
+        II.   Label4    1    2
+        """)
+        
+        rc = RecordsCollector.__new__(RecordsCollector)
+        table = rc.adjust_table(table, spec)
 
-        self.assertEqual(table[0][0], "REVENUE")
-        self.assertEqual(table[1][0], "NET PROFIT")
-        self.assertEqual(table[2][0], "TA X") # no word in specs
+        self.assertEqual(table[1][0], "Label1")
+        self.assertEqual(table[2][0], "Label2")
+        self.assertEqual(table[3][0], "Label3")
+        self.assertEqual(table[4][0], "Label4")
+        
+    def test_identify_records_declared_in_specification(self):
+        spec = self.get_records_spec()
+        table = UnevenTable("""
+        REVENUE      100  200
+        NET PROFIT    10   20
+        TAX            5    2
+        """)
+    
+        rc = RecordsCollector(table, spec)
+
+        self.assertEqual(len(rc), 2) # two identified records
+        self.assertIn("REVENUE", rc)
+        self.assertIn("NET_PROFIT", rc)
+        self.assertNotIn("TAX", rc)
+        
+    def test_records_data_are_stored_as_values_of_dict(self):
+        spec = self.get_records_spec()
+        table = UnevenTable("""
+        REVENUE      100  200
+        NET PROFIT    10   20
+        TAX            5    2
+        """)
+    
+        rc = RecordsCollector(table, spec)
+
+        self.assertEqual(rc["REVENUE"], [100, 200])
+        self.assertEqual(rc["NET_PROFIT"], [10, 20])
+        
+    def test_empty_values_represented_by_minus_are_interpreated_as_zeros(self):
+        spec = self.get_records_spec()
+        table = UnevenTable("""
+        REVENUE      100    -
+        NET PROFIT    -    20
+        TAX            5    2
+        """)
+        
+        rc = RecordsCollector(table, spec)
+        
+        self.assertEqual(rc["REVENUE"][1], 0)
+        self.assertEqual(rc["NET_PROFIT"][0], 0)
+
+    def test_records_map_contains_rows_no_for_every_record(self):
+        spec = self.get_records_spec()
+        table = UnevenTable("""
+        REVENUE      100    -
+        NET PROFIT    -    20
+        TAX            5    2
+        """)
+        
+        rc = RecordsCollector(table, spec) 
+
+        self.assertEqual(rc.records_map["REVENUE"], (1,))
+        self.assertEqual(rc.records_map["NET_PROFIT"], (2,))
+        
+
+class FinancialStatementTest(unittest.TestCase):
+
+    def get_records_spec(self):
+        spec = [
+            {
+                "name": "NET_PROFIT", 
+                "ngrams": [NGram("net"), NGram("profit")] 
+            },
+            {
+                "name": "REVENUE",
+                "ngrams": [NGram("revenue")]
+            },
+            {
+                "name": "REVENUE",
+                "ngrams": [NGram("sales"), NGram("revenues")]
+            }      
+        ]
+        return spec
+
+    def test_test(self):
+        spec = self.get_records_spec()
+        text_table = """
+        REVENUE      100  200
+        NET PROFIT    10   20
+        TAX            5    2
+        """
+
+        fc = FinancialStatement(text_table, spec)
+
+        import pdb; pdb.set_trace()
