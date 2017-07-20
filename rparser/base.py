@@ -1,16 +1,20 @@
+from collections import Counter, UserDict, OrderedDict
+from collections.abc import Iterable
+from functools import reduce
+from copy import deepcopy
+import itertools
+import warnings
+import datetime
+import operator
+import numbers
+import pickle
 import io
 import re
-import numbers
-import operator
-import itertools
-from copy import deepcopy
-from functools import reduce
-from collections import Counter, UserDict, OrderedDict
 
 import numpy as np
 
-from rparser import nlp
 from rparser import util
+from rparser import nlp
 
 
 class PDFFileIO(io.BytesIO):
@@ -19,12 +23,9 @@ class PDFFileIO(io.BytesIO):
     io.BytesIO and provides similar interface.
     '''
     def __init__(self, path, first_page=None, last_page=None, **kwargs):
-        pdf_content, errors = util.read_pdf(
+        pdf_content, warnings = util.read_pdf(
             path, layout=True, first_page=first_page, last_page=last_page
-        ) 
-        if errors:
-            raise OSError(errors.decode(encoding="utf-8", errors="ignore"))
-            
+        )    
         super().__init__(pdf_content)
         self.path = path
         
@@ -64,19 +65,7 @@ class Document:
         return True
 
     def __getitem__(self, index):
-        cls = type(self)
-        if isinstance(index, slice):
-            instance = cls(
-                io.StringIO(self.newpage.join(self.pages[index])), 
-                newpage=self.newpage, newline=self.newline
-            )
-            instance.info = self.info
-            return instance
-        elif isinstance(index, numbers.Integral):
-            return self.pages[index]
-        else:
-            msg = "{cls.__name__} indices must be integers"
-            raise TypeError(msg.format(cls=cls))
+        return self.pages[index]
 
     @property
     def rows(self):
@@ -158,27 +147,28 @@ class RecordsCollector(UserDict):
     record_spec_id = "name" 
     
     def __init__(self, table, spec, voc=None):
-        self.table = self.adjust_table(table, spec, voc)
-        self.records = self.identify_records(self.table, spec)
+        adjusted_table = self.adjust_table(deepcopy(table), spec, voc)
+        records = self.identify_records(adjusted_table, spec)
+        self.records = self.remove_column_with_note_reference(records)
         self.records_map = self.map_to_rows(self.records)
-        # self.records_source = self.map_to_source(self.records, self.table)
         self.data = self.transform_to_dict(self.records)
         
     def adjust_table(self, table, spec, voc=None):
-        voc = list(voc or list())
-        voc.extend(self.extract_words_from_spec(spec))
+        voc = set(voc or list())
+        voc.update(self.extract_words_from_spec(spec))
         bigrams = self.extract_bigrams_from_spec(spec)
-        
-        table = self.remove_note_references(deepcopy(table))
+
+        table = self.remove_leading_note_references(table)
         table = self.fix_white_spaces_in_labels(table, voc, bigrams)
+
         return table
         
     def extract_words_from_spec(self, spec):
         words = [
             str(ngram).split() for item in spec for ngram in item["ngrams"]
         ]
-        unique_words = set(reduce(operator.add, words))
-        return list(unique_words)
+        unique_words = set(reduce(operator.add, words, list()))
+        return unique_words
            
     def extract_bigrams_from_spec(self, spec):
         zip_ngrams = map(
@@ -189,7 +179,7 @@ class RecordsCollector(UserDict):
             bigrams.update(map(lambda ngram: ngram[0] + ngram[1], item))
         return bigrams 
         
-    def remove_note_references(self, table):
+    def remove_leading_note_references(self, table):
         '''
         In some rows the leading term is note reference. We want to have labels
         at first positions, so note references have to be removed.
@@ -247,11 +237,11 @@ class RecordsCollector(UserDict):
                     # Choose the label with the largest number of 
                     # identified bigrams
                     labels_bigrams = [
-                        (index, set(find_ngrams(label, n=2))) 
+                        (index, set(nlp.find_ngrams(label, n=2))) 
                         for index, label in enumerate(pot_labels)
                     ]
                     labels_bigrams = [ 
-                        bigrams
+                        (index, bigrams)
                         for index, bigrams in labels_bigrams if len(bigrams) > 0    
                     ]
                     
@@ -276,10 +266,7 @@ class RecordsCollector(UserDict):
         stack = [(list(), sentence)]
         results = list()
     
-        re_voc = [
-            re.compile("^" + word, flags=re.IGNORECASE) 
-            for word in voc
-        ]
+        re_voc = [ re.compile("^" + word, flags=re.IGNORECASE) for word in voc ]
     
         while stack:
             tokens, sentence = stack.pop()
@@ -306,6 +293,9 @@ class RecordsCollector(UserDict):
         self, table, recspec, min_csim=0.85, require_numbers=True, 
         convert_numbers=True
     ):
+        if not recspec: # specification is empty
+            return list()
+
         stack = list()
         for index, row in enumerate(table):
             if len(row) == 0: continue
@@ -343,7 +333,7 @@ class RecordsCollector(UserDict):
                         ext_csims = list(map(
                             lambda spec: (
                                 spec[self.record_spec_id], 
-                                cos_similarity(spec["ngrams"], ext_label)
+                                nlp.cos_similarity(spec["ngrams"], ext_label)
                             ), 
                             recspec
                         ))
@@ -401,9 +391,7 @@ class RecordsCollector(UserDict):
             max_csim = max(csims, key=operator.itemgetter(1))[1]
             if max_csim > min_csim:
                 spec_id = sorted(
-                    ((id, csim) for id, csim in csims 
-                        #if (abs(csim - max_csim) < 1e-10 and csim > min_csim)),
-                        if csim > min_csim),
+                    ((id, csim) for id, csim in csims if csim > min_csim),
                     key = operator.itemgetter(1)
                 )
                 if convert_numbers:
@@ -412,6 +400,9 @@ class RecordsCollector(UserDict):
                     (spec_id, numbers, rows_indices)
                 )
     
+        if len(ident_records) == 0: # not record have been identified
+            return list()
+
         # Distirbution of rows
         rows_dist = reduce(
             operator.add, map(operator.itemgetter(-1), ident_records)
@@ -422,7 +413,7 @@ class RecordsCollector(UserDict):
         taken_keys = set()
         taken_rows = list()
         final_records = list()
-    
+
         while True:
             data = list(
                 (label.pop(), numbers, index, row_no) 
@@ -449,17 +440,110 @@ class RecordsCollector(UserDict):
     
         return sorted(final_records, key=lambda item: item[2][0], reverse=False)
 
+    def remove_column_with_note_reference(self, records):
+        if len(records) == 0:
+            return records
+
+        note_column = None 
+
+        # Select numbers from records
+        rows = list(map(operator.itemgetter(1), records))
+
+        # Select rows 
+        max_freq = max(map(len, rows))
+        mode_freq = Counter(map(len, rows)).most_common(1)[0][0]
+
+        if max_freq < 3: # there are always at least two columns
+            return records
+
+        full_rows = [row for row in rows if len(row) == max_freq]
+        mode_rows = [row for row in rows if len(row) == mode_freq]
+
+        last_col_index = next(map(len, full_rows)) - 1
+
+        # Is there any column with more None than numbers ?
+        temp = [
+            [ 1 if item is None else 0 for item in row ]
+            for row in full_rows
+        ]
+        sum_of_nones = list(reduce(lambda x, y: map(operator.add, x, y), temp))
+        max_sum = max(enumerate(sum_of_nones), key=operator.itemgetter(1))
+        if max_sum[1] > len(temp)*0.5:
+            # note column have to be one of the marginal columns
+            if max_sum[0] == 0 or max_sum[0] == last_col_index:
+                note_column = max_sum[0]
+
+        # No, there is not. Try something different.
+        if not note_column:  
+
+            if len(full_rows) > 5:
+
+                data = np.array([ 
+                    row for row in full_rows 
+                    if all(item is not None for item in row) 
+                ])
+
+                sv_cols = [ #single value columns
+                    index for index, col in enumerate(data.T.tolist()) 
+                    if len(set(col)) == 1 
+                ]
+
+                if sv_cols and (sv_cols[0] == 0 or sv_cols[0] == last_col_index):
+                    note_column = sv_coll
+                else: 
+                    #make decision on the base of correlation
+                    corr = np.corrcoef(data, rowvar=0)
+                    corr_mean_first_col = np.mean(corr[1:,0])
+                    corr_mean_last_col = np.mean(corr[:-1,-1])
+
+                    # Decision Rule
+                    if corr_mean_first_col < 0.25:
+                        note_column = 0
+                    elif corr_mean_last_col < 0.25:
+                        note_column = last_col_index
+
+            elif max_freq != mode_freq: # small number of full rows
+                # concatenate full rows and mode rows
+                data_left = np.array(
+                    mode_rows + list(map(lambda x: x[0:mode_freq], full_rows))
+                )
+                data_right = np.array(
+                    mode_rows + list(map(lambda x: x[-mode_freq:], full_rows))
+                )
+
+                corr_left = np.corrcoef(data_left, rowvar=0)[0,1]
+                corr_right = np.corrcoef(data_right, rowvar=0)[0,1]
+
+                if corr_left < corr_right:
+                    note_column = 0
+                else:
+                    note_column = last_col_index
+
+
+        if note_column is not None: # There is a column with note reference.
+            ncols = max_freq - 1
+            new_records = list()
+            if note_column == 0:
+                for item, nums, page in records:
+                    new_records.append((item, nums[-ncols:], page))
+            else:
+                for item, nums, page in records:
+                    new_records.append((item, nums[0:ncols], page))
+            records = new_records
+
+        return records
+
     def map_to_rows(self, records):
         data = OrderedDict()
         for (rid, rsim), values, rows in records:
             data[rid] = rows
         return data
 
-    # def map_to_source(self, records, table):
-    #     data = OrderedDict()
-    #     for (rid, rsim), values, rows in records:
-    #         data[rid] = '\n'.join(table[row_no] for row_no in rows)
-    #     return data
+    def shift_records_map(self, delta):
+        for rid in self.records_map:
+            self.records_map[rid] = tuple(
+                row_no + delta for row_no in self.records_map[rid]
+            )
 
     def transform_to_dict(self, records):
         data = OrderedDict()
@@ -472,27 +556,34 @@ class RecordsCollector(UserDict):
         return max(map(len, self.values()))
 
 
-class FinancialStatement:
-        
-    def __init__(self, text, spec, timerange=None, timestamp=None, voc=None):
-        self.table = UnevenTable(text)
-        self.data = RecordsCollector(self.table, spec, voc)
+class FinancialStatement(RecordsCollector):
+    '''
+    Enhance RecordsCollector with additional functionalities: identification of
+    records timeranges and timestamps and identification of unit of measure. 
+    '''
+    
+    def __init__(
+        self, text, spec, voc=None, timerange=None, timestamp=None,
+        remove_nonascii=True
+    ):
+        if remove_nonascii:
+            text = util.remove_non_ascii(text)
+        super().__init__(UnevenTable(text), spec, voc)
         self.names = self.identify_names(
-            self.data.records, text, timerange, timestamp
+            text, self.records_map, ncols=max(map(len, self.values())), 
+            report_timerange=timerange, report_timestamp=timestamp
         )
         self.uom = self.identify_unit_of_measure(text)
-        self.records_map = self.data.records_map
         
-    def identify_names(self, records, text, timerange=None, timestamp=None):
+    def identify_names(
+        self, text, records_map, ncols, 
+        report_timerange=None, report_timestamp=None
+    ):
         '''
         Update names. Takes into account additional information like 
         timerange and timestamp of the report.
         '''
-        rows_with_records = reduce(
-            operator.add, 
-            itertools.chain(map(operator.itemgetter(-1), records))
-        )
-
+        rows_with_records = reduce(operator.add, records_map.values())
         min_vip_rows = max(min(rows_with_records) - 10, 0)
         rows_with_labels = list(range(min_vip_rows, min(rows_with_records)))
         text_rows = util.split_text_into_rows(text)
@@ -518,8 +609,7 @@ class FinancialStatement:
         tranges = list(map(
             operator.itemgetter(-1), 
             [[None] + tr for tr in map(util.determine_timerange, cols)]
-        ))[-records.ncols:]
-
+        ))[-ncols:]
 
         full_dates = [ 
             list(filter(lambda x: x[-1], dt))
@@ -535,14 +625,15 @@ class FinancialStatement:
                 lambda item: item[-1][0],
                 [dt for dt in map(util.find_dates, cols) 
                     if dt and dt[-1][0][2] in (28, 29, 30, 31)] 
-            ))[-records.ncols:]
+            ))[-ncols:]
 
         # Find timeranges and timestamps by rows if search by columns
         # have failed
 
         if not (all(map(bool, tranges)) and all(map(bool, dates)) 
                 and all(map(lambda date: all(map(bool, date)), dates))
-                and len(tranges) == records.ncols and len(dates) == records.ncols):
+                and len(tranges) == ncols and len(dates) == ncols):
+
             rows = text_labels.split("\n")
             temp_tranges = (
                 [ item for item in trange if item > 2] 
@@ -550,7 +641,7 @@ class FinancialStatement:
                     bool, map(util.determine_timerange, reversed(rows))
                 )
             )
-            rows_tranges = next(temp_tranges, [])[-records.ncols:]
+            rows_tranges = next(temp_tranges, [])[-ncols:]
       
             rows_dates = list(map(
                 operator.itemgetter(0), 
@@ -563,16 +654,16 @@ class FinancialStatement:
 
             if (all(map(bool, rows_tranges)) and all(map(bool, rows_dates))
                     and len(rows_dates) == len(rows_tranges) 
-                    and len(rows_dates) == records.ncols):
+                    and len(rows_dates) == ncols):
                 tranges = rows_tranges
                 dates = rows_dates
             else:
                 # timestamps in rows seem to be more reliable
-                if (len(rows_dates) == records.ncols 
+                if (len(rows_dates) == ncols 
                     and all(map(bool, rows_dates))
                     and (
                         not all(map(bool, dates)) 
-                        or len(dates) != records.ncols
+                        or len(dates) != ncols
                         or (
                             all(all(map(bool, date)) for date in rows_dates)
                             and not all(all(map(bool, date)) for date in dates)
@@ -600,15 +691,15 @@ class FinancialStatement:
         coltrs = list()
         for trange, tms in zip(tranges, dates):
             if not trange:
-                trange = timerange
+                trange = report_timerange
             if not all(map(bool, tms)):
                 year, month, day = tms
-                if not year:
-                    year = timestamp.year
+                if not year and report_timestamp:
+                    year = report_timestamp.year
                 if not month and not day:
-                    if timestamp:
-                        month = timestamp.month
-                        day = timestamp.day
+                    if report_timestamp:
+                        month = report_timestamp.month
+                        day = report_timestamp.day
                     else:
                         month = 12
                         day = 31
@@ -663,8 +754,10 @@ class SelfSearchingPage:
     min_probe_rate = 0.25 # coefficient for filtiring adjecant pages to page
     # with highest probability
 
-    def __init__(self, modelpath, storage_name = None, use_number_ngram=True, 
-                 use_page_ngram=True):
+    def __init__(
+        self, modelpath, storage_name = None, use_number_ngram=True, 
+        use_page_ngram=True
+    ):
         self.storage_name = storage_name
         self.use_number_ngram = use_number_ngram
         self.use_page_ngram = use_page_ngram
@@ -676,9 +769,9 @@ class SelfSearchingPage:
             self.model = None
 
     def _extract_ngrams(self, text, n=2):
-        freq = Counter(find_ngrams(text, n))
+        freq = Counter(nlp.find_ngrams(text, n))
         if self.use_number_ngram:
-            freq[NGram("fake#number")] = len(util.find_numbers(text))
+            freq[nlp.NGram("fake#number")] = len(util.find_numbers(text))
         return freq
 
     def _select_ngrams(self, text_ngrams):
@@ -696,7 +789,7 @@ class SelfSearchingPage:
         ngrams_by_pages = list(map(self._extract_ngrams, doc))
         if self.use_page_ngram: # Append fake page ngram for every page
             for index, ngrams in enumerate(ngrams_by_pages):
-                ngrams[NGram("fake#page")] = index / len(doc)
+                ngrams[nlp.NGram("fake#page")] = index / len(doc)
         ngrams_freq = map(self._select_ngrams, ngrams_by_pages)
         prob_by_pages = self.model["clf"].predict_proba(
             np.asarray(list(ngrams_freq))
@@ -717,11 +810,11 @@ class SelfSearchingPage:
         # Decrease the probability for pages containing selected set of 
         # financial data.
         for index, ngrams_page in enumerate(ngrams_by_pages):
-            if ((NGram("wybrane", "dane") in ngrams_page 
-                and NGram("dane", "finansowe") in ngrams_page) or
-                (NGram("wybrane", "skonsolidowane") in ngrams_page 
-                and NGram("skonsolidowane", "dane") in ngrams_page
-                and NGram("dane", "finansowe") in ngrams_page)
+            if ((nlp.NGram("wybrane", "dane") in ngrams_page 
+                and nlp.NGram("dane", "finansowe") in ngrams_page) or
+                (nlp.NGram("wybrane", "skonsolidowane") in ngrams_page 
+                and nlp.NGram("skonsolidowane", "dane") in ngrams_page
+                and nlp.NGram("dane", "finansowe") in ngrams_page)
             ):
                 # decrease the probabilty
                 prob_by_pages[index] = prob_by_pages[index] * 0.5
@@ -757,29 +850,46 @@ class FinancialReport(Document):
     # - cfs - cash flow statement
     # - ics - income statement
     
-    ics_pages = SelfSearchingPage("parser/cls/ics.pkl", "ics_pages")
-    bls_pages = SelfSearchingPage("parser/cls/balance.pkl", "bls_pages")
-    cfs_pages = SelfSearchingPage("parser/cls/cfs.pkl", "cfs_pages")
+    ics_pages = SelfSearchingPage("rparser/cls/ics.pkl", "ics_pages")
+    bls_pages = SelfSearchingPage("rparser/cls/bls.pkl", "bls_pages")
+    cfs_pages = SelfSearchingPage("rparser/cls/cfs.pkl", "cfs_pages")
 
-    def __init__(self, *args, consolidated=True, timestamp=None, 
-                 timerange=None, spec = None, voc=None, cspec=None, **kwargs):
+    def __init__(
+        self, *args, consolidated=True, timestamp=None, timerange=None, 
+        records_spec = None, companies_spec = None, voc=None, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.consolidated = consolidated
         self.timestamp = timestamp or self.recognize_timestamp()
         self.timerange = timerange or self.recognize_timerange()
-        self.spec = spec or dict()
+        self.records_spec = records_spec or dict()
         self.voc = voc
-        self.company = self.recognize_company(cspec)
+        self.company = self.recognize_company(companies_spec)
 
     def get_bls_spec(self):
-        return self.spec.get("bls", None)
+        return self.records_spec.get("bls", None)
     
     def get_ics_spec(self):
-        return self.spec.get("ics", None)
+        return self.records_spec.get("ics", None)
     
-    def eget_cfs_spec(self):
-        return self.spec.get("cfs", None)
-    
+    def get_cfs_spec(self):
+        return self.records_spec.get("cfs", None)
+        
+    def get_voc(self):
+        voc = set(self.voc or list())
+        records_specs = (self.get_bls_spec(), self.get_cfs_spec(), 
+                         self.get_ics_spec())
+        for spec in filter(bool, records_specs):
+            voc.update(self.extract_words_from_spec(spec))
+        return voc
+
+    def extract_words_from_spec(self, spec):
+        words = [
+            str(ngram).split() for item in spec for ngram in item["ngrams"]
+        ]
+        unique_words = set(reduce(operator.add, words))
+        return unique_words
+        
     @property
     def records(self):
         recs = dict()
@@ -789,6 +899,30 @@ class FinancialReport(Document):
             except AttributeError:
                 pass
         return recs  
+        
+    @property 
+    def cfs(self):
+        if not hasattr(self, "_cfs"):
+            self._cfs = self.create_financial_statement(
+                self.cfs_pages, self.get_cfs_spec()
+            )
+        return self._cfs
+
+    @property
+    def ics(self):
+        if not hasattr(self, "_ics"):
+            self._ics = self.create_financial_statement(
+                self.ics_pages, self.get_ics_spec()
+            )
+        return self._ics
+
+    @property
+    def bls(self):
+        if not hasattr(self, "_bls"):
+            self._bls = self.create_financial_statement(
+                self.bls_pages, self.get_bls_spec()
+            )
+        return self._bls
 
     @property
     def records_map(self):
@@ -800,61 +934,16 @@ class FinancialReport(Document):
                 pass
         return rmap
 
-    @property
-    def rows_map(self):
-        rmap = dict()
-        for stm in (self.bls, self.ics, self.cfs):
-            try:
-                rmap.update(stm.rows_map)
-            except AttributeError:
-                pass
-        return rmap
-
-    @property
-    def records_source(self):
-        isource = dict()
-        for stm in (self.bls, self.ics, self.cfs):
-            try:
-                isource.update(stm.records_source)
-            except AttributeError:
-                pass
-        return isource         
-
-    @property 
-    def cfs(self):
-        if not hasattr(self, "_cfs"):
-            self._cfs = self.extract_records(
-                self.cfs_pages, self.get_cfs_spec(), self.voc
-            )
-        return self._cfs
-
-    @property
-    def ics(self):
-        if not hasattr(self, "_ics"):
-            self._ics = self.extract_records(
-                self.ics_pages, sefl.get_ics_spec(), self.voc
-            )
-        return self._ics
-
-    @property
-    def bls(self):
-        if not hasattr(self, "_bls"):
-            self._bls = self.extract_records(
-                self.bls_pages, self.get_bls_spec(), self.voc
-            )
-        return self._bls
-
-    def recognize_timerange(self):
-        '''Recognize timerange of financial report.'''
-        sa_tokens = util.remove_non_ascii("pĂłĹ‚roczny pĂłĹ‚roczne").split()
+    def recognize_timerange(self, max_page=3):
+        sa_tokens = util.remove_non_ascii("półroczny półroczne").split()
         qr_tokens = util.remove_non_ascii(
-                        "kwartalny kwartaĹ‚ kwartaĹ‚y kwartalne").split()
+                        "kwartalny kwartał‚ kwartały kwartalne").split()
         # semiannual if not quarterly
-        sa2_tokens = util.remove_non_ascii("Ĺ›rĂłdroczne").split()
+        sa2_tokens = util.remove_non_ascii("śródroczne").split()
 
         # Make decision on the base of the first three pages
-        tokens = set(map(operator.itemgetter(0), find_ngrams(
-            '\n'.join(self[0:3]), n=1, remove_non_alphabetic=True,
+        tokens = set(map(operator.itemgetter(0), nlp.find_ngrams(
+            '\n'.join(self[0:max_page]), n=1, remove_non_alphabetic=True,
             min_len=min(map(len, itertools.chain(qr_tokens, sa_tokens))),
             return_tuples=True
         )))
@@ -883,8 +972,7 @@ class FinancialReport(Document):
         text = re.sub(r"\bS\.?A(?:\.|\b)", "SA", text, flags=re.IGNORECASE)
 
         # 1. Make decision on the base of repr.
-
-        cres = list() # list of tuples
+        cres = list() 
         for comp in cspec:
             cfield = re.sub(r"\bS\.?A(?:\.|\b)", "SA", comp[field], 
                             flags=re.IGNORECASE).rstrip().lstrip()
@@ -894,15 +982,15 @@ class FinancialReport(Document):
             ))
         cres = sorted(cres, key=lambda x: x[1], reverse=True)
 
-        if cres[0][1] > 0: # any match
+        if cres[0][1] > 0: 
             isin = cres[0][0]
         else: # 2. Otherwise try modified version of TF-IDF
             text = '\n'.join(self)
             text = re.sub(r"\bS\.?A(?:\.|\b)", "SA", text, flags=re.IGNORECASE)
-            text_voc = Counter(find_ngrams(text, n=1, min_len=2))
+            text_voc = Counter(nlp.find_ngrams(text, n=1, min_len=2))
             names_ngrams = [
                 (company["isin"], 
-                 find_ngrams(company["repr"], n=1, min_len=2))
+                 nlp.find_ngrams(company["repr"], n=1, min_len=2))
                 for company in cspec
             ]
             names_voc = Counter(
@@ -918,20 +1006,19 @@ class FinancialReport(Document):
         return next(filter(lambda cp: cp["isin"] == isin, cspec)) 
 
     def recognize_timestamp(self):
-        '''Recognize timestamp of financial report.'''
         text = util.remove_non_ascii('\n'.join(self))
         timestamps = list()
 
         for timestamp, _, flag in util.find_dates(text, re_days=r"(28|29|30|31)"):
             if flag:    
                 try:
-                    timestamps.append(datetime(
+                    timestamps.append(datetime.date(
                         year=timestamp[0], month=timestamp[1], day=timestamp[2]
                     ))
                 except ValueError:
-                    pass # ignore cray dates
+                    pass # ignore crazy dates
 
-        if not timestamps: # check for availability of timestamps
+        if not timestamps:
             return None
 
         # Remove timestamps from years different than the most frequent year
@@ -948,28 +1035,30 @@ class FinancialReport(Document):
         timestamps = [ timestamp for timestamp in timestamps
                                  if timestamp.year == report_year ]
         
-        if not timestamps: # check for availability of timestamps
+        if not timestamps:
             return None
 
         # Remove timestamps older than creation date
-        creation_date = self.info.get("CreationDate", None) \
-                            or self.info.get("ModDate", None)
-        if creation_date: 
-            creation_date = datetime( # get rid of hours, minutes and seconds
-                creation_date.year, creation_date.month, creation_date.day
-            )
+        if hasattr(self, "info") and self.info:
+            creation_date = self.info.get("CreationDate", None) \
+                                or self.info.get("ModDate", None)
+            if creation_date: 
+                creation_date = datetime.date(
+                    creation_date.year, creation_date.month, creation_date.day
+                )
 
-            timestamps = [ timestamp for timestamp in timestamps
-                                     if timestamp < creation_date ]
+                timestamps = [ 
+                    timestamp for timestamp in timestamps
+                    if timestamp < creation_date 
+                ]
 
-        if not timestamps: # check for availability of timestamps
+        if not timestamps: 
             return None
 
-        # Select the most common timestamp
         report_timestamp = Counter(timestamps).most_common(1)[0][0]
         return report_timestamp
 
-    def extract_records(self, pages, spec, voc):
+    def create_financial_statement(self, pages, spec):
         if not spec: # empty spec, nothing can be done
             warnings.warn("No specification.")
             return None
@@ -986,25 +1075,15 @@ class FinancialReport(Document):
         for page in self[:min(pages)]:
             preceeding_rows_count += len(page.split("\n"))
 
-        records = RecordsCollector(
-            self.table_cls(text), spec, voc=voc, 
-            first_row_number=preceeding_rows_count
+        statement = FinancialStatement(
+            text, spec, voc=self.get_voc(), 
+            timerange=self.timerange, timestamp=self.timestamp
         )
-
-        records = RecordsExtractor(
-            text, spec, voc=voc, first_row_number=preceeding_rows_count
-        )
-        try:
-            records.update_names(self.timerange, self.timestamp)
-        except Exception: # not vital feature, ignore and show warning
-            warnings.warn(
-                "Unabel to determine names of columns: '{!r}'".format(self)
-            )
-
-        return records
+        statement.shift_records_map(delta=preceeding_rows_count)
+        
+        return statement
 
     def as_dict(self):
-        '''Convert report to dictionary.'''
         data = dict()
         data["company"] = self.company
         data["timerange"] = self.timerange
@@ -1015,7 +1094,10 @@ class FinancialReport(Document):
         if self.ics:
             data_ics["units_of_measure"] = self.ics.uom
             data_ics["columns"] = [
-                {"timerange": timerange, "timestamp": datetime(year, month, day)}
+                {
+                    "timerange": timerange, 
+                    "timestamp": datetime.date(year, month, day)
+                }
                 for timerange, (year, month, day) in self.ics.names
             ]
             data_ics["records"] = list()
@@ -1030,7 +1112,10 @@ class FinancialReport(Document):
         if self.bls:
             data_bls["units_of_measure"] = self.bls.uom
             data_bls["columns"] = [
-                {"timerange": timerange, "timestamp": datetime(year, month, day)}
+                {
+                    "timerange": timerange, 
+                    "timestamp": datetime.date(year, month, day)
+                }
                 for timerange, (year, month, day) in self.bls.names
             ]
             data_bls["records"] = list()
@@ -1045,7 +1130,10 @@ class FinancialReport(Document):
         if self.cfs:
             data_cfs["units_of_measure"] = self.cfs.uom
             data_cfs["columns"] = [
-                {"timerange": timerange, "timestamp": datetime(year, month, day)}
+                {
+                    "timerange": timerange, 
+                    "timestamp": datetime.date(year, month, day)
+                }
                 for timerange, (year, month, day) in self.cfs.names
             ]
             data_cfs["records"] = list()

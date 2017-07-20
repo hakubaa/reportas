@@ -743,7 +743,7 @@ finrecords = [
         ]        
     },
 ################################################################################
-# NET AND LOSS STATEMENT - NLS
+# NET AND LOSS STATEMENT - ICS
 ################################################################################
 # acp_2010_q1.pdf
 # ambra_2008_y.pdf
@@ -758,7 +758,7 @@ finrecords = [
 # ursus_2016_y.pdf
 
     {
-        "statement": "nls", "name": "NLS#REVENUESFROMSALE",
+        "statement": "ics", "name": "ICS#REVENUESFROMSALE",
         "repr": [
             {
                 "lang": "PL",
@@ -788,7 +788,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#REVENUESFROMSALESOFPRODUCTS",
+        "statement": "ics", "name": "ICS#REVENUESFROMSALESOFPRODUCTS",
         "repr": [
             {
                 "lang": "PL",
@@ -805,7 +805,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#REVENUESFROMSALESOFSERVICES",
+        "statement": "ics", "name": "ICS#REVENUESFROMSALESOFSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -814,7 +814,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#REVENUESFROMSALEOFGOODS",
+        "statement": "ics", "name": "ICS#REVENUESFROMSALEOFGOODS",
         "repr": [
             {
                 "lang": "PL",
@@ -831,7 +831,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#REVENESFROMSALESOFPRODUCTSANDSERVICES",
+        "statement": "ics", "name": "ICS#REVENESFROMSALESOFPRODUCTSANDSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -848,7 +848,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTOFSALE",
+        "statement": "ics", "name": "ICS#COSTOFSALE",
         "repr": [
             {
                 "lang": "PL",
@@ -873,7 +873,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTOFMATERIALS",
+        "statement": "ics", "name": "ICS#COSTOFMATERIALS",
         "repr": [
             {
                 "lang": "PL",
@@ -882,7 +882,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTOFGOODS",
+        "statement": "ics", "name": "ICS#COSTOFGOODS",
         "repr": [
             {
                 "lang": "PL",
@@ -891,7 +891,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTOFGOODSANDMATERIALS",
+        "statement": "ics", "name": "ICS#COSTOFGOODSANDMATERIALS",
         "repr": [
             {
                 "lang": "PL",
@@ -908,7 +908,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTOFPRODUCTS",
+        "statement": "ics", "name": "ICS#COSTOFPRODUCTS",
         "repr": [
             {
                 "lang": "PL",
@@ -921,7 +921,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTOFSERVICES",
+        "statement": "ics", "name": "ICS#COSTOFSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -930,7 +930,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#COSTPOFRODUCTSANDSERVICES",
+        "statement": "ics", "name": "ICS#COSTPOFRODUCTSANDSERVICES",
         "repr": [
             {
                 "lang": "PL",
@@ -943,7 +943,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#GROSSPROFITONSALES",
+        "statement": "ics", "name": "ICS#GROSSPROFITONSALES",
         "repr": [
             {
                 "lang": "PL",
@@ -960,7 +960,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#SELLINGCOSTS",
+        "statement": "ics", "name": "ICS#SELLINGCOSTS",
         "repr": [
             {
                 "lang": "PL",
@@ -973,7 +973,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#ADMINISTRATIVECOSTS",
+        "statement": "ics", "name": "ICS#ADMINISTRATIVECOSTS",
         "repr": [
             {
                 "lang": "PL",
@@ -985,8 +985,8 @@ finrecords = [
             }
         ]
     },
-    { # NLS#COSTSELLING + NLS#COSTOFMANAGEMENT"
-        "statement": "nls", "name": "NLS#SELLINGANDADMINISTRATIVECOSTS",
+    { # ICS#COSTSELLING + ICS#COSTOFMANAGEMENT"
+        "statement": "ics", "name": "ICS#SELLINGANDADMINISTRATIVECOSTS",
         "repr": [
             {
                 "lang": "PL",
@@ -995,7 +995,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#NETPROFITONSALE",
+        "statement": "ics", "name": "ICS#NETPROFITONSALE",
         "repr": [
             {
                 "lang": "PL",
@@ -1016,7 +1016,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#OPERATINGREVENUES",
+        "statement": "ics", "name": "ICS#OPERATINGREVENUES",
         "repr": [
             {
                 "lang": "PL",
@@ -1025,7 +1025,7 @@ finrecords = [
         ]
     },  
     {
-        "statement": "nls", "name": "NLS#OPERATINGEXPENSES",
+        "statement": "ics", "name": "ICS#OPERATINGEXPENSES",
         "repr": [
             {
                 "lang": "PL",
@@ -1034,7 +1034,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "nls", "name": "NLS#PROFITONOPERATINGACTIVITIES",
+        "statement": "ics", "name": "ICS#PROFITONOPERATINGACTIVITIES",
         "repr": [
             {
                 "lang": "PL",
@@ -1047,7 +1047,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "nls", "name": "NLS#FINANCIALREVENUES",
+        "statement": "ics", "name": "ICS#FINANCIALREVENUES",
         "repr": [
             {
                 "lang": "PL",
@@ -1056,7 +1056,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#FINANCIALEXPENSES",
+        "statement": "ics", "name": "ICS#FINANCIALEXPENSES",
         "repr": [
             {
                 "lang": "PL",
@@ -1065,7 +1065,7 @@ finrecords = [
         ]
     },   
     {
-        "statement": "nls", "name": "NLS#PROFITONRELATEDPARTIES",
+        "statement": "ics", "name": "ICS#PROFITONRELATEDPARTIES",
         "repr": [
             {
                 "lang": "PL",
@@ -1094,7 +1094,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#NETABANDONED",
+        "statement": "ics", "name": "ICS#NETABANDONED",
         "repr": [
             {
                 "lang": "PL",
@@ -1111,7 +1111,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#GROSSPROFIT",
+        "statement": "ics", "name": "ICS#GROSSPROFIT",
         "repr": [
             {
                 "lang": "PL",
@@ -1132,7 +1132,7 @@ finrecords = [
         ]
     },  
     {
-        "statement": "nls", "name": "NLS#INCOMETAX",
+        "statement": "ics", "name": "ICS#INCOMETAX",
         "repr": [
             {
                 "lang": "PL",
@@ -1149,7 +1149,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "nls", "name": "NLS#NETPROFIT",
+        "statement": "ics", "name": "ICS#NETPROFIT",
         "repr": [
             {
                 "lang": "PL",
@@ -1174,7 +1174,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#NETPROFITCONT",
+        "statement": "ics", "name": "ICS#NETPROFITCONT",
         "repr": [
             {
                 "lang": "PL",
@@ -1191,7 +1191,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#NETPROFITTOOWNERS",
+        "statement": "ics", "name": "ICS#NETPROFITTOOWNERS",
         "repr": [
             {
                 "lang": "PL",
@@ -1212,7 +1212,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "nls", "name": "NLS#NETPROFITTONONOWNERS",
+        "statement": "ics", "name": "ICS#NETPROFITTONONOWNERS",
         "repr": [
             {
                 "lang": "PL",
@@ -1241,7 +1241,7 @@ finrecords = [
         ]
     },   
     {
-        "statement": "nls", "name": "NLS#SHARESCOUNT",    
+        "statement": "ics", "name": "ICS#SHARESCOUNT",    
         "repr": [
             {
                 "lang": "PL",
@@ -1262,7 +1262,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#EXTRAORDINARYGAINS",
+        "statement": "ics", "name": "ICS#EXTRAORDINARYGAINS",
         "repr": [
             {
                 "lang": "PL",
@@ -1271,7 +1271,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#EXTRAORDINARYLOSSES",
+        "statement": "ics", "name": "ICS#EXTRAORDINARYLOSSES",
         "repr": [
             {
                 "lang": "PL",
@@ -1280,7 +1280,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "nls", "name": "NLS#RESULTONEXTRAORDINARYEVENTS",
+        "statement": "ics", "name": "ICS#RESULTONEXTRAORDINARYEVENTS",
         "repr": [
             {
                 "lang": "PL",

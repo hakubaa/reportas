@@ -1,7 +1,7 @@
 import unittest
 
 
-from parser.nlp import cos_similarity, NGram
+from rparser.nlp import cos_similarity, NGram
 
 
 class CosSimilarityTest(unittest.TestCase):

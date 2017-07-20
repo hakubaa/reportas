@@ -132,7 +132,7 @@ class RecordType(VersionedModel):
     statement = Column(String, nullable=False)
 
     __table_args__ = (
-        CheckConstraint("statement in ('nls', 'bls', 'cfs')"),  
+        CheckConstraint("statement in ('ics', 'bls', 'cfs')"),  
     )
 
     def __repr__(self):

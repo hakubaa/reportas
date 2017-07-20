@@ -59,7 +59,7 @@ def upload_records_spec(session, spec):
 
 
 def get_records_reprs(session, statement, lang="PL", n=1, min_len=2, 
-                         remove_non_alphabetic=True):
+                      remove_non_alphabetic=True, record_spec_id="name"):
     '''Get list of items representations for selected statement.'''
     spec = list()
     records = session.query(RecordTypeRepr).join(RecordType).\
@@ -71,7 +71,9 @@ def get_records_reprs(session, statement, lang="PL", n=1, min_len=2,
             putil.remove_non_ascii(record.value), n=n, min_len=min_len,
             remove_non_alphabetic=remove_non_alphabetic
         )
-        spec.append(dict(id=record.rtype.name, ngrams=nigrams))
+        spec.append(
+        	dict(((record_spec_id, record.rtype.name),("ngrams", nigrams)))
+        )
 
     return spec
 

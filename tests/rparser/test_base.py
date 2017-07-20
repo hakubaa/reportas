@@ -1,16 +1,17 @@
-import unittest
 from unittest import mock
+from datetime import date
+import unittest
 import io
 
 from rparser.base import (
     PDFFileIO, Document, UnevenTable, RecordsCollector,
-    FinancialStatement
+    FinancialStatement, FinancialReport
 )
 from rparser.nlp import NGram
 
 
-@mock.patch("rparser.models.util.pdfinfo", return_value=({"Title": "Test"}, None))
-@mock.patch("rparser.models.util.read_pdf",  
+@mock.patch("rparser.base.util.pdfinfo", return_value=({"Title": "Test"}, None))
+@mock.patch("rparser.base.util.read_pdf",  
             return_value=(b"Page 1\n\x0cPage2\n\x0cPage3", None))
 class PDFFileIOTest(unittest.TestCase):
     
@@ -39,14 +40,6 @@ class PDFFileIOTest(unittest.TestCase):
         )
         first_line = doc.readline()
         self.assertEqual(first_line.rstrip("\n"), "Page 1")
-        
-    def test_raises_OSError_when_pdf_reader_fails(self, mock_pdf, mock_inf):
-        mock_pdf.return_value = (
-            b'', b"I/O Error: Couldn't open file 'path_to_file.pdf: "
-                 b"No such file or directory.\n"
-        )
-        with self.assertRaises(OSError):
-            PDFFileIO("path_to_file.pdf")
 
 
 class DocumentTest(unittest.TestCase):
@@ -70,13 +63,6 @@ class DocumentTest(unittest.TestCase):
         doc = Document(self.get_stream())
         page = doc[1]
         self.assertEqual(page, "Page 1 Row 0\nPage 1 Row 1")
-
-    def test_slicing_of_document_creates_new_document(self):
-        doc = Document(self.get_stream())
-        new_doc = doc[1:3]
-        self.assertIsInstance(new_doc, Document)
-        self.assertEqual(len(new_doc), 2)
-        self.assertEqual(new_doc[0], "Page 1 Row 0\nPage 1 Row 1")
         
     def test_indexing_raises_exception_when_page_is_out_of_range(self):
         doc = Document(self.get_stream())
@@ -152,6 +138,10 @@ class UnevenTableTest(unittest.TestCase):
 
         self.assertIsInstance(new_table, UnevenTable)
         self.assertEqual(len(new_table), 1)
+
+    def test_empty_string_products_one_row_table(self):
+        table = UnevenTable("")
+        self.assertEqual(len(table), 1)
 
 
 class RecordsCollectorTest(unittest.TestCase):
@@ -256,6 +246,14 @@ class RecordsCollectorTest(unittest.TestCase):
         self.assertIn("NET_PROFIT", rc)
         self.assertNotIn("TAX", rc)
         
+    def test_identify_record_in_single_line_text(self):
+        spec = self.get_records_spec()
+        
+        rc = RecordsCollector(UnevenTable("NET PROFIT  10   12"), spec)
+        
+        self.assertEqual(len(rc), 1)
+        self.assertEqual(rc["NET_PROFIT"], [10, 12])
+        
     def test_records_data_are_stored_as_values_of_dict(self):
         spec = self.get_records_spec()
         table = UnevenTable("""
@@ -282,7 +280,7 @@ class RecordsCollectorTest(unittest.TestCase):
         self.assertEqual(rc["REVENUE"][1], 0)
         self.assertEqual(rc["NET_PROFIT"][0], 0)
 
-    def test_records_map_contains_rows_no_for_every_record(self):
+    def test_records_map_contains_row_numbers_for_every_record(self):
         spec = self.get_records_spec()
         table = UnevenTable("""
         REVENUE      100    -
@@ -294,6 +292,39 @@ class RecordsCollectorTest(unittest.TestCase):
 
         self.assertEqual(rc.records_map["REVENUE"], (1,))
         self.assertEqual(rc.records_map["NET_PROFIT"], (2,))
+        
+    def test_shift_records_map_by_given_delta(self):
+        spec = self.get_records_spec()
+        table = UnevenTable("""
+        REVENUE      100    -
+        NET PROFIT    -    20
+        TAX            5    2
+        """)
+        
+        rc = RecordsCollector(table, spec)   
+        rc.shift_records_map(5)
+        
+        self.assertEqual(rc.records_map["REVENUE"], (6,))
+        self.assertEqual(rc.records_map["NET_PROFIT"], (7,))  
+        
+    def test_identification_of_records_doesn_t_work_without_spec(self):
+        spec = {}
+        table = UnevenTable("""
+        REVENUE      100    -
+        NET PROFIT    -    20
+        TAX            5    2
+        """)
+        
+        rc = RecordsCollector(table, spec)   
+        
+        self.assertEqual(len(rc), 0)
+        
+    def test_identification_of_records_for_empty_table(self):
+        spec = self.get_records_spec()
+        
+        rc = RecordsCollector(UnevenTable(""), spec)
+        
+        self.assertEqual(len(rc), 0)
         
 
 class FinancialStatementTest(unittest.TestCase):
@@ -315,14 +346,131 @@ class FinancialStatementTest(unittest.TestCase):
         ]
         return spec
 
-    def test_test(self):
+    def test_identify_names_test01(self):
         spec = self.get_records_spec()
         text_table = """
-        REVENUE      100  200
-        NET PROFIT    10   20
-        TAX            5    2
+                 2015-01-01 - 2015-12-31    2014-01-01 - 2014-12-31
+                 
+        REVENUE             100                         200
+        NET PROFIT           10                          20 
+        TAX                  5                            2
         """
 
         fc = FinancialStatement(text_table, spec)
 
-        import pdb; pdb.set_trace()
+        self.assertEqual(len(fc.names), 2)
+        self.assertEqual(fc.names[0], (12, (2015, 12, 31)))
+        self.assertEqual(fc.names[1], (12, (2014, 12, 31)))
+        
+    def test_identify_names_test02(self):
+        spec = self.get_records_spec()
+        text_table = """
+                 6 miesiecy       9 miesiecy
+                 2015-12-31     2014-12-31
+                 
+        REVENUE      100           200
+        NET PROFIT    10            20 
+        TAX            5             2
+        """
+
+        fc = FinancialStatement(text_table, spec)
+
+        self.assertEqual(len(fc.names), 2)
+        self.assertEqual(fc.names[0], (6, (2015, 12, 31)))
+        self.assertEqual(fc.names[1], (9, (2014, 12, 31)))
+        
+    def test_identify_name_only_timestamps(self):
+        spec = self.get_records_spec()
+        text_table = """
+                 2015-01-01     2014-01-01
+                 2015-12-31     2014-12-31
+                 
+        REVENUE      100           200
+        NET PROFIT    10            20 
+        TAX            5             2
+        """
+
+        fc = FinancialStatement(text_table, spec)
+
+        self.assertEqual(len(fc.names), 2)
+        self.assertEqual(fc.names[0], (None, (2015, 12, 31)))
+        self.assertEqual(fc.names[1], (None, (2014, 12, 31)))        
+        
+    def test_identify_unit_of_measure_thousands(self):
+        spec = self.get_records_spec()
+        text_table = """
+        w tys. PLN
+        
+                 2015-12-31     2014-12-31
+                 
+        REVENUE      100           200
+        NET PROFIT    10            20 
+        TAX            5             2
+        """
+
+        fc = FinancialStatement(text_table, spec)     
+        
+        self.assertEqual(fc.uom, 1000)
+        
+    def test_identify_unit_of_measure_millions(self):
+        spec = self.get_records_spec()
+        text_table = """
+        w mln PLN
+        
+                 2015-12-31     2014-12-31
+                 
+        REVENUE      100           200
+        NET PROFIT    10            20 
+        TAX            5             2
+        """
+
+        fc = FinancialStatement(text_table, spec)     
+        
+        self.assertEqual(fc.uom, 1000000)
+               
+    def test_default_Unit_of_measure_is_one(self):
+        spec = self.get_records_spec()
+        text_table = """
+                 2015-12-31     2014-12-31
+                 
+        REVENUE      100           200
+        NET PROFIT    10            20 
+        TAX            5             2
+        """
+
+        fc = FinancialStatement(text_table, spec)     
+        
+        self.assertEqual(fc.uom, 1)
+
+
+class FinancialReportTest(unittest.TestCase):
+    
+    def test_the_most_frequent_timestamp_is_set_as_report_timestamp(self):
+        text_table = """
+        Report kwartalny za 9 miesiecy zakonoczone 2015-12-31
+        
+                 2015-12-31     2014-12-31
+                 
+        REVENUE      100           200
+        NET PROFIT    10            20 
+        TAX            5             2
+        """
+        
+        fr = FinancialReport(io.StringIO(text_table))
+        
+        self.assertEqual(fr.timestamp, date(2015, 12, 31))
+        
+    def test_identify_timerange_of_report(self):
+        text_table = """
+        Report kwartalny za okres zakonoczony 2015-12-31
+        
+                 2015-12-31     2014-12-31
+                 
+        REVENUE      100           200
+        NET PROFIT    10            20 
+        TAX            5             2
+        """
+        
+        fr = FinancialReport(io.StringIO(text_table))
+        
+        self.assertEqual(fr.timerange, 3)

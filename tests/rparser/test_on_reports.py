@@ -1,13 +1,16 @@
 import unittest
 import unittest.mock as mock
 
-from parser.models import FinancialReport
+from rparser.base import FinancialReport
 from db.core import SQLAlchemy
-from db.models import ItemTypeRepr
-from db.util import upload_finrecords_spec, get_finrecords_reprs
-import parser.spec as spec
-from parser.util import remove_non_ascii
-from parser.nlp import find_ngrams
+from db.models import RecordTypeRepr
+from db.util import (
+    upload_records_spec, get_records_reprs, get_companies_reprs, 
+    upload_companies
+)
+import rparser.spec as spec
+from rparser.util import remove_non_ascii
+from rparser.nlp import find_ngrams
 
 # reports/cng_2016_y.pdf
 # reports/decora_2016_q1.pdf
@@ -43,14 +46,14 @@ class RecordsExtractorTest(unittest.TestCase):
         cls.db = SQLAlchemy("sqlite:///:memory:")
         cls.db.create_all()
 
-        upload_finrecords_spec(cls.db, spec.finrecords)
+        upload_records_spec(cls.db.session, spec.finrecords)
 
         # Create vocabuluary
         cls.voc = set(map(str, find_ngrams(
             remove_non_ascii(
                 " ".join(map(
                     " ".join, 
-                    cls.db.session.query(ItemTypeRepr.value).all()
+                    cls.db.session.query(RecordTypeRepr.value).all()
                 ))
             ),
             n = 1, min_len=2, remove_non_alphabetic=True
@@ -62,9 +65,9 @@ class RecordsExtractorTest(unittest.TestCase):
 
         # Create specification for identifying records
         cls.spec = dict(
-            bls=get_finrecords_reprs(cls.db.session, "bls"),
-            nls=get_finrecords_reprs(cls.db.session, "nls"),
-            cfs=get_finrecords_reprs(cls.db.session, "cfs")
+            bls=get_records_reprs(cls.db.session, "bls", record_spec_id="name"),
+            ics=get_records_reprs(cls.db.session, "ics", record_spec_id="name"),
+            cfs=get_records_reprs(cls.db.session, "cfs", record_spec_id="name")
         )
 
     @classmethod
@@ -72,17 +75,17 @@ class RecordsExtractorTest(unittest.TestCase):
         cls.db.drop_all()
 
     ## reports/cng_2016_y.pdf
-    def test_update_names_cng_2016_y_nls(self):
+    def test_update_names_cng_2016_y_ics(self):
         doc = FinancialReport("reports/cng_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_cng_2016_y_bls(self):
         doc = FinancialReport("reports/cng_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -90,24 +93,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_cng_2016_y_cfs(self):
         doc = FinancialReport("reports/cng_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
     
     ## reports/decora_2016_q1.pdf
-    def test_update_names_decora_2016_q1_nls(self):
+    def test_update_names_decora_2016_q1_ics(self):
         doc = FinancialReport("reports/decora_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
         )
 
     def test_update_names_decora_2016_q1_bls(self):
         doc = FinancialReport("reports/decora_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(3, (2016, 3, 31)), (3, (2015, 12, 31))]
@@ -115,25 +118,25 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_decora_2016_q1_cfs(self):
         doc = FinancialReport("reports/decora_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
         )
 
     ## reports/polsat_2016_q3.pdf
-    def test_update_names_polsat_2016_q3_nls(self):
+    def test_update_names_polsat_2016_q3_ics(self):
         doc = FinancialReport("reports/polsat_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2016, 9, 30)), (3, (2015, 9, 30)), 
              (9, (2016, 9, 30)), (9, (2015, 9, 30))]
         )
 
     def test_update_names_polsat_2016_q3_bls(self):
         doc = FinancialReport("reports/polsat_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(3, (2016, 9, 30)), (3, (2015, 12, 31))]
@@ -141,25 +144,25 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_polsat_2016_q3_cfs(self):
         doc = FinancialReport("reports/polsat_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(9, (2016, 9, 30)), (9, (2015, 9, 30))]
         )
 
     ## reports/bdx_2016_q3.pdf
-    def test_update_names_bdx_2016_q3_nls(self):
+    def test_update_names_bdx_2016_q3_ics(self):
         doc = FinancialReport("reports/bdx_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(9, (2016, 9, 30)), (9, (2015, 9, 30)), 
              (3, (2016, 9, 30)), (3, (2015, 9, 30))]
         )
 
     def test_update_names_bdx_2016_y3_bls(self):
         doc = FinancialReport("reports/bdx_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(9, (2016, 9, 30)), (3, (2015, 12, 31))]
@@ -167,24 +170,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_bdx_2016_q3_cfs(self):
         doc = FinancialReport("reports/bdx_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(9, (2016, 9, 30)), (9, (2015, 9, 30))]
         )  
 
     ## reports/pgnig_2016_y.pdf
-    def test_update_names_pgnig_2016_y_nls(self):
+    def test_update_names_pgnig_2016_y_ics(self):
         doc = FinancialReport("reports/pgnig_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_pgnig_2016_y_bls(self):
         doc = FinancialReport("reports/pgnig_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31)), (12, (2014, 12, 31))]
@@ -192,24 +195,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_pgnig_2016_y_cfs(self):
         doc = FinancialReport("reports/pgnig_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )  
 
     ## reports/ltx_2016_q1.pdf
-    def test_update_names_ltx_2016_q1_nls(self):
+    def test_update_names_ltx_2016_q1_ics(self):
         doc = FinancialReport("reports/ltx_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
         )
 
     def test_update_names_ltx_2016_q1_bls(self):
         doc = FinancialReport("reports/ltx_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(6, (2016, 3, 31)), (6, (2015, 12, 31)), (6, (2015, 3, 31))]
@@ -217,24 +220,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_ltx_2016_q1_cfs(self):
         doc = FinancialReport("reports/ltx_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
         )  
 
     ## reports/lpp_2016_q1.pdf
-    def test_update_names_lpp_2016_q_nls(self):
+    def test_update_names_lpp_2016_q_ics(self):
         doc = FinancialReport("reports/lpp_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
         )
 
     def test_update_names_lpp_2016_q_bls(self):
         doc = FinancialReport("reports/lpp_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(3, (2016, 3, 31)), (3, (2015, 3, 31)), (3, (2015, 12, 31))]
@@ -242,7 +245,7 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_lpp_2016_q_cfs(self):
         doc = FinancialReport("reports/lpp_2016_q1.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(3, (2016, 3, 31)), (3, (2015, 3, 31))]
@@ -250,18 +253,18 @@ class RecordsExtractorTest(unittest.TestCase):
 
     ## reports/gri_2016_y.pdf
     @unittest.skip
-    def test_update_names_gri_2016_y_nls(self):
+    def test_update_names_gri_2016_y_ics(self):
         doc = FinancialReport("reports/gri_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     @unittest.skip
     def test_update_names_gri_2016_y_bls(self):
         doc = FinancialReport("reports/gri_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -270,24 +273,24 @@ class RecordsExtractorTest(unittest.TestCase):
     @unittest.skip
     def test_update_names_gri_2016_y_cfs(self):
         doc = FinancialReport("reports/gri_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     ## reports/wieleton_2016_y.pdf
-    def test_update_names_wieleton_2016_y_nls(self):
+    def test_update_names_wieleton_2016_y_ics(self):
         doc = FinancialReport("reports/wieleton_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_wieleton_2016_y_bls(self):
         doc = FinancialReport("reports/wieleton_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -295,25 +298,25 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_wieleton_2016_y_cfs(self):
         doc = FinancialReport("reports/wieleton_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc)
+                              records_spec=self.spec, voc=self.voc)
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     ## reports/rpc_2016_q3.pdf
-    def test_update_names_rpc_2016_q3_nls(self):
+    def test_update_names_rpc_2016_q3_ics(self):
         doc = FinancialReport("reports/rpc_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2015, 9, 30)), (9, (2015, 9, 30)),
              (3, (2016, 9, 30)), (9, (2016, 9, 30))]
         )
 
     def test_update_names_rpc_2016_q3_bls(self):
         doc = FinancialReport("reports/rpc_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(3, (2015, 12, 31)), (3, (2016, 9, 30))]
@@ -321,24 +324,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_rpc_2016_q3_cfs(self):
         doc = FinancialReport("reports/rpc_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(3, (2015, 9, 30)), (3, (2016, 9, 30))]
         )
 
     ## reports/kst_2016_y.pdf
-    def test_update_names_kst_2016_y_nls(self):
+    def test_update_names_kst_2016_y_ics(self):
         doc = FinancialReport("reports/kst_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_kst_2016_y_bls(self):
         doc = FinancialReport("reports/kst_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -346,24 +349,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_kst_2016_y_cfs(self):
         doc = FinancialReport("reports/kst_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     ## reports/helio_2016_m2.pdf
-    def test_update_names_helio_2016_m2_nls(self):
+    def test_update_names_helio_2016_m2_ics(self):
         doc = FinancialReport("reports/helio_2016_m2.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(6, (2016, 12, 31)), (6, (2015, 12, 31))]
         )
 
     def test_update_names_helio_2016_m2_bls(self):
         doc = FinancialReport("reports/helio_2016_m2.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(6, (2016, 12, 31)), (6, (2015, 12, 31)), (6, (2015, 12, 31))]
@@ -371,24 +374,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_helio_2016_m2_cfs(self):
         doc = FinancialReport("reports/helio_2016_m2.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(6, (2016, 12, 31)), (6, (2015, 12, 31))]
         )
 
     ## reports/graal_2015_m1.pdf
-    def test_update_names_graal_2015_m1_nls(self):
+    def test_update_names_graal_2015_m1_ics(self):
         doc = FinancialReport("reports/graal_2015_m1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(6, (2015, 6, 30)), (6, (2014, 6, 30))]
         )
 
     def test_update_names_graal_2015_m1_bls(self):
         doc = FinancialReport("reports/graal_2015_m1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(6, (2015, 6, 30)), (6, (2014, 12, 31)), (6, (2014, 6, 30))]
@@ -396,25 +399,25 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_graal_2015_m1_cfs(self):
         doc = FinancialReport("reports/graal_2015_m1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(6, (2015, 6, 30)), (6, (2014, 6, 30))]
         )
 
     ## reports/arctic_2016_q3.pdf
-    def test_update_names_arctic_2016_q3_nls(self):
+    def test_update_names_arctic_2016_q3_ics(self):
         doc = FinancialReport("reports/arctic_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2016, 9, 30)), (9, (2016, 9, 30)),
              (3, (2015, 9, 30)), (9, (2015, 9, 30))]
         )
 
     def test_update_names_arctic_2016_q3_bls(self):
         doc = FinancialReport("reports/arctic_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(3, (2016, 9, 30)), (3, (2016, 6, 30)),
@@ -423,7 +426,7 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_arctic_2016_q3_cfs(self):
         doc = FinancialReport("reports/arctic_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(3, (2016, 9, 30)), (9, (2016, 9, 30)),
@@ -431,17 +434,17 @@ class RecordsExtractorTest(unittest.TestCase):
         )
 
     ## reports/pge_2016_y.pdf
-    def test_update_names_pge_2016_y_nls(self):
+    def test_update_names_pge_2016_y_ics(self):
         doc = FinancialReport("reports/pge_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
            [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_pge_2016_y_bls(self):
         doc = FinancialReport("reports/pge_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -449,24 +452,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_pge_2016_y_cfs(self):
         doc = FinancialReport("reports/pge_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     ## reports/protektor_2016_q3.pdf
-    def test_update_names_protektor_2016_q3_nls(self):
+    def test_update_names_protektor_2016_q3_ics(self):
         doc = FinancialReport("reports/protektor_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(9, (2016, 9, 30)), (9, (2015, 9, 30))]
         )
 
     def test_update_names_protektor_2016_q3_bls(self):
         doc = FinancialReport("reports/protektor_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(3, (2016, 9, 30)), (3, (2015, 12, 31))]
@@ -474,7 +477,7 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_protektor_2016_q3_cfs(self):
         doc = FinancialReport("reports/protektor_2016_q3.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
              [(9, (2016, 9, 30)), (9, (2015, 9, 30))]
@@ -482,17 +485,17 @@ class RecordsExtractorTest(unittest.TestCase):
         )
 
     ## reports/kghm_2016_y.pdf
-    def test_update_names_kghm_2016_y_nls(self):
+    def test_update_names_kghm_2016_y_ics(self):
         doc = FinancialReport("reports/kghm_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_kghm_2016_y_bls(self):
         doc = FinancialReport("reports/kghm_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -500,24 +503,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_kghm_2016_y_cfs(self):
         doc = FinancialReport("reports/kghm_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     ## reports/obl_2016_y.pdf
-    def test_update_names_obl_2016_y_nls(self):
+    def test_update_names_obl_2016_y_ics(self):
         doc = FinancialReport("reports/obl_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_obl_2016_y_bls(self):
         doc = FinancialReport("reports/obl_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -525,25 +528,25 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_obl_2016_y_cfs(self):
         doc = FinancialReport("reports/obl_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     ## reports/lotos_2016_m2.pdf
-    def test_update_names_lotos_2016_m2_nls(self):
+    def test_update_names_lotos_2016_m2_ics(self):
         doc = FinancialReport("reports/lotos_2016_m2.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2016, 6, 30)), (6, (2016, 6, 30)),
              (3, (2015, 6, 30)), (6, (2015, 6, 30))]
         )
 
     def test_update_names_lotos_2016_m2_bls(self):
         doc = FinancialReport("reports/lotos_2016_m2.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(6, (2016, 6, 30)), (6, (2015, 12, 31))]
@@ -551,24 +554,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_lotos_2016_m2_cfs(self):
         doc = FinancialReport("reports/lotos_2016_m2.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(6, (2016, 6, 30)), (6, (2015, 6, 30))]
         )
 
     ## reports/dbc_2015_y.pdf
-    def test_update_names_dbc_2015_y_nls(self):
+    def test_update_names_dbc_2015_y_ics(self):
         doc = FinancialReport("reports/dbc_2015_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2015, 12, 31)), (12, (2014, 12, 31))]
         )
 
     def test_update_names_dbc_2015_y_bls(self):
         doc = FinancialReport("reports/dbc_2015_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(12, (2015, 12, 31)), (12, (2014, 12, 31))]
@@ -576,24 +579,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_dbc_2015_y_cfs(self):
         doc = FinancialReport("reports/dbc_2015_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2015, 12, 31)), (12, (2014, 12, 31))]
         )
 
     ## reports/otl_2016_y.pdf
-    def test_update_names_otl_2016_y_nls(self):
+    def test_update_names_otl_2016_y_ics(self):
         doc = FinancialReport("reports/otl_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_otl_2016_y_bls(self):
         doc = FinancialReport("reports/otl_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -601,24 +604,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_otl_2016_y_cfs(self):
         doc = FinancialReport("reports/otl_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     ## reports/acp_2010_q1.pdf
-    def test_update_names_acp_2010_q1_nls(self):
+    def test_update_names_acp_2010_q1_ics(self):
         doc = FinancialReport("reports/acp_2010_q1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2010, 3, 31)), (3, (2009, 3, 31))]
         )
 
     def test_update_names_acp_2010_q1_bls(self):
         doc = FinancialReport("reports/acp_2010_q1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(3, (2010, 3, 31)), (3, (2009, 12, 31)), (3, (2009, 3, 31))]
@@ -626,24 +629,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_acp_2010_q1_cfs(self):
         doc = FinancialReport("reports/acp_2010_q1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(3, (2010, 3, 31)), (3, (2009, 3, 31))]
         )
 
     ## reports/arctic_2015_q1.pdf
-    def test_update_names_arctic_2015_q1_nls(self):
+    def test_update_names_arctic_2015_q1_ics(self):
         doc = FinancialReport("reports/arctic_2015_q1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(3, (2015, 3, 31)), (3, (2014, 3, 31)), (12, (2014, 12, 31))]
         )
 
     def test_update_names_arctic_2015_q1_bls(self):
         doc = FinancialReport("reports/arctic_2015_q1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(3, (2015, 3, 31)), (3, (2014, 12, 31)), (3, (2014, 3, 31))]
@@ -651,24 +654,24 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_arctic_2015_q1_cfs(self):
         doc = FinancialReport("reports/arctic_2015_q1.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(3, (2015, 3, 31)), (3, (2014, 3, 31)), (12, (2014, 12, 31))]
         )
 
     ## reports/ltx_2016_y.pdf
-    def test_update_names_ltx_2016_y_nls(self):
+    def test_update_names_ltx_2016_y_ics(self):
         doc = FinancialReport("reports/ltx_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
-            doc.nls.names, 
+            doc.ics.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
         )
 
     def test_update_names_ltx_2016_y_bls(self):
         doc = FinancialReport("reports/ltx_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.bls.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]
@@ -676,7 +679,7 @@ class RecordsExtractorTest(unittest.TestCase):
 
     def test_update_names_ltx_2016_y_cfs(self):
         doc = FinancialReport("reports/ltx_2016_y.pdf", 
-                              spec=self.spec, voc=self.voc) 
+                              records_spec=self.spec, voc=self.voc) 
         self.assertEqual(
             doc.cfs.names, 
             [(12, (2016, 12, 31)), (12, (2015, 12, 31))]

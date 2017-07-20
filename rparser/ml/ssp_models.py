@@ -21,14 +21,14 @@ from rparser.util import find_ngrams, find_numbers
 
 # 1) Load reports
 
-from alis.data import reports
+from rparser.ml.data import reports
 
 # 2) Create development sample
 #    - for each document select positive (target) & negatvie pages
 
 random.seed(1)
 
-target_statement = "cfs"
+target_statement = "bls"
 neg_rate = 10 # negative pages / positive pages ratio
 ngram_doc_min_freq = 0.5 # minimum number of doc with the ngram
 
@@ -150,5 +150,5 @@ model = {
     "ngrams": ngrams
 }
 
-with open("parser/cls/%s.pkl" % target_statement, "wb") as f:
+with open("rparser/cls/%s.pkl" % target_statement, "wb") as f:
     pickle.dump(model, f)

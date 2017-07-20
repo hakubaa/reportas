@@ -2,10 +2,7 @@ import unittest
 import unittest.mock as mock
 from datetime import datetime
 
-from parser.util import (
-	convert_to_number, pdfinfo, determine_timerange,
-	identify_unit_of_measure
-)
+from rparser.util import convert_to_number, pdfinfo, determine_timerange
 
 
 class DetermineTimerangeTest(unittest.TestCase):
@@ -49,37 +46,6 @@ class DetermineTimerangeTest(unittest.TestCase):
 		text = "Rok zakończony 31.12.2016"
 		output = determine_timerange(text)
 		self.assertEqual(output[0], 12)			
-
-
-@mock.patch("parser.util.subprocess.Popen")
-class PdfinfoTest(unittest.TestCase):
-
-	def set_mock(self, mmock):
-		output = (b'Title:          (Microsoft Word - Skonsolidowany raport kwartalny Grupy Kapita\\263owej JAGO za 1Q 2010 rok)\nAuthor:         Bart.Dr\nCreator:        PrimoPDF http://www.priSmoSpdDFGf.com/\nProducer:       PDrimDoDPDF\nCreationDate:   Mon May 17 18:45:02 2010 CEST\nModDate:        Mon May 17 18:45:02 2010 CEST\nTagged:         no\nUserProperties: no\nSuspects:       no\nForm:           none\nJavaScript:     no\nPages:          77\nEncrypted:      no\nPage size:      595.28 x 841.89 pts (A4)\nPage rot:       0\nFile size:      8337485 bytes\nOptimized:      no\nPDF version:    1.3\n',
- None)
-		mmock.return_value.communicate.return_value = output
-
-	def test_for_passing_file_path(self, mock_popen):
-		mock_popen.return_value.communicate.return_value = (None, None)
-		output = pdfinfo("fake.pdf")
-		self.assertIn("fake.pdf", mock_popen.call_args[0][0])
-
-	def test_for_returning_dict_with_info(self, mock_popen):
-		mock_popen.return_value.communicate.return_value = (None, None)
-		output, errors = pdfinfo("fake.pdf")
-		self.assertIsInstance(output, dict)
-
-	def test_for_parsing_info_from_pdfinfo(self, mock_popen):
-		self.set_mock(mock_popen)
-		output, errors = pdfinfo("fake.pdf")
-		self.assertIn("Title", output)
-		self.assertEqual(output["Tagged"], "no")
-
-	def test_for_converting_creation_and_modyfication_dates(self, mock_popen):
-		self.set_mock(mock_popen)
-		output, errors = pdfinfo("fake.pdf")
-		self.assertIsInstance(output["CreationDate"], datetime)
-		self.assertIsInstance(output["ModDate"], datetime)
 
 
 class Convert2numberTest(unittest.TestCase):
@@ -127,66 +93,3 @@ class Convert2numberTest(unittest.TestCase):
 	def test_convert_number_converts_dash_to_zero(self):
 		output = convert_to_number("-")
 		self.assertEqual(output, 0)
-
-
-class IdentifyUnitOfMeasureTest(unittest.TestCase):
-
-    def test_iuom_returns_one_by_default(self):
-        uom = identify_unit_of_measure(text="NET PROFIT   100    200")
-        self.assertEqual(uom, 1)
-
-    def test_iuom_recognizes_thousands_test1(self):
-        uom = identify_unit_of_measure(text="w tysiącach złotych")
-        self.assertEqual(uom, 1000)
-
-    def test_iuom_recognizes_thousands_test2(self):
-        uom = identify_unit_of_measure(text="w tysicach zotych")
-        self.assertEqual(uom, 1000)
-
-    def test_iuom_recognizes_thousands_test3(self):
-        uom = identify_unit_of_measure(text="sss w tys. PLN TEST")
-        self.assertEqual(uom, 1000)
-
-    def test_iuom_recognizes_thousands_test4(self):
-        uom = identify_unit_of_measure(text="ddd w tys. zł sdfsdf")
-        self.assertEqual(uom, 1000)
-
-    def test_iuom_recognizes_thousands_test5(self):
-        uom = identify_unit_of_measure(text="sdd w tysiącach zł sdfsdf")
-        self.assertEqual(uom, 1000)
-
-    def test_iuom_recognizes_thousands_test6(self):
-        uom = identify_unit_of_measure(text="bbb w tysiącach PLN sdfsdf")
-        self.assertEqual(uom, 1000)      
-
-    def test_iuom_recognizes_thousands_test7(self):
-        uom = identify_unit_of_measure(text="asdf w tys. złotych df")
-        self.assertEqual(uom, 1000) 
-
-    def test_iuom_recognizes_thousands_test8(self):
-        uom = identify_unit_of_measure(text="dane w PLN'000")
-        self.assertEqual(uom, 1000)
-
-    def test_iuom_recognizes_millions_test1(self):
-        uom = identify_unit_of_measure(text="aa w milionach złotych bbb")
-        self.assertEqual(uom, 1000000)
-
-    def test_iuom_recognizes_millions_test2(self):
-        uom = identify_unit_of_measure(text="aa w mln PLN bbb")
-        self.assertEqual(uom, 1000000)
-
-    def test_iuom_recognizes_millions_test3(self):
-        uom = identify_unit_of_measure(text="aa w MILIONACH pln bbb")
-        self.assertEqual(uom, 1000000)
-
-    def test_iuom_returns_the_most_often_units_test1(self):
-        uom = identify_unit_of_measure(
-            text="aa w MILIONACH pln bbb or w tys. PLN or w mln złotych"
-        )
-        self.assertEqual(uom, 1000000)
-
-    def test_iuom_returns_the_most_often_units_test2(self):
-        uom = identify_unit_of_measure(
-            text="tys. PLN  milionach złotych   dane w tysiącach PLN"
-        )
-        self.assertEqual(uom, 1000)
