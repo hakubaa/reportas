@@ -131,9 +131,9 @@ class RecordType(VersionedModel):
     name = Column(String, unique=True, nullable=False)
     statement = Column(String, nullable=False)
 
-    __table_args__ = (
-        CheckConstraint("statement in ('ics', 'bls', 'cfs')"),  
-    )
+    # __table_args__ = (
+    #     CheckConstraint("statement in ('ics', 'bls', 'cfs')"),  
+    # )
 
     def __repr__(self):
         return "<RecordType('{!s}')>".format(self.name)

@@ -160,7 +160,8 @@ class RecordsCollector(UserDict):
         adjusted_table = self.adjust_table(deepcopy(table), spec, voc)
         records = self.identify_records(adjusted_table, spec)
         self.records = self.remove_column_with_note_reference(records)
-        self.records_map = self.map_to_rows(self.records)
+        self.records_map = self.create_records_map(self.records)
+        self.rows_map = self.create_rows_map(self.records)
         self.data = self.transform_to_dict(self.records)
         
     def adjust_table(self, table, spec, voc=None):
@@ -543,17 +544,25 @@ class RecordsCollector(UserDict):
 
         return records
 
-    def map_to_rows(self, records):
+    def create_records_map(self, records):
         data = OrderedDict()
         for (rid, rsim), values, rows in records:
             data[rid] = rows
         return data
 
-    def shift_records_map(self, delta):
+    def create_rows_map(self, records, shift=0):
+        data = OrderedDict()
+        for (rid, rsim), values, rows in records:
+            data.update({row+shift: rid for row in rows})
+        return data
+
+    def shift_maps(self, delta):
         for rid in self.records_map:
             self.records_map[rid] = tuple(
                 row_no + delta for row_no in self.records_map[rid]
             )
+
+        self.rows_map = self.create_rows_map(self.records, delta)
 
     def transform_to_dict(self, records):
         data = OrderedDict()
@@ -953,6 +962,16 @@ class FinancialReport(Document):
                 pass
         return rmap
 
+    @property
+    def rows_map(self):
+        rmap = dict()
+        for stm in (self.bls, self.ics, self.cfs):
+            try:
+                rmap.update(stm.rows_map)
+            except AttributeError:
+                pass
+        return rmap        
+
     def recognize_timerange(self, max_page=3):
         sa_tokens = util.remove_non_ascii("półroczny półroczne").split()
         qr_tokens = util.remove_non_ascii(
@@ -1098,7 +1117,7 @@ class FinancialReport(Document):
             text, spec, voc=self.get_voc(), 
             timerange=self.timerange, timestamp=self.timestamp
         )
-        statement.shift_records_map(delta=preceeding_rows_count)
+        statement.shift_maps(delta=preceeding_rows_count)
         
         return statement
 

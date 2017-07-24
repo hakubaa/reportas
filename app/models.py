@@ -23,12 +23,15 @@ from app import login_manager, db
 
 
 class File(Model):
-	id = Column(Integer, primary_key=True)
-	name = Column(String(), unique=True)
-	timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    id = Column(Integer, primary_key=True)
+    name = Column(String())
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    user_id = Column(Integer, ForeignKey("user.id"))
+    user = relationship("User", backref=backref("files", lazy="dynamic"))
 
-	def __repr__(self):
-		return "<File %r>" % self.name
+    def __repr__(self):
+        return "<File %r>" % self.name
 
 
 class Permission:

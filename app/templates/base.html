@@ -15,7 +15,7 @@
 
   <link href="{{ url_for('static', filename='vendors/normalize.css') }}" rel="stylesheet">
 
-  <link href="{{ url_for('static', filename='vendors/bootstrap/swatch/readable/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendors/bootstrap/swatch/flatly/bootstrap.min.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='vendors/bootstrap-daterangepicker/css/daterangepicker.css') }}" rel="stylesheet">
   <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 
@@ -78,46 +78,11 @@
     {% endblock %}
   </div>
 
-    {% block footer %}
-    <footer>
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-12">
-                    <ul class="list-inline">
-
-                        <li><a href="#">Home</a></li>
-                        <li class="footer-menu-divider">⋅</li>
-                        <li><a href="#">Analyses</a></li>
-                        {% if current_user.is_authenticated %}
-                          <li class="footer-menu-divider">⋅</li>
-                          <li><a href="{{ url_for('admin.index') }}">Database</a></li>
-                          <li class="footer-menu-divider">⋅</li>
-                          <li><a href="#">Analytics</a></li>
-                          <li class="footer-menu-divider">⋅</li>
-                          <li><a href="#">Portfolio</a></li>
-                        {% endif %}
-                        <li class="footer-menu-divider">⋅</li>
-                        {% if current_user.is_authenticated %}
-                          <li><a href="{{ url_for('user.logout') }}">Logout</a></li>
-                        {% else %}
-                          <li><a href="{{ url_for('user.register') }}">Register</a></li>
-                          <li class="footer-menu-divider">⋅</li>
-                          <li><a href="{{ url_for('user.login') }}">Login</a></li>
-                        {% endif %}
-
-                    </ul>
-                    <p class="copyright text-muted small">Copyright © 2016. All Rights Reserved</p>
-                </div>
-            </div>
-        </div>
-    </footer>
-    {% endblock %}
-
-    <script src="{{ url_for('static', filename='vendors/jquery-3.2.1.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='vendors/bootstrap/js/bootstrap.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='vendors/moment.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='vendors/bootstrap-daterangepicker/js/daterangepicker.js') }}"></script>
-    {% block tail_js %}{% endblock %}
-    {% block body_scripts %}{% endblock %}
-    {% block tail %}{% endblock %}
+  <script src="{{ url_for('static', filename='vendors/jquery-3.2.1.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendors/bootstrap/js/bootstrap.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendors/moment.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendors/bootstrap-daterangepicker/js/daterangepicker.js') }}"></script>
+  {% block tail_js %}{% endblock %}
+  {% block body_scripts %}{% endblock %}
+  {% block tail %}{% endblock %}
 </body>

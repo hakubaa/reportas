@@ -39,23 +39,24 @@ def upload_companies(session, data):
 
 
 def upload_records_spec(session, spec):
-	'''
-	Create RecordType & RecordTypeRepr records in db in accordance with 
-	specification.
-	'''
-	try: # ensure spec is iterable
-		iter(spec)
-	except TypeError:
-		spec = [spec]
+    '''
+    Create RecordType & RecordTypeRepr records in db in accordance with 
+    specification.
+    '''
+    try: # ensure spec is iterable
+        iter(spec)
+    except TypeError:
+        spec = [spec]
 
-	for record_spec in spec:
-		rtype = RecordType.get_or_create(
-			session, name=record_spec["name"],
-			statement=record_spec.get("statement", None)
-		)
-		for repr_spec in record_spec.get("repr", list()):
-			repr_spec["rtype"] = rtype
-			rtype_repr = RecordTypeRepr.create(session, **repr_spec)
+    for record_spec in spec:
+        rtype = RecordType(
+            name=record_spec["name"],
+            statement=record_spec["statement"]
+        )
+        session.add(rtype)
+        for repr_spec in record_spec.get("repr", list()):
+            repr_spec["rtype"] = rtype
+            rtype_repr = RecordTypeRepr.create(session, **repr_spec)
 
 
 def get_records_reprs(session, statement, lang="PL", n=1, min_len=2, 

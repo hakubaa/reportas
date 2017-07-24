@@ -6,7 +6,6 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_bootstrap import Bootstrap
 from flask_migrate import Migrate
-# from flask_admin import Admin
 
 from app.patch.sqlalchemy import SQLAlchemy
 from config import config
@@ -21,7 +20,6 @@ ma = Marshmallow()
 debugtoolbar = DebugToolbarExtension()
 mail = Mail()
 login_manager = LoginManager()
-# admin_ = Admin(name="reportas", template_mode="bootstrap3")
 
 
 def create_app(config_name, **kwargs):
@@ -35,9 +33,6 @@ def create_app(config_name, **kwargs):
     mail.init_app(app)
     migrate = Migrate(app, db)
     Bootstrap(app)
-    # admin_.init_app(app)
-
-    # import app.admin as admin_module
 
     from app.models import AnonymousUser
     login_manager.session_protection = "strong"
@@ -48,9 +43,6 @@ def create_app(config_name, **kwargs):
     from app.home import home as home_blueprint
     app.register_blueprint(home_blueprint)
 
-    from app.reports import reports as reports_blueprint
-    app.register_blueprint(reports_blueprint, url_prefix="/reports")
-
     from app.rapi import rapi as rapi_blueprint
     app.register_blueprint(rapi_blueprint, url_prefix="/api")
 
@@ -60,7 +52,9 @@ def create_app(config_name, **kwargs):
     from app.dbmd import dbmd
     dbmd.init_app(app, endpoint="dbmd", url="/dbmd")
 
-
+    from app.dbmd.tools import dbmd_tools
+    app.register_blueprint(dbmd_tools, endpoint="dmbd_tools", url_prefix="/dbmd/tools")
+    
     @app.errorhandler(401)
     def unathorized_access(error):
         return render_template("401.html"), 401

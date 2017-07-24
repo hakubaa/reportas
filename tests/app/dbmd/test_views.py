@@ -52,7 +52,7 @@ def create_company(name="TEST", isin="#TEST"):
     db.session.commit()
     return company
 
-def create_rtype(name="TEST", statement="nls"):
+def create_rtype(name="TEST", statement="ics"):
     rtype = models.RecordType(name=name, statement=statement)
     db.session.add(rtype)
     db.session.commit()
@@ -299,7 +299,7 @@ class CreateRecordTypeViewTest(AppTestCase):
     def test_post_request_with_all_data_creates_new_dbrequest(self, user):
         response = self.client.post(
             url_for("recordtype.create_view"),
-            data = dict(name="TEST", statement="nls")
+            data = dict(name="TEST", statement="ics")
         )
         
         self.assertEqual(db.session.query(models.RecordType).count(), 0)
@@ -311,7 +311,7 @@ class CreateRecordTypeViewTest(AppTestCase):
         
         data = json.loads(dbrequest.data)
         self.assertEqual(data["name"], "TEST")
-        self.assertEqual(data["statement"], "nls")
+        self.assertEqual(data["statement"], "ics")
 
     def test_name_and_statement_are_required(self):
         view = views.RecordTypeView(models.RecordType, db.session)
@@ -327,7 +327,7 @@ class CreateRecordTypeViewTest(AppTestCase):
     def test_redirects_after_successful_post_request(self):
         response = self.client.post(
             url_for("recordtype.create_view"),
-            data = dict(name="TEST", statement="nls")
+            data = dict(name="TEST", statement="ics")
         )
         self.assertRedirects(response, url_for("recordtype.index_view"))
         
@@ -343,7 +343,7 @@ class CreateRecordTypeViewTest(AppTestCase):
 
 class EditRecordTypeViewTest(AppTestCase):
 
-    def create_rtype(self, name="TEST RTYPE", statement="nls"):
+    def create_rtype(self, name="TEST RTYPE", statement="ics"):
         rtype = models.RecordType(name=name, statement=statement)
         db.session.add(rtype)
         db.session.commit()
@@ -370,7 +370,7 @@ class EditRecordTypeViewTest(AppTestCase):
         rtype = self.create_rtype()
         response = self.client.post(
             url_for("recordtype.edit_view", id=rtype.id),
-            data = dict(name="NEW NAME", id=rtype.id, statement="nls")
+            data = dict(name="NEW NAME", id=rtype.id, statement="ics")
         )
         self.assertEqual(db.session.query(DBRequest).count(), 1)
         
@@ -395,7 +395,7 @@ class EditRecordTypeViewTest(AppTestCase):
 
 class DeleteRecordTypeViewTest(AppTestCase):
 
-    def create_rtype(self, name="TEST RTYPE", statement="nls"):
+    def create_rtype(self, name="TEST RTYPE", statement="ics"):
         rtype = models.RecordType(name=name, statement=statement)
         db.session.add(rtype)
         db.session.commit()

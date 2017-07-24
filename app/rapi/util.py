@@ -5,7 +5,7 @@ from flask import request, current_app
 
 import db.util as dbutil
 import rparser.util as putil
-from rparser.models import FinancialReport
+from rparser.base import FinancialReport
 
 
 def apply_query_parameters(query):
