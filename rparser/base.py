@@ -6,6 +6,7 @@ import itertools
 import warnings
 import datetime
 import operator
+import reprlib
 import numbers
 import pickle
 import io
@@ -42,10 +43,13 @@ class Document:
     file-like object and produces str objects.
     '''
     def __init__(self, stream, newpage="\x0c", newline="\n"):
-        self.pages = stream.read().split(newpage)
+        if isinstance(stream, str):
+            self.pages = stream.split(newpage)
+        else:
+            self.pages = stream.read().split(newpage)
+        self.info = getattr(stream, "file_info", None) 
         self.newline = newline
         self.newpage = newpage
-        self.info = getattr(stream, "file_info", None) 
 
     def __len__(self):
         return len(self.pages)
@@ -55,6 +59,12 @@ class Document:
         
     def __hash__(self):
         return hash(reduce(operator.xor, map(hash, self)))
+
+    def __str__(self):
+        return self.newpage.join(self.pages)
+
+    def __repr__(self):
+        return "Document({})".format(reprlib.repr(str(self))) 
 
     def __eq__(self, other):
         if len(self) != len(other): # different number of pages
@@ -856,15 +866,15 @@ class FinancialReport(Document):
 
     def __init__(
         self, *args, consolidated=True, timestamp=None, timerange=None, 
-        records_spec = None, companies_spec = None, voc=None, **kwargs
+        records_spec=None, companies_spec=None, voc=None, **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.consolidated = consolidated
         self.timestamp = timestamp or self.recognize_timestamp()
         self.timerange = timerange or self.recognize_timerange()
         self.records_spec = records_spec or dict()
-        self.voc = voc
-        self.company = self.recognize_company(companies_spec)
+        self.companies_spec = companies_spec or dict()
+        self.voc = voc or set()
 
     def get_bls_spec(self):
         return self.records_spec.get("bls", None)
@@ -874,6 +884,9 @@ class FinancialReport(Document):
     
     def get_cfs_spec(self):
         return self.records_spec.get("cfs", None)
+        
+    def get_companies_spec(self):
+        return self.companies_spec
         
     def get_voc(self):
         voc = set(self.voc or list())
@@ -889,6 +902,12 @@ class FinancialReport(Document):
         ]
         unique_words = set(reduce(operator.add, words))
         return unique_words
+        
+    @property
+    def company(self):
+        if not hasattr(self, "_company"):
+            self._company = self.recognize_company(self.get_companies_spec())
+        return self._company
         
     @property
     def records(self):

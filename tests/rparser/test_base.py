@@ -64,6 +64,10 @@ class DocumentTest(unittest.TestCase):
         page = doc[1]
         self.assertEqual(page, "Page 1 Row 0\nPage 1 Row 1")
         
+    def test_document_accepts_str_object(self):
+        doc = Document(self.get_stream().read())
+        self.assertEqual(doc[1], "Page 1 Row 0\nPage 1 Row 1")
+        
     def test_indexing_raises_exception_when_page_is_out_of_range(self):
         doc = Document(self.get_stream())
         with self.assertRaises(IndexError):
