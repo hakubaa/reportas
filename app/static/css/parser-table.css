@@ -1,0 +1,16 @@
+.records-table > tbody >tr > td {
+    padding-bottom: 0px;
+}
+.records-table > tbody > tr > td input {
+    text-align:center 
+}
+.records-table > thead th {
+    vertical-align: middle;
+    text-align: justify;
+}
+.column-timestamp {
+    white-space: nowrap;
+}
+.rtype-selection {
+    max-width: 200px;
+}

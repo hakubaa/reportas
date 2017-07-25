@@ -1,7 +1,7 @@
 import io
 
 from rparser.base import FinancialReport, PDFFileIO
-from db.models import Company
+from db.models import Company, RecordType
 from db.util import get_records_reprs, get_companies_reprs
 
 
@@ -32,3 +32,7 @@ def read_report_from_file(path, session):
 def get_company(isin, session):
     company = session.query(Company).filter_by(isin=isin).first()  
     return company 
+
+def get_record_types(session):
+    rtypes = session.query(RecordType.id, RecordType.name).all()
+    return [dict(zip(("id", "name"), rtype)) for rtype in rtypes]

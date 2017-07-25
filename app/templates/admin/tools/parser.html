@@ -4,176 +4,20 @@
 {% block title %} Parser {% endblock %}
 
 {% block head_css %}
-{{ super() }}
-<link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
-<style>
-/*    body {
-        background-color: #333;
-        color: white;
-    }*/
-
-    #report-content {
-        height: 500px;
-        overflow-y: scroll;
-        overflow-x: none;
-        /*background-color: #444444; /*grey;*/*/
-        /*border: 1px solid #f0ad4e;*/
-        /*background-color: red;*/
-        /*border: 1px solid black;*/
-    }
-    #report-content table {
-        border-collapse: collapse;
-        width: 100%;
-        height: 100%;
-        /*background-color: #444444; /*grey;*/*/
-        /*color: white;*/
-        margin-bottom: 10px;
-        border-spacing: 0;
-        display: inline-block;
-    }
-
-    #report-content tr,
-    #report-content td
-    { 
-        font-family: "Courier New", Courier, monospace;
-        font-size: 0.9em;
-        /*border: 1px solid black;*/
-    }
-/*    td.content {
-        white-space: pre;
-    }*/
-    #report-content th {
-        /*border: 1px solid black;*/
-        padding: 5px 0px;
-        text-align: center;
-        /*background-color: #f0ad4e;*/
-        /*color: black;*/
-        font-weight: bold;
-    }
-
-    #report-content td.content > input {
-        width: 100%;
-        border: 0px;
-    }
-    td.rowno,
-    td.pageno,
-    td.field,
-    td.selector
-    {
-        text-align: center;
-        vertical-align: middle;
-    }
-    td.selector {
-        width: 2%;
-    }
-    td.pageno,
-    td.statement
-    {
-        width: 5%;
-    }
-    td.field {
-        position: relative;
-        width: 10%;
-    }
-    td.field > span {
-        overflow: hidden;
-    }
-    td.content {
-        width: 78%;
-    }
-    td.content input {
-        /*background-color: #444444; /*grey;*/*/
-    }
-    .bls-style,
-    .bls-style td.content input {
-        background-color: #4169E1;
-        color: white;
-    }
-    .ics-style,
-    .ics-style td.content input {
-        background-color: #2E8B57;
-        color: white;
-    }
-    .cfs-style,
-    .cfs-style td.content input {
-        background-color: #a64dff;
-        color: white;
-    }
-    #report-ui {
-        position: relative;
-        /*background-color: #333;*/
-        padding: 5px;
-    }
-    .dropdown-inline {
-        display: inline;
-    }
-    .dropdown-menu {
-        overflow-y: scroll;
-        max-height: 200px;
-        font-family: "Courier New", Courier, monospace;
-        font-size: 0.9em;
-    }   
-    #items-dropdown,
-    #stm-dropdown,
-    #report-refresh-btn,
-    #report-remove-btn {
-        display: none;
-    }
-    .btn-add-item {
-        position: absolute;
-        left: 0px;
-        top: 50%;
-        transform: translateY(-50%);
-    }
-    .item-selector {
-        padding: 10px 0px 0px 0px;
-        background-color: #f2f2f2;
-    }
-    .select-auto {
-         width:auto !important;
-    }
-    .input-timestamp {
-        max-width: 100px;
-    }
-    #items {
-        /*border: 1px solid black;*/
-        margin: 10px 0px;
-    }
-    td.item-value {
-        text-align: center;
-        vertical-align: middle;
-    }
-    td.item-value > input {
-        max-width: 150px;
-    }
-    th.item-range {
-        text-align: center;
-    }
-    .modal-body p {
-        font-family: "Courier New", Courier, monospace;
-        font-size: 0.9em;
-        white-space: pre;
-        overflow: scroll;
-    }
-</style>
+    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/parser.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/parser-table.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block page_body %}
-    {{ super() }}
-    <div class="container">
+{{ super() }}
+    <div class="container container-full">
         <h3>Financial Report</h3>
-        <p>
-            Financial report for
-            <select class="form-inline select-auto input-sm">
-                {% for i in range(1, 13) %}
-                    <option {% if report.timerange == i %}selected="selected" {% endif %}>{{i}}</option>
-                {% endfor %}
-            </select> 
-            months ended on 
-            <input type="text" maxlength="10" class="input-timestamp" value="{{report.timestamp.strftime('%Y-%m-%d')}}">
-        </p>
-        <p>
-            Company:
+        <p>Financial report for <strong>{{report.timerange}}</strong> months ended on <strong>{{report.timestamp.strftime('%Y-%m-%d')}}</strong> 
+        (<a href="#">Edit</a>).</p>
+        <p>Company:
             {% if company %}
                 <a href="#", target="_blank">{{company.fullname}}</a>
             {% else %}
@@ -181,19 +25,16 @@
             {% endif %} 
             (<a href="#">Select Company</a>)</button>
         </p>
+
         <div id="report-wrapper">
             <div id="report-ui">
-                <button type="button" class="btn btn-default" id="report-bls-btn" title="BLS">
-                    <span>BLS</span>
-                </button>
-                <button type="button" class="btn btn-default" id="report-ics-btn" title="ICS">
-                    <span>ICS</span>
-                </button>
-                <button type="button" class="btn btn-default" id="report-cfs-btn" title="CFS">
-                    <span>CFS</span>
-                </button>
-
-                <div class="btn-group">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" checked id="layout-checkbox" onchange="switchLayout();"> Maintain the original physical layout of the text.
+                    </label>
+                </div>
+                
+                <div class="btn-group btn-group-sm">
                     <button type="button" class="btn btn-default" 
                             data-select-type="ALL" id="stm-filter-btn"
                             title="Statement">ALL</button>
@@ -211,33 +52,43 @@
                         <li><a data-select-type="CFS" href="#">CFS</a></li>
                     </ul>
                 </div>
-
-                <div class="dropdown dropdown-inline" id="stm-dropdown">
-                    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                        Statement<span class="caret"></span>   
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-default" id="report-bls-btn" title="BLS" onclick="scrollToRecords('bls-style');">
+                        <span>BLS</span>
                     </button>
-                    <ul class="dropdown-menu" aria-labelledby="fields-menu">
-                        <li><a href="#">NONE</a></li>
-                        <li><a href="#">BLS</a></li>
-                        <li><a href="#">ICS</a></li>
-                        <li><a href="#">CFS</a></li>
-                    </ul>
+                    <button type="button" class="btn btn-default" id="report-ics-btn" title="ICS" onclick="scrollToRecords('ics-style');">
+                        <span>ICS</span>
+                    </button>
+                    <button type="button" class="btn btn-default" id="report-cfs-btn" title="CFS" onclick="scrollToRecords('cfs-style');">
+                        <span>CFS</span>
+                    </button>
+                </div> 
+                <div class="btn-group btn-group-sm">
+                    <div class="btn-group btn-group-sm" id="stm-dropdown">
+                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                            Statement <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu" role="menu">
+                            <li><a href="#">NONE</a></li>
+                            <li><a href="#">BLS</a></li>
+                            <li><a href="#">ICS</a></li>
+                            <li><a href="#">CFS</a></li>
+                        </ul>
+                    </div>
+                     <button type="button" class="btn btn-danger" id="report-remove-btn" title="Trash">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </button>
                 </div>
-                <button type="button" class="btn btn-default" id="report-refresh-btn" title="Refresh">
-                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
-                </button>
-                <button type="button" class="btn btn-danger" id="report-remove-btn" title="Trash">
-                    <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                </button>
-            </div>  
+            </div> <!-- <div id="report-ui"> -->
+
             <div id="report-content">
-                <table class="table">
+                <table class="table-hover">
                     <thead>
                         <tr>
                             <th></th>
-                            <th>page#</th>
-                            <th>field</th>
-                            <th>content</th>
+                            <th>Page #</th>
+                            <th>Record Type</th>
+                            <th>Row Content</th>
                         </tr>  
                     </thead>
                     <tbody>
@@ -251,9 +102,12 @@
                             {% else %}
                                 <tr data-stm="none">
                             {% endif %}
-                                <td class="selector"><input type="checkbox"></td>
+                                 <td class="selector">
+                                    <a href="javascript:void(0);" class="recordform-btn"><span class="glyphicon glyphicon-plus"></span></a>
+                                    <input type="checkbox">
+                                </td>
                                 <td class="pageno">{{page_no}}</td>
-                                <td class="field">
+                                <td class="record-name">
                                     <span>{{report.rows_map.get(doc_row, None)}}</span>
                                 </td>
                                 <td class="content">{{content}}</td>
@@ -264,9 +118,9 @@
             </div>
         </div>
     </div>
-    
-    <div class="container" id="items">
-        <h3>Identified Items</h3>
+
+    <div class="container container-full">
+        <h3>Identified Records</h3>
         <div>
             <!-- Nav tabs -->
             <ul class="nav nav-tabs" role="tablist">
@@ -277,125 +131,143 @@
             <!-- Tab panes -->
             <div class="tab-content">
                 <div role="tabpanel" class="tab-pane active" id="wrapper-bls">
-                    <table id="bls-items" class="table table-striped">
+                    <table id="bls-table" class="table table-hover records-table">
                         <thead>
                             <tr>
                                 <th></th>
-                                <th>Units</th>
-                                <th>Item</th>
+                                <th>Record Type</th>
                                 {% for timerange, timestamp in report.bls.names %}
-                                    <th class="item-range">
-                                        <select class="form-inline select-auto input-sm">
-                                            {% for i in range(1, 13) %}
-                                                <option {% if timerange == i %}selected="selected" {% endif %}>{{i}}</option>
-                                            {% endfor %}
-                                        </select> 
-                                        months ended on 
-                                        <input type="text" maxlength="10" class="input-timestamp" value="{{timestamp|join('-')}}">
+                                    <th data-column-id="{{loop.index}}">
+                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp|join('-')}}</span>
+                                        <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
+                                        <a href="javascript:void(0);" onclick="removeColumn('#bls-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
                                 {% endfor %}
                             </tr>  
                         </thead>
                         <tbody>
-                            {% for item, values in report.bls.items() %}
-                                <tr>
+                            {% for record_name, values in report.bls.items() %}
+                                <tr class="record-row ui-widget-content">
                                     <td>
-                                        <button type="button" class="btn btn-danger btn-xs btn-item-remove" title="Trash">
-                                            <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                                        </button>
+                                        <button type="button" class="btn btn-danger btn-xs record-remove-btn">
+                                            <span class="glyphicon glyphicon-remove"></span>
+                                        </button>      
                                     </td>
                                     <td>
-                                        <select class="form-inline select-auto input-sm">
-                                            <option {% if report.bls.uom == 1 %} selected="selected" {% endif %}>PLN</option>
-                                            <option {% if report.bls.uom == 1000 %} selected="selected" {% endif %}>k'PLN</option>
-                                            <option {% if report.bls.uom == 1000000 %} selected="selected" {% endif %}>m'PLN</option>
+                                        <select class="rtype-selection">
+                                            {% for rtype in rtypes %}
+                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
+                                            {% endfor %}
                                         </select>
                                     </td>
-                                    <td>{{item}}</td>
                                     {% for value in values %}
-                                        <td class="item-value"><input type="text" value="{{value}}"></td>
+                                        <td>
+                                            <div class="form-group">
+                                                <input type="text" class="form-control input-sm" value="{{value}}">
+                                            </div>
+                                        </td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    <button class="btn btn-primary" onclick="addRow('#bls-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addColumn('#bls-table');">Add Column</button>
                 </div>
+
                 <div role="tabpanel" class="tab-pane" id="wrapper-ics">
-                    <table id="bls-items" class="table table-striped">
+                    <table id="ics-table" class="table table-hover records-table">
                         <thead>
                             <tr>
                                 <th></th>
-                                <th>Item</th>
+                                <th>Record Type</th>
                                 {% for timerange, timestamp in report.ics.names %}
-                                    <th class="item-range">
-                                        <select class="form-inline select-auto input-sm">
-                                            {% for i in range(1, 13) %}
-                                                <option {% if timerange == i %}selected="selected" {% endif %}>{{i}}</option>
-                                            {% endfor %}
-                                        </select> 
-                                        months ended on 
-                                        <input type="text" maxlength="10" class="input-timestamp" value="{{timestamp|join('-')}}">
+                                    <th data-column-id="{{loop.index}}">
+                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp|join('-')}}</span>
+                                        <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
+                                        <a href="javascript:void(0);" onclick="removeColumn('#ics-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
                                 {% endfor %}
                             </tr>  
                         </thead>
                         <tbody>
-                            {% for item, values in report.ics.items() %}
-                                <tr>
+                            {% for record_name, values in report.ics.items() %}
+                                <tr class="record-row ui-widget-content">
                                     <td>
-                                        <button type="button" class="btn btn-danger btn-xs btn-item-remove" title="Trash">
-                                            <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                                        </button>
+                                        <button type="button" class="btn btn-danger btn-xs record-remove-btn">
+                                            <span class="glyphicon glyphicon-remove"></span>
+                                        </button>      
                                     </td>
-                                    <td><span>{{item}}</span></td>
+                                    <td>
+                                        <select class="rtype-selection">
+                                            {% for rtype in rtypes %}
+                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
                                     {% for value in values %}
-                                        <td class="item-value"><input type="text" value="{{value}}"></td>
+                                        <td>
+                                            <div class="form-group">
+                                                <input type="text" class="form-control input-sm" value="{{value}}">
+                                            </div>
+                                        </td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    <button class="btn btn-primary" onclick="addRow('#ics-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addColumn('#ics-table');">Add Column</button>
                 </div>
                 <div role="tabpanel" class="tab-pane" id="wrapper-cfs">
-                    <table id="bls-items" class="table table-striped">
+                    <table id="cfs-table" class="table table-hover records-table">
                         <thead>
                             <tr>
                                 <th></th>
-                                <th>Item</th>
+                                <th>Record Type</th>
                                 {% for timerange, timestamp in report.cfs.names %}
-                                    <th class="item-range">
-                                        <select class="form-inline select-auto input-sm">
-                                            {% for i in range(1, 13) %}
-                                                <option {% if timerange == i %}selected="selected" {% endif %}>{{i}}</option>
-                                            {% endfor %}
-                                        </select> 
-                                        months ended on 
-                                        <input type="text" maxlength="10" class="input-timestamp" value="{{timestamp|join('-')}}">
+                                    <th data-column-id="{{loop.index}}">
+                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp|join('-')}}</span>
+                                        <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
+                                        <a href="javascript:void(0);" onclick="removeColumn('#cfs-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
                                 {% endfor %}
                             </tr>  
                         </thead>
                         <tbody>
-                            {% for item, values in report.cfs.items() %}
-                                <tr>
+                            {% for record_name, values in report.cfs.items() %}
+                                <tr class="record-row ui-widget-content">
                                     <td>
-                                        <button type="button" class="btn btn-danger btn-xs btn-item-remove" title="Trash">
-                                            <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
-                                        </button>
+                                        <button type="button" class="btn btn-danger btn-xs record-remove-btn">
+                                            <span class="glyphicon glyphicon-remove"></span>
+                                        </button>      
                                     </td>
-                                    <td><span>{{item}}</span></td>
+                                    <td>
+                                        <select class="rtype-selection">
+                                            {% for rtype in rtypes %}
+                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
                                     {% for value in values %}
-                                        <td class="item-value"><input type="text" value="{{value}}"></td>
+                                        <td>
+                                            <div class="form-group">
+                                                <input type="text" class="form-control input-sm" value="{{value}}">
+                                            </div>
+                                        </td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    <button class="btn btn-primary" onclick="addRow('#cfs-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addColumn('#cfs-table');">Add Column</button>
                 </div>
             </div>
         </div>
+        <div style="margin-top:15px"></div>
         <div>
-            <button type="button" class="btn btn-primary">Export Data</button>
+            <button type="button" class="btn btn-success">Export Data</button>
             <div>
                 <label class="checkbox-inline">
                     <input type="checkbox" name="statement-export" value="bls" checked>BLS
@@ -424,357 +296,168 @@
             </div><!-- /.modal-content -->
         </div><!-- /.modal-dialog -->
     </div><!-- /.modal -->
-
 {% endblock %}
 
 {% block body_scripts %}
-    <script src="{{ url_for('static', filename='vendors/jquery.hoverIntent.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/parser.js') }}"></script>
-    <script>
+<script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/parser-table.js') }}"></script>
+<script src="{{ url_for('static', filename='js/parser.js') }}"></script>
+<script>
+    var rtypes = {{ rtypes|tojson }};
 
-        $("#item-source-modal").on("show.bs.modal", function (e) {
-            var $invoker = $(e.relatedTarget); 
-            $(this).find(".modal-title").text(
-                "Reference for '" + $invoker.text() + "'"
-            );
-            $(this).find(".modal-body").html(
-                "<p>" + $invoker.closest("td").data("item-source") + "</p>"
-            );
-        });
+    refreshSelects();
+    $(".record-row").makeDraggable().makeDroppable();
 
-        $(document).on("click", ".btn-item-remove", function() {
-            $(this).closest("tr").remove();
-        });
-
-        $("#report-content table tr").hoverIntent({
-            over: function() { // IN
-                var $trow = $(this);
-                var $btn = createPlusBtn(function() {
-                    if (!$trow.next().hasClass("item-selector")) {
-                        var $rselector = createItemSelector(2);
-                        $rselector.insertAfter($trow);
-                    }
-                });
-                $(this).find("td.field").append($btn);
-            },
-            out: function() { // OUT
-                $(this).find(".btn-add-item").remove();
-            },
-            interval: 50
-        });
+    $(document).on("click", ".record-remove-btn", function() {
+        $(this).closest("tr").remove();
+    });
+    
+    $("#export-btn").on("click", function() {
+       var records = readRecords("#ics-table");
+       alert(JSON.stringify(records));
+    });
+    
+    activateFocusOnInputs("#ics-table");
+    activateFocusOnInputs("#bls-table");
+    
+    $("#column-editor").on("show.bs.modal", function(event) {
+        var $caller = $(event.relatedTarget); 
+        var $timerangeSpan = $caller.parent().find(".column-timerange");
+        var $timestampSpan = $caller.parent().find(".column-timestamp");
         
-        $("#report-refresh-btn").click(function() {
-            var rows = $(".selector > input:checkbox:checked").map(function() {
-                return $(this).closest("tr");
-            }).get();
+        var modal = $(this);
+        var $timerangeInput = modal.find("#timerange-input");
+        var $timestampInput = modal.find("#timestamp-input");
 
-            var text = rows.map(function(element) { 
-                return element.find(".content > input").val();
-            }).join("\n");
+        // update inputs with current values
+        $timerangeInput.val($timerangeSpan.text());
+        $timestampInput.val($timestampSpan.text());
 
-            identifyItems({
-                text: text,
-                callback: function(data) {
-                    for (var i = 0; i < data.length; i++) {
-                        var item = data[i];
-                        console.log("Item: " + item.name);
-                        for (var j = 0; j < item.row_no.length; j++) {
-                            console.log("- setting row: " + item.row_no[j]);
-                            rows[item.row_no[j]].find(".field").text(item.name);
-                        }
-                    }
-                }
-            });
+        // set callback for Ok button
+        modal.find("#modal-ok-btn").click(function(event) {
+            $timerangeSpan.text($timerangeInput.val());
+            $timestampSpan.text($timestampInput.val());
+            modal.modal("hide");
         });
+    });
 
-        $("#report-remove-btn").click(function() {
-            
-            alert($("#report-content tbody tr").first().position().top);
+    $(document).on("click", ".recordform-btn", function() {
+        var $currentRow = $(this).closest("tr");
+        if (!$currentRow.next().hasClass("record-form")) {
+            wrapWith("tr",
+                wrapWith("td",
+                    createRecordForm(rtypes),
+                    {"colspan": "100%"}
+                ),
+                {"class": "record-form"}
+            ).insertAfter($currentRow);
+        }
+    });
 
-            // var ics = $("#report-content tr.ics-style").first();
-            var ics = $("#report-content tbody tr.ics-style");
-            var _offset = ics.position();
-            var _topoffset = _offset.top;
-
-            $("#report-content").scrollTop(_topoffset - temp);            
-        });
-
-        $("#report-bls-btn").click(function() {
-            var toffset = $("#report-content thead").position().top;
-            var $frow = $("#report-content tbody tr.bls-style");
-            var roffset = $frow.position().top;
-            $("#report-content").scrollTop(roffset - toffset);
-        });
-
-        $("#report-ics-btn").click(function() {
-            var toffset = $("#report-content thead").position().top;
-            var $frow = $("#report-content tbody tr.ics-style");
-            var roffset = $frow.position().top;
-            $("#report-content").scrollTop(roffset - toffset);
-        });
-
-        $("#report-cfs-btn").click(function() {
-            var toffset = $("#report-content thead").position().top;
-            var $frow = $("#report-content tbody tr.cfs-style");
-            var roffset = $frow.position().top;
-            $("#report-content").scrollTop(roffset - toffset);
-        });
-
-        $(".selector > input").change(function() {
-            refreshReportUI();
-        });
-
-        $('#stm-filter-list a, #stm-filter-btn').click(
-            function () {
-                var stype = $(this).data("select-type");
-                if (stype !== undefined) {
-                    // Turn off all checkboxes.
-                    $(".selector > input:checkbox").prop("checked", false);
-                    switch(stype) {
-                        case "ALL":
-                            $(".selector > input:checkbox").prop("checked", true);
-                            break;
-                        case "NONE":
-                            $(".selector > input:checkbox").prop("checked", false);
-                            break;
-                        case "BLS":
-                            $("tr[data-stm='bls']").find(".selector > input").prop("checked", true);
-                            break;
-                        case "ICS":
-                            $("tr[data-stm='ics']").find(".selector > input").prop("checked", true);
-                            break;
-                        case "CFS":
-                            $("tr[data-stm='cfs']").find(".selector > input").prop("checked", true);
-                            break;
-                    }
-                }
-                refreshReportUI();
-            }
+    $("#item-source-modal").on("show.bs.modal", function (e) {
+        var $invoker = $(e.relatedTarget); 
+        $(this).find(".modal-title").text(
+            "Reference for '" + $invoker.text() + "'"
         );
+        $(this).find(".modal-body").html(
+            "<p>" + $invoker.closest("td").data("item-source") + "</p>"
+        );
+    });
 
-        $(document).on("click", ".btn-item-abort", function() {
-            $(this).closest("tr").remove();
-        });
+    $(document).on("click", ".btn-item-remove", function() {
+        $(this).closest("tr").remove();
+    });
 
-        $(document).on("click", ".btn-item-add", function() {
-            var source = $(this).closest("tr").prev().find("td.content > input").val();
-            var name = $("#item-name :selected").text();
-            var statement = $("#item-statement :selected").text();
-            var values = $(this).closest("form").find("input.item-value").map(
-                function () {
-                    return $(this).val();
+    $("#report-remove-btn").click(function() {
+        
+        alert($("#report-content tbody tr").first().position().top);
+
+        // var ics = $("#report-content tr.ics-style").first();
+        var ics = $("#report-content tbody tr.ics-style");
+        var _offset = ics.position();
+        var _topoffset = _offset.top;
+
+        $("#report-content").scrollTop(_topoffset - temp);            
+    });
+
+    $(".selector > input").change(function() {
+        refreshReportUI();
+    });
+
+    $('#stm-filter-list a, #stm-filter-btn').click(
+        function () {
+            var stype = $(this).data("select-type");
+            if (stype !== undefined) {
+                // Turn off all checkboxes.
+                $(".selector > input:checkbox").prop("checked", false);
+                switch(stype) {
+                    case "ALL":
+                        $(".selector > input:checkbox").prop("checked", true);
+                        break;
+                    case "NONE":
+                        $(".selector > input:checkbox").prop("checked", false);
+                        break;
+                    case "BLS":
+                        $("tr[data-stm='bls']").find(".selector > input").prop("checked", true);
+                        break;
+                    case "ICS":
+                        $("tr[data-stm='ics']").find(".selector > input").prop("checked", true);
+                        break;
+                    case "CFS":
+                        $("tr[data-stm='cfs']").find(".selector > input").prop("checked", true);
+                        break;
                 }
-            ).get();
-            if (name === "NONE") {
-                alert("No item selected. Please select one of the item from the list.");
-            } else {
-                var $trow = createItemRow(name, statement, values, source);
-                if (statement == "BLS") {
-                    $("#bls-items tbody").append($trow);
-                } else if (statement == "ICS") {
-                    $("#ics-items tbody").append($trow);
-                } else {
-                    $("#cfs-items tbody").append($trow);
-                }
-                alert("The item has been successfully added to the list.");
-                $(this).closest("tr").remove();
             }
-        });
-
-        function createPlusBtn(onclick) {
-            var $innerobj = $(
-                "<span/>",
-                {
-                    class: "glyphicon glyphicon-plus",
-                    "aria-hidden": "true" 
-                }
-            );
-            var $btn = $(
-                "<button/>",
-                {
-                    class: "btn btn-primary btn-xs btn-add-item",
-                    type: "button"
-                }
-            );
-            $btn.click(onclick);
-            $btn.append($innerobj);
-            return $btn;
+            refreshReportUI();
         }
+    );
 
-        function createItemSelector(columns) {
-            if (columns === undefined) columns = 2;
+    $(document).on("click", ".btn-record-abort", function() {
+        $(this).closest("tr").remove();
+    });
 
-            var $row = $("<tr/>", {class: "item-selector"});
-            var $cell = $("<td/>", {colspan: "5"});
-
-            var $rselect = $("<select/>", {class: "form-control select-auto input-sm"});
-            getRecordTypes({
-                callback: function(rtypes) {
-                    for (var i = 0; i < rtypes.length; i++) {
-                        $rselect.append($("<option/>", {text: rtypes[i]}));
+    $(document).on("click", ".btn-record-add", function() {
+        var recordsData = {
+            "type": $("#new-record-name :selected").val(),
+            "statement": $("#new-record-statement :selected").text(),
+            "values": 
+                $(this).closest("form").find("input.record-value").map(
+                    function () {
+                        return $(this).val();
                     }
-                }
-            });
-            // $("#items-dropdown ul").children().each(function() {
-            //     var name = $(this).find("a").text();
-            //     $rselect.append($("<option/>", {text: name}));
-            // });
-            $rselect.prop("id", "item-name");
-
-            var $form = $("<form/>", {class: "form-horizontal"});
-
-            var $formGroup;
-            var $label;
-            var $input;
-            var $button;
-            var $div;
-
-            $formGroup = $("<div/>", {class: "form-group"});
-            $label = $("<label/>", {class: "control-label col-sm-2", text: "Financial Item"});
-            $formGroup.append($label);
-            $div = $("<div/>", {class: "col-sm-10"});
-            $div.append($rselect);
-            $formGroup.append($div);
-            $form.append($formGroup);
-
-            $formGroup = $("<div/>", {class: "form-group"});
-            $label = $("<label/>", {class: "control-label col-sm-2", text: "Statement"});
-            $formGroup.append($label);
-            $div = $("<div/>", {class: "col-sm-10"});
-            var $sselect = $("<select/>", {class: "form-control select-auto input-sm"});
-            $sselect.prop("id", "item-statement");
-            $sselect.append($("<option/>", {text: "BLS"}));
-            $sselect.append($("<option/>", {text: "ICS"}));
-            $sselect.append($("<option/>", {text: "CFS"}));
-            $div.append($sselect);
-            $formGroup.append($div);
-            $form.append($formGroup);
-
-            $formGroup = $("<div/>", {class: "form-group"});
-            $label = $("<label/>", {class: "control-label col-sm-2", text: "Financial Data"});
-            $formGroup.append($label);
-            $div = $("<div/>", {class: "form-inline col-sm-10"});
-
-            for(var i = 0; i < columns; i++) {
-                $input = $("<input>", {
-                    type: "text", class: "form-control input-sm item-value",
-                    value: "0", placeholder: "Column " + (i+1)
-                });       
-                $div.append($input);
-            }
-
-            var $button = $(
-                "<button/>", {class: "btn btn-primary btn-xs", type: "button"}
-            );
-            $button.append($("<span/>",{class: "glyphicon glyphicon-plus"}));
-            $button.click(function() {
-                var columnNo = $(this).parent().find("input").length + 1;
-                $input = $("<input>", {
-                    type: "text", class: "form-control input-sm item-value",
-                    value: "0", placeholder: "Column " + columnNo
-                });       
-                $input.insertBefore($(this));
-            });
-            $div.append($button);
-
-            $button = $(
-                "<button/>", {class: "btn btn-danger btn-xs", type: "button"}
-            );
-            $button.append($("<span/>",{class: "glyphicon glyphicon-minus"}));
-            $button.click(function() {
-                var $lastInput = $(this).parent().find("input").last();
-                $lastInput.remove();
-            });
-            $div.append($button);      
-
-            $formGroup.append($div);
-            $form.append($formGroup);
-
-            // Buttons
-            $formGroup = $("<div/>", {class: "form-group"});
-            $div = $("<div/>", {class: "col-sm-offset-2 col-sm-10"});
-
-            var $btnc = $("<div/>", {class: "btn-toolbar"}); 
-
-            $button = $(
-                "<button/>", 
-                {type: "button", class: "btn btn-sm btn-default btn-item-add", 
-                 text: "Add"}
-            );
-            $btnc.append($button);
-
-            $button = $(
-                "<button/>",
-                {type: "button", class: "btn btn-sm btn-default btn-item-abort", 
-                 text: "Abort"}
-            );
-            $btnc.append($button);
-
-            $div.append($btnc);
-            $formGroup.append($div);
-            $form.append($formGroup);
-
-            $cell.append($form);
-            $row.append($cell);
-
-            return $row;
-        }
-
-        function createItemRow(name, statement, values, source) {
-            var $row = $("<tr/>");
-            var $td;
-
-            $td = $("<td/>");
-            var $button = $(
-                "<button/>", 
-                {class: "btn btn-danger btn-xs btn-item-remove", title: "Trash"}
-            ) 
-            $button.append($("<span/>", {class: "glyphicon glyphicon-trash"}));
-            $td.append($button);
-            $row.append($td);
-
-            $td = $("<td/>");
-            if (source === undefined) {
-                $td.data("item-source", "");
-                $td.text(name);
+                ).get()
+        };
+        if (recordsData.type === "NONE") {
+            alert("No item selected. Please select one of the item from the list.");
+        } else {
+            if (recordsData.statement == "BLS") {
+                addRow("#bls-table", rtypes, recordsData);
+            } else if (recordsData.statement == "ICS") {
+                addRow("#ics-table", rtypes, recordsData);
             } else {
-                $td.data("item-source", source);
-                var $link = $(
-                    "<a/>", {href: "#", text: name, "data-toggle": "modal",
-                             "data-target": "#item-source-modal"}
-                );
-                $td.append($link);
+                addRow("#cfs-table", rtypes, recordsData);
             }
-            $row.append($td);
-
-            for (var i = 0; i < values.length; i++) {
-                $td = $("<td/>", {class: "item-value"});
-                $td.append($("<input/>", {type: "text", value: values[i]}));
-                $row.append($td);
-            }
-
-            return $row;
+            alert("The item has been successfully added to the list.");
+            $(this).closest("tr").remove();
         }
+    });
 
-        function refreshReportUI() {
-            var counter = $(".selector > input:checkbox:checked").length;
-            if (counter > 0) {
-                $("#items-dropdown").css("display","inline-block");
-                $("#stm-dropdown").css("display","inline-block");
-                $("#report-refresh-btn").css("display","inline-block");
-                $("#report-remove-btn").css("display","inline-block");
+    function refreshReportUI() {
+        var counter = $(".selector > input:checkbox:checked").length;
+        if (counter > 0) {
+            $("#stm-dropdown").css("display","inline-block");
+            $("#report-remove-btn").css("display","inline-block");
 
-                $("#stm-filter-btn").text("NONE");
-                $("#stm-filter-btn").data("select-type", "NONE");
-            } else {
-                $("#items-dropdown").css("display","none"); 
-                $("#stm-dropdown").css("display","none"); 
-                $("#report-refresh-btn").css("display","none"); 
-                $("#report-remove-btn").css("display","none"); 
+            $("#stm-filter-btn").text("NONE");
+            $("#stm-filter-btn").data("select-type", "NONE");
+        } else {
+            $("#stm-dropdown").css("display","none"); 
+            $("#report-remove-btn").css("display","none"); 
 
-                $("#stm-filter-btn").text("ALL");
-                $("#stm-filter-btn").data("select-type", "ALL");
-            }  
-        }
-    </script>
+            $("#stm-filter-btn").text("ALL");
+            $("#stm-filter-btn").data("select-type", "ALL");
+        }  
+    }
+</script>
 {% endblock %}

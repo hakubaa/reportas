@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 
 from app.dbmd.tools.forms import ReportUploaderForm
 from app.dbmd.tools.util import (
-    FinancialReportDB, read_report_from_file, get_company
+    FinancialReportDB, read_report_from_file, get_company, get_record_types
 )
 from app.dbmd.tools import dbmd_tools
 from app.models import File, Permission
@@ -55,5 +55,12 @@ def parser():
     if report.company and "isin" in report.company:
         company = get_company(report.company["isin"], db.session)
     
+    rtypes = get_record_types(db.session)
+
     return render_template("admin/tools/parser.html", report=report, 
-                           company=company)
+                           company=company, rtypes=rtypes)
+
+
+@dbmd_tools.route("/parserek", methods=("GET",))
+def parserek():
+    return render_template("admin/tools/parserek.html")

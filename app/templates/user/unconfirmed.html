@@ -2,6 +2,7 @@
 {% extends "base.html" %}
 {% block title %}Confirm your account{% endblock %}
 {% block page_body %}
+<div class="container">
 <div class="content-section">
   <div class="center">
     <h3>You have not confirmed your account yet.</h3>
@@ -14,5 +15,6 @@
       <a href="{{ url_for('user.resend_confirmation') }}">Click here</a>
     </p>
   </div>
+</div>
 </div>
 {% endblock %}

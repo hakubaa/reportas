@@ -24,109 +24,111 @@
 {% endblock %}
 
 {% block page_body %}
-<div class="content-section">
-    <div class="panel panel-default" id="database-panel">
-        <div class="panel-heading">Database</div>
-        <div class="panel-body">
-            <div class="container-fluid">
+<div class="container">
+    <div class="content-section">
+        <div class="panel panel-default" id="database-panel">
+            <div class="panel-heading">Database</div>
+            <div class="panel-body">
+                <div class="container-fluid">
 
-                <div class="row equal">
-                    <div class="col-md-4">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">Financial Data</div>
-                            <div class="panel-body">
-                                <ul>
-                                    <li><a href="{{ url_for('record.index_view') }}">Records</a></li>
-                                    <li><a href="{{ url_for('recordtype.index_view') }}">Records Types</a></li>
-                                    <li><a href="{{ url_for('report.index_view') }}">Reports</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">Companies & Sectors</div>
-                            <div class="panel-body">
-                                <ul>
-                                    <li><a href="{{ url_for('company.index_view') }}">Companies</a></li>
-                                    <li><a href="{{ url_for('sector.index_view') }}">Sectors</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">Macroeconomic Data</div>
-                            <div class="panel-body">
-                            </div>
-                        </div>
-                    </div>                   
-                </div> <!-- #row -->
-
-
-                <div class="row equal top-buffer">
-                    <div class="col-md-4">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">Stock Exchagne Data</div>
-                            <div class="panel-body">
-                                <ul>
-                                    <li><a href="#">Quotations</a></li>
-                                    <li><a href="#">Indexes</a></li>
-                                    <li><a href="#">Stock Exchanges</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">Geographic Data</div>
-                            <div class="panel-body">
-                                <ul>
-                                    <li><a href="{{ url_for('company.index_view') }}">Countries</a></li>
-                                    <li><a href="{{ url_for('sector.index_view') }}">Districts</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    {% if current_user.is_administrator or current_user.has_role("moderator") %}
+                    <div class="row equal">
                         <div class="col-md-4">
-                            <div class="panel panel-danger">
-                                <div class="panel-heading">Administration</div>
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">Financial Data</div>
                                 <div class="panel-body">
                                     <ul>
-                                        {% if current_user.is_administrator %}
-                                            <li><a href="{{ url_for('dbmd_user.index_view') }}">Users</a></li>
-                                        {% endif %}
-                                        <li><a href="{{ url_for('dbrequest.index_view') }}">DB Requests</a></li>
+                                        <li><a href="{{ url_for('record.index_view') }}">Records</a></li>
+                                        <li><a href="{{ url_for('recordtype.index_view') }}">Records Types</a></li>
+                                        <li><a href="{{ url_for('report.index_view') }}">Reports</a></li>
                                     </ul>
                                 </div>
                             </div>
-                        </div>   
-                    {% endif %}                
-                </div> <!-- #row -->
-
-            </div>
-        </div>
-    </div>
-    <div class="panel panel-default" id="tools-panel">
-        <div class="panel-heading">Tools</div>
-        <div class="panel-body">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">Reports Parser</div>
-                            <div class="panel-body">
-                                <p>Search reports for financial data. Requires pdf file.</p>
-                                <a href="{{ url_for('dbmd_tools.report_uploader') }}">Run</a>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">Companies & Sectors</div>
+                                <div class="panel-body">
+                                    <ul>
+                                        <li><a href="{{ url_for('company.index_view') }}">Companies</a></li>
+                                        <li><a href="{{ url_for('sector.index_view') }}">Sectors</a></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="panel panel-primary">
-                            <div class="panel-heading">Massive Uploader</div>
-                            <div class="panel-body">
-                                Bla Bla
+                        <div class="col-md-4">
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">Macroeconomic Data</div>
+                                <div class="panel-body">
+                                </div>
+                            </div>
+                        </div>                   
+                    </div> <!-- #row -->
+
+
+                    <div class="row equal top-buffer">
+                        <div class="col-md-4">
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">Stock Exchagne Data</div>
+                                <div class="panel-body">
+                                    <ul>
+                                        <li><a href="#">Quotations</a></li>
+                                        <li><a href="#">Indexes</a></li>
+                                        <li><a href="#">Stock Exchanges</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">Geographic Data</div>
+                                <div class="panel-body">
+                                    <ul>
+                                        <li><a href="{{ url_for('company.index_view') }}">Countries</a></li>
+                                        <li><a href="{{ url_for('sector.index_view') }}">Districts</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        {% if current_user.is_administrator or current_user.has_role("moderator") %}
+                            <div class="col-md-4">
+                                <div class="panel panel-danger">
+                                    <div class="panel-heading">Administration</div>
+                                    <div class="panel-body">
+                                        <ul>
+                                            {% if current_user.is_administrator %}
+                                                <li><a href="{{ url_for('dbmd_user.index_view') }}">Users</a></li>
+                                            {% endif %}
+                                            <li><a href="{{ url_for('dbrequest.index_view') }}">DB Requests</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>   
+                        {% endif %}                
+                    </div> <!-- #row -->
+
+                </div>
+            </div>
+        </div>
+        <div class="panel panel-default" id="tools-panel">
+            <div class="panel-heading">Tools</div>
+            <div class="panel-body">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">Reports Parser</div>
+                                <div class="panel-body">
+                                    <p>Search reports for financial data. Requires pdf file.</p>
+                                    <a href="{{ url_for('dbmd_tools.report_uploader') }}">Run</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="panel panel-primary">
+                                <div class="panel-heading">Massive Uploader</div>
+                                <div class="panel-body">
+                                    Bla Bla
+                                </div>
                             </div>
                         </div>
                     </div>
