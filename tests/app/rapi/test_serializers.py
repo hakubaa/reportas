@@ -54,7 +54,9 @@ class RecordSchemaTest(AppTestCase):
     def test_deserialized_data_contains_hyperlinks(self):
         company = models.Company(name="TEST", isin="TEST")
         rtype = models.RecordType(name="TEST", statement="bls")
-        report = models.Report(timerange=12, timestamp=datetime(2012, 12, 31))
+        report = models.Report(
+            timerange=12, timestamp=datetime(2012, 12, 31), company=company
+        )
         db.session.add_all((company, rtype, report))
         db.session.flush()
         record = models.Record(
@@ -78,8 +80,9 @@ class ReportSchemaTest(AppTestCase):
         company = models.Company(name="TEST", isin="#TEST")
         db.session.add(company)
         db.session.commit()
-        report = models.Report(timerange=12, timestamp=datetime(2015, 3, 31),
-                               company=company)
+        report = models.Report(
+            timerange=12, timestamp=datetime(2015, 3, 31), company=company
+        )
         db.session.add(report)
         db.session.commit()
         data = ReportSchema().dump(report).data

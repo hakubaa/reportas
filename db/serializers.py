@@ -278,12 +278,39 @@ class ReportSchema(ModelSchema):
         models.Report, "company_id", required=True,
         error_messages={"required": "Company is required."}
     ) 
-    timestamp = fields.DateTime("%Y-%m-%d", required=True)
+    timestamp = fields.Date("%Y-%m-%d", required=True)
 
     records = fields.Nested(
         RecordSchema, 
         many=True
     )
+
+    @validates_schema
+    def validate_uniquness(self, data):
+        if not ("timerange" in data and "timestamp" in data and 
+                "company_id" in data):
+            return False
+
+        if (self.instance 
+            and (
+                self.instance.timerange == data["timerange"] and
+                self.instance.timestamp == data["timestamp"] and
+                self.instance.company_id == data["company_id"]
+            )
+        ):
+            return True
+
+        (ret, ), = self.session.query(exists().where(and_(
+            models.Report.timerange == data["timerange"],
+            models.Report.timestamp == data["timestamp"],
+            models.Report.company_id == data["company_id"]
+        )))
+        if ret:
+            raise ValidationError(
+                "Report not unique in terms of timerange, timestamp and "
+                "company.", field_names=("report")
+            )
+        return True
     
     
 @records_factory.register_schema()

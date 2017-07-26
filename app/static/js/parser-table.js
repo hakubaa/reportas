@@ -243,33 +243,48 @@ function createRecordInputValue(value) {
     return $div;
 }
 
-function readRecords(selector, companyId, reportId) {
-    if (selector === undefined) throw "Undefined selector.";
+function createDataForExport() {
+    var timerange = $("#report-timerange").text();
+    var timestamp = $("#report-timestamp").text();
+    var companyId = $("#company-id").data("company-id");
+
+    var blsRecords = readRecordsFromTable("#bls-table", companyId);
+    var icsRecords = readRecordsFromTable("#ics-table", companyId);
+    var cfsRecords = readRecordsFromTable("#cfs-table", companyId);
+
+    var data = JSON.stringify({
+        "timerange": timerange,
+        "timestamp": timestamp,
+        "company_id": companyId,
+        "records": blsRecords.concat(icsRecords, cfsRecords)
+    });
+    return data;
+}
+
+function readRecordsFromTable(selector, companyId) {
     if (companyId === undefined) companyId = null;
-    if (reportId === undefined) reportId = null;
-    
-    var table = $("" + selector);
+
+    var table = $(selector);
     var headers = table.find("thead tr th").slice(FIXED_COLUMNS).map(function() {
         return {
             "timerange": $(this).find(".column-timerange").text(),
             "timestamp": $(this).find(".column-timestamp").text()       
         };
     }).get();
-    
+
     var records = table.find("tbody tr").map(function(rowIndex) {
         var tds = $(this).find("td");
-        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").text();
+        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").val();
         return $(this).find("td").slice(FIXED_COLUMNS).map(function(columnIndex) {
             return {
-                "value": parseFloat($(this).find("input").val()),
-                "rtype": recordType,
-                "timerange": parseInt(headers[columnIndex].timerange),
-                "timestamp": headers[columnIndex].timestamp,
                 "company_id": companyId,
-                "report_id": reportId
+                "value": parseFloat($(this).find("input").val()),
+                "rtype_id": recordType,
+                "timerange": parseInt(headers[columnIndex].timerange),
+                "timestamp": headers[columnIndex].timestamp
             }       
         }).get();
     }).get();
-    
+
     return records;
 }

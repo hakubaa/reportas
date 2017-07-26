@@ -15,10 +15,11 @@
 {{ super() }}
     <div class="container container-full">
         <h3>Financial Report</h3>
-        <p>Financial report for <strong>{{report.timerange}}</strong> months ended on <strong>{{report.timestamp.strftime('%Y-%m-%d')}}</strong> 
+        <p>Financial report for <strong><span id="report-timerange">{{report.timerange}}</span></strong> months ended on <strong><span id="report-timestamp">{{report.timestamp.strftime('%Y-%m-%d')}}</span></strong> 
         (<a href="#">Edit</a>).</p>
         <p>Company:
             {% if company %}
+                <div id="company-id" data-company-id="{{company.id}}"></div>
                 <a href="#", target="_blank">{{company.fullname}}</a>
             {% else %}
                 Not identified
@@ -267,7 +268,10 @@
         </div>
         <div style="margin-top:15px"></div>
         <div>
-            <button type="button" class="btn btn-success">Export Data</button>
+            <form method="POST" action="" id="export-data-form">
+                <input type="hidden" name="data" value="" id="data-to-export">
+                <input class="btn btn-success" name="submit" type="submit" value="Export Data">
+            </form>
             <div>
                 <label class="checkbox-inline">
                     <input type="checkbox" name="statement-export" value="bls" checked>BLS
@@ -459,5 +463,58 @@
             $("#stm-filter-btn").data("select-type", "ALL");
         }  
     }
+
+    $("#export-data-form").submit(function() {
+        var data = createDataForExport();
+        $("#data-to-export").val(data);
+        return true;
+    });
+
+    function createDataForExport() {
+        var timerange = $("#report-timerange").text();
+        var timestamp = $("#report-timestamp").text();
+        var companyId = $("#company-id").data("company-id");
+
+        var blsRecords = readRecordsFromTable("#bls-table", companyId);
+        var icsRecords = readRecordsFromTable("#ics-table", companyId);
+        var cfsRecords = readRecordsFromTable("#cfs-table", companyId);
+
+        var data = JSON.stringify({
+            "timerange": timerange,
+            "timestamp": timestamp,
+            "company_id": companyId,
+            "records": blsRecords.concat(icsRecords, cfsRecords)
+        });
+        return data;
+    }
+
+    function readRecordsFromTable(selector, companyId) {
+        if (companyId === undefined) companyId = null;
+
+        var table = $(selector);
+        var headers = table.find("thead tr th").slice(FIXED_COLUMNS).map(function() {
+            return {
+                "timerange": $(this).find(".column-timerange").text(),
+                "timestamp": $(this).find(".column-timestamp").text()       
+            };
+        }).get();
+
+        var records = table.find("tbody tr").map(function(rowIndex) {
+            var tds = $(this).find("td");
+            var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").val();
+            return $(this).find("td").slice(FIXED_COLUMNS).map(function(columnIndex) {
+                return {
+                    "company_id": companyId,
+                    "value": parseFloat($(this).find("input").val()),
+                    "rtype_id": recordType,
+                    "timerange": parseInt(headers[columnIndex].timerange),
+                    "timestamp": headers[columnIndex].timestamp
+                }       
+            }).get();
+        }).get();
+
+        return records;
+    }
+
 </script>
 {% endblock %}

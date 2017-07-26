@@ -121,6 +121,10 @@ regardless of the method.
 		- Sectors
 
 
-    <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
-  <link href="{{ url_for('static', filename='vendors/bootstrap/css/bootstrap-theme.min.css') }}" rel="stylesheet">
-  
+27.07.2017:
+
+- refactor dbrequest, to execute subrequests of subrequests(+tests)
+- show only main dbrequests in dbmd
+- show subrequests in detail view
+- format select2 in ics/cfs/bls-table
+- add repr for dbrequest

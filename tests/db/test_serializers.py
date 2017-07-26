@@ -533,7 +533,26 @@ class ReportSchemaTest(DbTestCase):
         self.assertTrue(errors)
         self.assertIn("records", errors)
         self.assertIn("rtype_id", errors["records"][0])
+
+    def test_uniqueness_in_terms_of_timerange_timestamp_and_company(self):
+        company = models.Company(isin="#TEST", name="TEST")
+        self.db.session.add(company)
+        report = models.Report(
+            company=company, timerange=12, timestamp=date(2015, 3, 31)
+        )
+        self.db.session.add(report)
+        self.db.session.flush()
         
+        data = {
+            "timestamp": datetime.strftime(report.timestamp, "%Y-%m-%d"), 
+            "timerange": report.timerange,
+            "company_id": report.company_id
+        }
+        report, errors = ReportSchema().load(data, session=self.db.session)
+
+        self.assertTrue(errors)
+        self.assertIn("report", errors)
+
         
 def create_formula(session):
     total_assets = models.RecordType(name="TOTAL_ASSETS", statement="bls")

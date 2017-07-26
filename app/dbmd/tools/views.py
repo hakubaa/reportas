@@ -1,3 +1,5 @@
+from copy import deepcopy
+import json
 import os
 import io
 
@@ -12,9 +14,10 @@ from app.dbmd.tools.util import (
     FinancialReportDB, read_report_from_file, get_company, get_record_types
 )
 from app.dbmd.tools import dbmd_tools
-from app.models import File, Permission
+from app.models import File, Permission, DBRequest
 from app.decorators import permission_required
 from app import db
+from db import models
 
 
 @dbmd_tools.route("/report_uploader", methods=("GET", "POST"))
@@ -35,7 +38,7 @@ def report_uploader():
     return render_template("admin/tools/report_uploader.html", form=form)
 
 
-@dbmd_tools.route("/parser", methods=("GET", "POST"))
+@dbmd_tools.route("/parser", methods=("GET",))
 @login_required
 @permission_required(Permission.CREATE_REQUESTS)
 def parser():
@@ -59,6 +62,71 @@ def parser():
 
     return render_template("admin/tools/parser.html", report=report, 
                            company=company, rtypes=rtypes)
+
+
+@dbmd_tools.route("/parser", methods=("POST",))
+@login_required
+@permission_required(Permission.CREATE_REQUESTS)
+def parser_post():
+    data = get_request_data(dict())
+    dbrequest = create_report_dbrequest(data)
+    db.session.add(dbrequest)
+    db.session.commit()
+    return redirect(url_for("admin.index"))
+
+def get_request_data(default=None):
+    request_data = request.form["data"]
+    if request_data:
+        return json.loads(request_data)
+    return default
+
+def create_report_dbrequest(data):
+    records = None
+    if "records" in data:
+        records = data["records"]
+        del data["records"]
+
+    main_request = create_report_main_request(data)
+    subrequests = create_record_subrequests(records)
+    for subrequest in subrequests:
+        main_request.add_subrequest(subrequest)
+
+    return main_request
+
+def create_report_main_request(data):
+    report = get_report(**data)
+    if not report:
+        action = "create"
+        data = {
+            key: value for key, value in data.items() 
+            if key in ("timerange", "timestamp", "company_id", "consolidated") 
+        }
+    else:
+        action = "update"
+        data = dict(id=report.id)
+
+    dbrequest = DBRequest(
+        action=action, data=json.dumps(data), model="Report"
+    )    
+    return dbrequest
+
+def create_record_subrequests(data):
+    if not data:
+        return list()
+
+    subrequests = [
+        DBRequest(action="create", data=json.dumps(record), model="Record")
+        for record in data
+    ]
+    return subrequests
+
+def get_report(timestamp=None, timerange=None, company_id=None, **kwargs):
+    report = db.session.query(models.Report).filter(
+        models.Report.timerange == timerange,
+        models.Report.timestamp == timestamp,
+        models.Report.company_id == company_id
+    ).first()
+    return report
 
 
 @dbmd_tools.route("/parserek", methods=("GET",))
