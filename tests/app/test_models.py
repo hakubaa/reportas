@@ -35,13 +35,31 @@ class Account(Model):
 
     student_id = Column(Integer, ForeignKey("students.id"))
     student = relationship("Student", backref="accounts")
+    
+
+class SubAccount(Model):
+    __tablename__ = "subaccounts"
+    
+    id = Column(Integer, primary_key=True)
+    balance = Column(Integer, nullable=False)
+    
+    account_id = Column(Integer, ForeignKey("accounts.id"))
+    account = relationship("Account", backref="subaccounts")
 
 
+@records_factory.register_schema()
+class SubAccountSchema(ModelSchema):
+    class Meta:
+        model = SubAccount
+        
 @records_factory.register_schema()
 class AccountSchema(ModelSchema):
     class Meta:
         model = Account
 
+    subaccounts = fields.Nested(
+        SubAccountSchema, only=("id", "balance"), many=True
+    )
 
 @records_factory.register_schema()
 class StudentSchema(ModelSchema):
@@ -70,8 +88,7 @@ def create_related_requests(session, user, data={"name": "Python", "age": 17}):
 
 
 class DBRequestTest(AppTestCase):
-    models = [DBRequest, Student, User, Role, Account]
-
+    
     def setUp(self):
         super().setUp()
         records_factory.session = db.session
@@ -92,8 +109,8 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 17, "name": "Python"})
         )
-        obj, errors = dbrequest.execute(user, records_factory)[0]
-        db.session.add(obj)
+        result = dbrequest.execute(user, records_factory)
+        db.session.add(result["instance"])
         self.assertTrue(db.session.query(Student).count(), 1)
 
     def test_update_object_with_dbrequest(self):
@@ -106,7 +123,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 18, "name": "Python 3", "id": student.id})
         )    
-        obj, errors = dbrequest.execute(user, records_factory)[0]
+        result = dbrequest.execute(user, records_factory)
         db.session.commit()
         student = db.session.query(Student).one()
         self.assertEqual(student.age, 18)
@@ -122,7 +139,7 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"id": student.id})
         )    
-        obj, errors = dbrequest.execute(user, records_factory)[0]
+        dbrequest.execute(user, records_factory)
         db.session.commit()
         self.assertEqual(db.session.query(Student).count(), 0)
 
@@ -153,11 +170,11 @@ class DBRequestTest(AppTestCase):
             data=json.dumps({"age": 17})
         )
         db.session.add(dbrequest)
-        obj, errors = dbrequest.execute(user, records_factory)[0]
+        result = dbrequest.execute(user, records_factory)
         self.assertIsNotNone(dbrequest.errors)
         errors_request = json.loads(dbrequest.errors)
         self.assertIn("name", errors_request)
-        self.assertEqual(errors_request["name"], errors["name"])
+        self.assertEqual(errors_request["name"], result["errors"]["name"])
 
     def test_execute_updates_information_about_moderator(self):
         user = self.create_user()
@@ -167,8 +184,8 @@ class DBRequestTest(AppTestCase):
             data=json.dumps({"age": 17, "name": "Python"})
         )
         db.session.add(dbrequest)
-        obj, errors = dbrequest.execute(moderator, records_factory, comment="ok")[0]
-        self.assertFalse(errors) # make sure there are no errors
+        result = dbrequest.execute(moderator, records_factory, comment="ok")
+        self.assertFalse(result["errors"]) # make sure there are no errors
         
         self.assertEqual(dbrequest.moderator, moderator)
         self.assertEqual(dbrequest.moderator_action, "accept")
@@ -181,10 +198,10 @@ class DBRequestTest(AppTestCase):
             data=json.dumps({"age": 17, "name": "Python"})
         )
         db.session.add(dbrequest)
-        obj, errors = dbrequest.execute(user, records_factory)[0]
+        result = dbrequest.execute(user, records_factory)
         db.session.commit()
 
-        self.assertEqual(dbrequest.instance_id, obj.id)
+        self.assertEqual(dbrequest.instance_id, result["instance"].id)
 
     def test_unique_constraint_failed(self):
         user = self.create_user()
@@ -196,10 +213,10 @@ class DBRequestTest(AppTestCase):
             data=json.dumps({"age": student.age, "name": student.name})
         )
         db.session.add(dbrequest)
-        obj, errors = dbrequest.execute(user, records_factory)[0]
+        result = dbrequest.execute(user, records_factory)
 
-        self.assertTrue(errors)
-        self.assertIn("database", errors)
+        self.assertTrue(result["errors"])
+        self.assertIn("database", result["errors"])
 
     def test_reject_updates_information_about_moderator(self):
         user = self.create_user()
@@ -227,9 +244,9 @@ class DBRequestTest(AppTestCase):
             comment="Create new student",
             data=json.dumps({"age": 18, "id": student.id + 1})
         )    
-        obj, errors = dbrequest.execute(user, records_factory)[0]
-        self.assertTrue(errors)
-        self.assertIn("id", errors)
+        result = dbrequest.execute(user, records_factory)
+        self.assertTrue(result["errors"])
+        self.assertIn("id", result["errors"])
         
     def test_delete_request_returns_error_when_invalid_id(self):
         user = self.create_user()
@@ -240,9 +257,9 @@ class DBRequestTest(AppTestCase):
             model="Student", user=user, action="delete",
             data=json.dumps({"id": student.id + 1})
         )    
-        obj, errors = dbrequest.execute(user, records_factory)[0]
-        self.assertTrue(errors)
-        self.assertIn("id", errors)
+        result = dbrequest.execute(user, records_factory)
+        self.assertTrue(result["errors"])
+        self.assertIn("id", result["errors"])
 
     def test_add_subrequest_appends_dependent_request_to_main_request(self):
         user = self.create_user()
@@ -282,7 +299,7 @@ class DBRequestTest(AppTestCase):
 
         results = main_request.execute(user, records_factory)
 
-        self.assertIn("name", results[0][1])
+        self.assertIn("name", results["errors"])
         self.assertEqual(db.session.query(Student).count(), 0)
         self.assertEqual(db.session.query(Account).count(), 0)
 
@@ -388,13 +405,13 @@ class DBRequestTest(AppTestCase):
         db.session.add(dbrequest)
         db.session.commit()
 
-        obj, errors = dbrequest.execute(user, records_factory)[0]
+        result = dbrequest.execute(user, records_factory)
         db.session.commit()
 
         accounts = db.session.query(Account).all()
-        self.assertEqual(accounts[0].student, obj)
+        self.assertEqual(accounts[0].student, result["instance"])
         self.assertEqual(accounts[0].balance, 100)
-        self.assertEqual(accounts[1].student, obj)
+        self.assertEqual(accounts[1].student, result["instance"])
         self.assertEqual(accounts[1].balance, 0)
 
         student = db.session.query(Student).one()
@@ -427,7 +444,73 @@ class DBRequestTest(AppTestCase):
 
         self.assertEqual(db.session.query(Account).count(), 2)
         self.assertEqual(len(student.accounts), 2)
+        
+    def test_execute_subrequests_of_subrequests(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17, "name": "Python"}    
+        )
+        subsubrequest = DBRequest(
+            model="SubAccount", user=user, action="create",
+            data=json.dumps({"balance": 1500})
+        )
+        subrequest.add_subrequest(subsubrequest)
+        
+        main_request.execute(user, records_factory)
+        db.session.commit()
+        
+        self.assertEqual(db.session.query(SubAccount).count(), 1)
+        
+        subaccount = db.session.query(SubAccount).one()
+        account = db.session.query(Account).one()
+        self.assertEqual(subaccount.account, account)
+        self.assertEqual(len(account.subaccounts), 1)
+        self.assertEqual(account.subaccounts[0], subaccount)
+        
+    def test_execute_subrequests_without_db_relation_to_main_request(self):
+        user = self.create_user()
+        main_request = DBRequest(
+            model="Student", user=user, action="create", 
+            data=json.dumps({"name": "Python", "age": 17 })
+        )
+        subrequest = DBRequest(
+            model="SubAccount", user=user, action="create",
+            data=json.dumps({"balance": 1500})
+        )  
+        main_request.add_subrequest(subrequest)
+        
+        main_request.execute(user, records_factory)
+        
+        self.assertTrue(subrequest.executed)
+        self.assertEqual(db.session.query(SubAccount).count(), 1)
+        
+        student = db.session.query(Student).one()
+        self.assertEqual(len(student.accounts), 0)
 
+    def test_execute_subrequest_before_main_request(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17, "name": "Python"}    
+        )    
+        
+        result_sub = subrequest.execute(user, records_factory)
+        
+        self.assertFalse(result_sub["errors"])
+        self.assertEqual(db.session.query(Account).count(), 1)
+        account = db.session.query(Account).one()
+        self.assertEqual(result_sub["instance"], account)
+        self.assertEqual(db.session.query(Student).count(), 0)
+        
+        result_main = main_request.execute(user, records_factory)
+        
+        self.assertFalse(result_main["errors"])
+        self.assertEqual(result_main["subrequests"][0]["instance"], account)
+        student = db.session.query(Student).one()
+        self.assertEqual(result_main["instance"], student)
+        
+        self.assertEqual(account.student, student)
+        self.assertEqual(len(student.accounts), 1)
+        
 
 class UserModelTest(unittest.TestCase):
 

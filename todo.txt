@@ -123,7 +123,6 @@ regardless of the method.
 
 27.07.2017:
 
-- refactor dbrequest, to execute subrequests of subrequests(+tests)
 - show only main dbrequests in dbmd
 - show subrequests in detail view
 - format select2 in ics/cfs/bls-table

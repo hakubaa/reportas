@@ -6,8 +6,8 @@ import json
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import (
-	Column, Integer, String, DateTime, Boolean, Float,
-	UniqueConstraint, CheckConstraint, and_, or_
+    Column, Integer, String, DateTime, Boolean, Float,
+    UniqueConstraint, CheckConstraint, and_, or_
 )
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.orm import relationship, backref
@@ -200,6 +200,9 @@ class DBRequest(Model):
         CheckConstraint("action in ('create', 'update', 'delete')"),  
         CheckConstraint("moderator_action in ('accept', 'reject')")
     )
+    
+    def __repr__(self):
+        return "DBRequest({}, {})".format(self.action, self.model)
 
     @property
     def executed(self):
@@ -236,34 +239,35 @@ class DBRequest(Model):
                 )
 
     def execute(self, moderator, factory, comment=None):
-        results = list()
-        parent_request = self
-        parent_instance = None
-
-        for request in [parent_request] + parent_request.subrequests:
-            if request.executed:
-                instance, errors = request.get_instance(
-                    factory.session, factory.get_model(request.model)
-                )
-            else:
-                instance, errors = request.execute_request(
-                    factory, moderator, comment
-                )
-                results.append((instance, errors))
-
-            if errors and request == parent_request:
-                # Do not execute subrequests when parent request have failed.
-                # There is no sense. Current design assumes many-to-one
-                # relation.
-                break 
-
-            if request == parent_request:
-                parent_instance = instance
-            elif not errors:
-                self.append_to_collection(parent_instance, instance)
-
+        if self.executed:
+            instance, errors = self.get_instance(
+                factory.session, factory.get_model(self.model)
+            )
+        else:
+            instance, errors = self.execute_request(
+                factory, moderator, comment
+            )
+        
+        results = []
+        if not errors:
+            results = self.execute_subrequests(moderator, factory, instance)
+        
+        return {
+            "instance": instance,
+            "errors": errors,
+            "subrequests": results
+        }
+        
+    def execute_subrequests(self, moderator, factory, parent_instance):
+        results = [
+            request.execute(moderator, factory) 
+            for request in self.subrequests
+        ]
+        for result in results:
+            if not result["errors"]:
+                self.append_to_collection(parent_instance, result["instance"])   
         return results
-
+        
     def execute_request(self, factory, moderator, comment):
         action_method = dict(
             create=self.execute_create,

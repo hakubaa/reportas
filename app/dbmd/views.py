@@ -1,6 +1,6 @@
 from datetime import date
 
-from flask import flash
+from flask import flash, url_for
 from flask_admin import base as admin_base
 from flask_admin.contrib import sqla
 from flask_admin.actions import action
@@ -8,6 +8,11 @@ from flask_login import current_user
 from flask_admin.model import typefmt
 from flask_admin.form.upload import FileUploadField
 from wtforms.fields import TextAreaField, StringField
+from flask_admin.contrib.sqla.view import func
+
+from flask_admin.model.form import InlineFormAdmin
+from flask_admin.form.rules import BaseRule
+from markupsafe import Markup
 
 from db import models, records_factory
 from app.dbmd.base import DBRequestMixin, PermissionRequiredMixin
@@ -17,6 +22,79 @@ from app import db
 #-------------------------------------------------------------------------------
 # BUILDING BLOCKS FOR VIEWS
 #-------------------------------------------------------------------------------
+
+class ActionButton(BaseRule):
+
+    def __init__(self, action, attribute, text):
+        super(ActionButton).__init__()
+        self.action = action
+        self.attribute = attribute
+        self.text = text
+
+    def __call__(self, form, form_opts=None, field_args={}):
+        obj_id = getattr(form._obj, self.attribute, None)
+        if obj_id:
+            html = """
+            <form method='POST' action='/dbmd/dbrequest/action/'>
+                <input id='action' name='action' value='{action}' type='hidden'>
+                <input name='rowid' value='{obj_id}' type='hidden'>
+                <button type='submit' class='btn btn-success'>
+                    {text}
+                </button>
+            </form>
+            """.format(
+                action=self.action, obj_id=obj_id, text=self.text
+            )
+            return Markup(html)
+
+
+class Link(BaseRule):
+    def __init__(self, endpoint, attribute, text):
+        super(Link, self).__init__()
+        self.endpoint = endpoint
+        self.text = text
+        self.attribute = attribute
+
+    def __call__(self, form, form_opts=None, field_args={}):
+
+        obj_id = getattr(form._obj, self.attribute, None)
+
+        if obj_id:
+
+            return Markup("""
+            <div class='form-group'>
+                <label class="col-md-2 control-label">
+                    URL
+                </label>    
+                <div class='col-md-10'>
+                    <p class='form-control-static'><a href='{url}'>{text}</a></p>
+                </div>
+            </div>
+            """.format(
+                obj_id=obj_id, url=url_for(self.endpoint, id=obj_id), 
+                text=self.text
+            ))
+
+
+class MultiLink(BaseRule):
+    def __init__(self, endpoint, relation, attribute):
+        super(MultiLink, self).__init__()
+        self.endpoint = endpoint
+        self.relation = relation
+        self.attribute = attribute
+
+    def __call__(self, form, form_opts=None, field_args={}):
+        _hrefs = []
+        _objects = getattr(form._obj, self.relation)
+        for _obj in _objects:
+            _id = getattr(_obj, self.attribute, None)
+            _link = '<a href="{url}">Edit {text}</a>'.format(
+                url=url_for(self.endpoint, id=_id), text=str(_obj)
+            )
+            _hrefs.append(_link)
+
+        return Markup('<br>'.join(_hrefs))
+
 
 class SpecificPermissionMixin(PermissionRequiredMixin):
     create_view_permissions = Permission.CREATE_REQUESTS
@@ -34,6 +112,7 @@ class DBRequestBasedView(
     SpecificPermissionMixin, DBRequestMixin, sqla.ModelView
 ):
     can_view_details = True
+    can_set_page_size = True
     details_modal = True
 
 #-------------------------------------------------------------------------------
@@ -129,7 +208,7 @@ class ReportView(DBRequestBasedView):
             models.Record,
             dict(
                 form_columns=[
-                    "id", "value", "timerange", "timestamp", "rtype", "company"
+                    "id", "value", "timerange", "timestamp", "rtype"
                 ], 
                 form_label="Record"
             )
@@ -172,6 +251,18 @@ class ReportView(DBRequestBasedView):
         pass
 
 
+
+class SubrequestModelForm(InlineFormAdmin):
+    form_columns=["id", "model", "data", "action", "moderator_action", "errors"]
+    form_label="Subrequest"
+
+    form_rules = (
+        "model", "data", "action", "moderator_action", "errors",
+        Link(endpoint="dbrequest.edit_view", attribute="id", text="Edit Request"),
+        ActionButton(action="accept", attribute="id", text="Accept")
+    )
+
+
 class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
     create_view_permissions = Permission.ADMINISTER
     edit_view_permissions = Permission.ADMINISTER
@@ -182,11 +273,19 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
 
     can_view_details = True
     details_modal = True
+    can_set_page_size = True
 
     column_list = ("user", "model", "action", "timestamp", "moderator_action", "outcome")
     column_filters = ("user", "model", "action", "moderator_action")
 
     list_template = "admin/model/dbrequest_list.html"
+
+    inline_models = (SubrequestModelForm(DBRequest),)
+
+    # form_edit_rules = (
+    #     "user", "model", "action", "timestamp", "moderator_action", "data", "errors",
+    #     MultiLink(endpoint="dbrequest.edit_view", relation="subrequests", attribute="id")
+    # )
 
     @action("accept", "Accept")
     def accept_requests(self, ids):
@@ -197,16 +296,38 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
             request = db.session.query(DBRequest).get(request_id)
             if request:
                 records_factory.session = db.session
-                results = request.execute(current_user, records_factory)
-                requests_counter += len(results)
-                successes_counter += sum(1 for _, error in results if not error)
-
+                result = request.execute(current_user, records_factory)
+                requests_counter += self._count_requests(result)
+                successes_counter += self._count_successful_requests(result)
         db.session.commit()
-        msg = "%d of %d requests have been successfuly executed."
-        if successes_counter < successes_counter:
-            msg += " The errors can be view in details of the requests."
-        flash(msg % (successes_counter, successes_counter))
 
+        msg = "%d of %d requests have been successfuly executed."
+        if successes_counter < requests_counter:
+            msg += " The errors can be view in details of the requests."
+        flash(msg % (successes_counter, requests_counter))
+
+    def _count_requests(self, result):
+        counter = sum(
+            self._count_requests(request) 
+            for request in result["subrequests"]
+        ) + 1
+        return counter
+
+    def _count_successful_requests(self, result):   
+        counter = sum(
+            self._count_successful_requests(request) 
+            for request in result["subrequests"] 
+        ) + (0 if result["errors"] else 1)
+        return counter
+
+    def get_query(self):
+        # Return only main requests, ommit subrequests
+        return self.session.query(self.model)\
+                   .filter(self.model.parent_request == None)
+
+    def get_count_query(self):
+        return self.session.query(func.count('*'))\
+                  .filter(self.model.parent_request == None)
 
 class UserView(PermissionRequiredMixin, sqla.ModelView):
     default_permissions = Permission.ADMINISTER
