@@ -3,7 +3,7 @@
     width: 95%;
 }
 #report-content {
-    height: 500px;
+    max-height: 500px;
     overflow-y: scroll;
     overflow-x: none;
 }
@@ -40,8 +40,16 @@ td.record-name {
     text-align: center;
 }
 #report-ui {
-    border-bottom: 1px solid gray;
+/*    border-bottom: 1px solid gray;*/
+
+    -webkit-box-shadow: 0 6px 4px -4px gray;
+    -moz-box-shadow: 0 6px 4px -4px gray;
+    box-shadow: 0 6px 4px -4px gray;
+
     padding: 5px;
+}
+#row-remove-btn {
+    display: none;
 }
 #stm-dropdown,
 #report-refresh-btn,
@@ -64,6 +72,24 @@ td.record-name {
     font-weight: bold;
 }
 
-.record-form {
+.record-form td {
     background-color: #e0e0e0;
+    padding-top: 10px !important; 
+}
+
+.records-table > tbody >tr > td {
+    padding-bottom: 0px;
+}
+.records-table > tbody > tr > td input {
+    text-align:center 
+}
+.records-table > thead th {
+    vertical-align: middle;
+    text-align: justify;
+}
+.column-timestamp {
+    white-space: nowrap;
+}
+.rtype-selection {
+    max-width: 200px;
 }

@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block responsivnes %}{% endblock %}
+{% block title %} Parser {% endblock %}
+
+{% block head_css %}
+{{ super() }}
+    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/parser.css') }}" rel="stylesheet">
+
+    <style>
+        @-webkit-keyframes fadeIt {
+          0%   { background-color: #2487C9; }
+          100% { background-color: #FFFFFF; }
+        }
+        @-moz-keyframes fadeIt {
+          0%   { background-color: #2487C9; }
+          100% { background-color: #FFFFFF; }
+        }
+        @-o-keyframes fadeIt {
+          0%   { background-color: #2487C9; }
+          100% { background-color: #FFFFFF; }
+        }
+        @keyframes fadeIt {
+          0%   { background-color: #2487C9; }
+          100% { background-color: #FFFFFF; }
+        }
+
+        .backgroundAnimated{    
+            background-image:none !important;
+            -webkit-animation: fadeIt 1s ease-in-out; 
+               -moz-animation: fadeIt 1s ease-in-out; 
+                 -o-animation: fadeIt 1s ease-in-out; 
+                    animation: fadeIt 1s ease-in-out; 
+        }
+    </style>
+{% endblock %}
+
+{% block page_body %}
+{{ super() }}
+    <div class="container container-full">
+        <h3>Financial Data Miner - Summary</h3>
+        <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}(not identified){% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m-%d')}} {% else %}(not identified){% endif %}</span></strong> 
+        (<a href="#column-editor" data-toggle="modal" data-target="#column-editor">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+        <p>
+            <label>Company </label>
+            <select>
+                <option disabled selected value> -- select a company -- </option>
+                {% for comp in companies %}<option value="{{comp.id}}" {% if company and company.name == comp.name %}selected="selected"{% endif %}>{{comp.name}}</option>{% endfor %}
+            </select>
+        </p>
+        <div id="report-wrapper">
+            <div id="report-ui">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" checked id="layout-checkbox" onchange="switchLayout();"> Maintain the original physical layout of the text.
+                    </label>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-default" 
+                            data-select-type="ALL" id="stm-filter-btn"
+                            title="Statement">ALL</button>
+                    <button type="button" class="btn btn-default dropdown-toggle" 
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                            title="Statement">
+                        <span class="caret"></span>
+                        <span class="sr-only">Toggle Dropdown</span>
+                    </button>
+                </div>
+                <div class="btn-group btn-group-sm">
+                     <button type="button" class="btn btn-danger" id="row-remove-btn" title="Trash">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div> <!-- <div id="report-ui"> -->
+
+            <div id="report-content"> 
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Row #</th>
+                            <th>Record Type</th>
+                            <th>Row Content</th>
+                        </tr>  
+                    </thead>
+                    <tbody>
+                        {% for row in content %}
+                            {% set record_name = data.rows_map.get(loop.index0, None) %}
+                            {% if record_name %}
+                                <tr id="row_{{record_name | adjust_rtype}}">
+                            {% else %}
+                                <tr>
+                            {% endif %}
+                                 <td class="selector">
+                                    <a href="javascript:void(0);" class="recordform-btn"><span class="glyphicon glyphicon-plus"></span></a>
+                                    <input type="checkbox">
+                                </td>
+                                <td class="pageno">{{loop.index}}</td>
+                                <td class="record-name">
+                                    {% if record_name %}
+                                        <a href="#{{record_name | adjust_rtype}}" onclick='highlightRecord("#{{record_name | adjust_rtype}}");''>{{record_name}}</a>
+                                    {% else %}
+                                        <span>---</span>
+                                    {% endif %}
+                                </td>
+                                <td class="content">{{row}}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="container container-full">
+        <h3>Identified Records</h3>
+        <table id="identified-records" class="table table-hover records-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Record Type</th>
+                    {% for i in range(data.ncols) %}
+                        {% if data.names|length > i %}
+                            {% set timerange = data.names[0] %}
+                            {% set timestamp = data.names[1]|join('-') %}
+                        {% else %}
+                            {% set timerange = '(not identified)' %}
+                            {% set timestamp = timerange %}
+                        {% endif %}
+                        <th data-column-id="{{loop.index}}">
+                            <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
+                            <a href="#column-editor" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
+                            <a href="javascript:void(0);" onclick="removeColumn('#identified-records', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                        </th>
+                    {% endfor %}
+                </tr>  
+            </thead>
+            <tbody>
+                {% for record_name, values in data.items() %}
+                    <tr class="record-row ui-widget-content" id="{{ record_name | adjust_rtype }}">
+                        <td>
+                            <div class="btn-group btn-group-xs">
+                                <button type="button" class="btn btn-danger record-remove-btn">
+                                    <span class="glyphicon glyphicon-remove"></span>
+                                </button>      
+                                <button type="button" class="btn btn-primary" onclick="highlightRow('#row_{{record_name | adjust_rtype}}');">
+                                    <span class="glyphicon glyphicon-arrow-up"></span>
+                                </button>   
+                            </div>           
+                        </td>
+                        <td>
+                            <select class="rtype-selection" data-init-selected="{{record_name}}"></select>
+                        </td>
+                        {% for value in values %}
+                            <td>
+                                <div class="form-group">
+                                    <input type="text" class="form-control input-sm" value="{{value}}">
+                                </div>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button class="btn btn-primary" onclick="addRow('#identified-records', rtypes);">Add Record</button>
+        <button class="btn btn-primary" onclick="addColumn('#identified-records');">Add Column</button>
+    </div>
+
+    <div class="modal fade" id="column-editor" tabindex="-1" role="dialog" aria-labelledby="modal-label">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title" id="modal-label">Timestamp & Timerange Editor</h4>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="timestamp-input" class="control-label">Timestamp:</label>
+                            <input type="text" class="form-control input-sm" id="timestamp-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="timerange-input" class="control-label">Timerange:</label>
+                            <div>
+                                <select class="form-control" id="timerange-input" style="width: 100%;">
+                                    <option value="3">3</option>
+                                    <option value="6">6</option>
+                                    <option value="9">9</option>
+                                    <option value="12">12</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Abort</button>
+                    <button type="button" class="btn btn-primary" id="modal-ok-btn">Ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block body_scripts %}
+<script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/miner.js') }}"></script>
+<script>
+    var rtypes = {{ rtypes|tojson }};
+
+    $("select.rtype-selection").applySelect2(rtypes, text="name");
+    $(".record-row").makeDraggable().makeDroppable();
+
+    $(document).on("click", ".record-remove-btn", function() {
+        $(this).closest("tr").remove();
+    });
+    
+    activateFocusOnInputs("#identified-records");
+
+    // Seting animation when user clisk record in rows-table
+    function highlightRecord(selector) {
+        var element = $(selector);
+        if (element.length == 0) {
+            alert("There is no coressponding record. Probably it was removed.");
+        } else {
+            $(selector).addClass("backgroundAnimated");
+        }
+    }
+
+    function highlightRow(selector) {
+        var element = $(selector);
+        if (element.length == 0) {
+            alert("There is no coressponding row. Probably it was removed.");
+        } else {
+            scrollToRecords(selector); 
+            location.hash = "#report-wrapper";
+            $(selector).addClass("backgroundAnimated");
+        }
+    }
+
+    $("tr").on( // remove class from row to enable next animation
+        "webkitAnimationEnd oanimationend msAnimationEnd animationend",
+        function() {
+            $(this).removeClass("backgroundAnimated");
+        }
+    );
+
+    // Config bootstrap modal for updating column names
+    $("#column-editor").on("show.bs.modal", function(event) {
+        var $caller = $(event.relatedTarget); 
+        var $timerangeSpan = $caller.parent().find(".timerange");
+        var $timestampSpan = $caller.parent().find(".timestamp");
+
+        var modal = $(this);
+        var $timerangeInput = modal.find("#timerange-input");
+        var $timestampInput = modal.find("#timestamp-input");
+
+        // update inputs with current values
+        var timestamp = moment($timestampSpan.text(), "YYYY-MM-DD");
+        if (timestamp != null && timestamp.isValid()) {
+            $timestampInput.val(timestamp.format("YYYY-MM-DD"));
+        } else {
+            $timestampInput.val("");    
+        }
+        $timerangeInput.val($timerangeSpan.text());
+
+        // set callback for Ok button
+        var okButton = modal.find("#modal-ok-btn");
+        okButton.click(function(event) {
+            $timerangeSpan.text($timerangeInput.find(":selected").val());
+            if ($timestampInput.val() != "") {
+                $timestampSpan.text($timestampInput.val());
+            }
+            modal.modal("hide");
+            okButton.unbind("click");
+        });
+    });
+    $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
+
+    // Config form for adding new records
+    $(document).on("click", ".recordform-btn", function() {
+        var $currentRow = $(this).closest("tr");
+        if (!$currentRow.next().hasClass("record-form")) {
+            wrapWith("tr",
+                wrapWith("td", 
+                    createRecordForm({
+                        "rtypes": rtypes,
+                        "abortCallback": function() {
+                            $(this).closest("tr").remove();
+                        },
+                        "addCallback": function() {
+                            var recordsData = readDataFromRecordForm($(this).closest("form"));
+                            if (recordsData.type === "NONE") {
+                                alert("No item selected. Please select one of the item from the list.");
+                            } else {
+                                addRow("#identified-records", rtypes, recordsData);
+                                $currentRow.attr("id", "row_" + adjustRecordType(recordsData.type_name));
+                                $currentRow.find(".record-name").empty();
+                                $currentRow.find(".record-name").append(createLinkToRecord(recordsData.type_name));
+                                $(this).closest("tr").remove();
+                            }
+                        }
+                    }),
+                    {"colspan": "100%"}
+                ),
+                {"class": "record-form"}
+            ).insertAfter($currentRow);
+        }
+    });
+
+    function createLinkToRecord(rtype) {
+        return wrapWith("a",
+            $("<span>" + rtype + "</span>"),
+            { 
+                "href": "#" + adjustRecordType(rtype),
+                "onclick": "highlightRecord('#'" + adjustRecordType(rtype) + "');"
+            }
+        );
+    }
+
+    // Setting report-ui
+    $("#row-remove-btn").click(function() {
+        $("#report-content").find(".selector input:checked").each(function() {
+            $(this).closest("tr").remove();
+        });
+    });
+
+    $(".selector > input").change(function() {
+        refreshReportUI();
+    });
+
+    $('#stm-filter-list a, #stm-filter-btn').click(
+        function () {
+            var stype = $(this).data("select-type");
+            if (stype !== undefined) {
+                // Turn off all checkboxes.
+                $(".selector > input:checkbox").prop("checked", false);
+                switch(stype) {
+                    case "ALL":
+                        $(".selector > input:checkbox").prop("checked", true);
+                        break;
+                    case "NONE":
+                        $(".selector > input:checkbox").prop("checked", false);
+                        break;
+                    case "BLS":
+                        $("tr[data-stm='bls']").find(".selector > input").prop("checked", true);
+                        break;
+                    case "ICS":
+                        $("tr[data-stm='ics']").find(".selector > input").prop("checked", true);
+                        break;
+                    case "CFS":
+                        $("tr[data-stm='cfs']").find(".selector > input").prop("checked", true);
+                        break;
+                }
+            }
+            refreshReportUI();
+        }
+    );
+
+    function refreshReportUI() {
+        var counter = $(".selector > input:checkbox:checked").length;
+        if (counter > 0) {
+            $("#stm-dropdown").css("display","inline-block");
+            $("#row-remove-btn").css("display","inline-block");
+
+            $("#stm-filter-btn").text("NONE");
+            $("#stm-filter-btn").data("select-type", "NONE");
+        } else {
+            $("#stm-dropdown").css("display","none"); 
+            $("#row-remove-btn").css("display","none"); 
+
+            $("#stm-filter-btn").text("ALL");
+            $("#stm-filter-btn").data("select-type", "ALL");
+        }  
+    }
+</script>
+{% endblock %}

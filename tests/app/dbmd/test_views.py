@@ -7,7 +7,9 @@ from urllib.parse import urlparse
 import types
 
 from marshmallow_sqlalchemy import ModelSchema
-from sqlalchemy import Column, Integer, String
+from marshmallow import fields
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, backref
 from flask import url_for
 from flask_login import current_user
 from werkzeug.datastructures import MultiDict
@@ -32,10 +34,31 @@ class Student(Model):
     age = Column(Integer)
     name = Column(String, nullable=False, unique=True)
 
+
+class Account(Model):
+    __tablename__ = "accounts"
+
+    id = Column(Integer, primary_key=True)
+    balance = Column(Integer, nullable=False)
+
+    student_id = Column(Integer, ForeignKey("students.id"))
+    student = relationship("Student", backref="accounts")
+
+
+@records_factory.register_schema()
+class AccountSchema(ModelSchema):
+    class Meta:
+        model = Account
+
+
 @records_factory.register_schema()
 class StudentSchema(ModelSchema):
     class Meta:
         model = Student
+    
+    accounts = fields.Nested(
+        AccountSchema, only=("id", "balance"), many=True
+    )
 
 
 def create_user(name="Test", email="test@test.test", password="test"):
@@ -633,3 +656,26 @@ class DBRequestViewTest(AppTestCase):
 
         self.assertIsNotNone(request.errors)
         self.assertIn("database", request.errors)
+
+    @create_and_login_user(role_name="Moderator", pass_user=True)
+    def test_accept_subrequest_before_main_request(self, user):
+        main_request = DBRequest(
+            model="Student", user=user, action="create", 
+            data=json.dumps({"name": "Python", "age": 17})
+        )
+        subrequest = DBRequest(
+            model="Account", user=user, action="create",
+            data=json.dumps({"balance": 1500})
+        )
+        main_request.add_subrequest(subrequest)
+        db.session.add(main_request)
+        db.session.add(subrequest)
+        db.session.commit()
+
+        response = self.client.post(
+            url_for("dbrequest.action_view"), 
+            data=dict(action="accept", rowid=subrequest.id)
+        )
+
+        self.assertTrue(subrequest.executed)
+        self.assertFalse(main_request.executed)

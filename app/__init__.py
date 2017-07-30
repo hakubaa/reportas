@@ -63,4 +63,12 @@ def create_app(config_name, **kwargs):
     def forbidden_access(e):
         return render_template("403.html"), 403
 
+
+    # jinja filters
+
+    @app.template_filter("adjust_rtype")
+    def adjust_rtype(s):
+        return s.replace("#", "_")
+
+
     return app

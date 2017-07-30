@@ -14,7 +14,7 @@
 {% block page_body %}
 {{ super() }}
     <div class="container container-full">
-        <h3>Financial Report</h3>
+        <h3>Financial Data Miner - Summary</h3>
         <p>Financial report for <strong><span id="report-timerange">{{report.timerange}}</span></strong> months ended on <strong><span id="report-timestamp">{{report.timestamp.strftime('%Y-%m-%d')}}</span></strong> 
         (<a href="#">Edit</a>).</p>
         <p>Company:
@@ -54,13 +54,13 @@
                     </ul>
                 </div>
                 <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-default" id="report-bls-btn" title="BLS" onclick="scrollToRecords('bls-style');">
+                    <button type="button" class="btn btn-default" id="report-bls-btn" title="BLS" onclick="scrollToRecords('tr.bls-style');">
                         <span>BLS</span>
                     </button>
-                    <button type="button" class="btn btn-default" id="report-ics-btn" title="ICS" onclick="scrollToRecords('ics-style');">
+                    <button type="button" class="btn btn-default" id="report-ics-btn" title="ICS" onclick="scrollToRecords('tr.ics-style');">
                         <span>ICS</span>
                     </button>
-                    <button type="button" class="btn btn-default" id="report-cfs-btn" title="CFS" onclick="scrollToRecords('cfs-style');">
+                    <button type="button" class="btn btn-default" id="report-cfs-btn" title="CFS" onclick="scrollToRecords('tr.cfs-style');">
                         <span>CFS</span>
                     </button>
                 </div> 
@@ -76,7 +76,7 @@
                             <li><a href="#">CFS</a></li>
                         </ul>
                     </div>
-                     <button type="button" class="btn btn-danger" id="report-remove-btn" title="Trash">
+                     <button type="button" class="btn btn-danger" id="row-remove-btn" title="Trash">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                     </button>
                 </div>
@@ -226,11 +226,18 @@
                             <tr>
                                 <th></th>
                                 <th>Record Type</th>
-                                {% for timerange, timestamp in report.cfs.names %}
+                                {% for i in range(report.cfs.ncols) %}
+                                    {% if report.cfs.names|length > i %}
+                                        {% set timerange = report.cfs.names[0] %}
+                                        {% set timestamp = report.cfs.names[1]|join('-') %}
+                                    {% else %}
+                                        {% set timerange = '(not identified)' %}
+                                        {% set timestamp = timerange %}
+                                    {% endif %}
                                     <th data-column-id="{{loop.index}}">
-                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp|join('-')}}</span>
+                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp}}</span>
                                         <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
-                                        <a href="javascript:void(0);" onclick="removeColumn('#cfs-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                                        <a href="javascript:void(0);" onclick="removeColumn('#bls-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
                                 {% endfor %}
                             </tr>  
@@ -268,7 +275,7 @@
         </div>
         <div style="margin-top:15px"></div>
         <div>
-            <form method="POST" action="" id="export-data-form">
+            <form method="POST" action="{{ url_for('dbmd_tools.upload_data') }}" id="export-data-form">
                 <input type="hidden" name="data" value="" id="data-to-export">
                 <input class="btn btn-success" name="submit" type="submit" value="Export Data">
             </form>
@@ -286,27 +293,40 @@
         </div>
     </div>
 
-    <div class="modal fade" tabindex="-1" role="dialog" id="item-source-modal">
+    <div class="modal fade" id="column-editor" tabindex="-1" role="dialog" aria-labelledby="modal-label">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title"></h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title" id="modal-label">Timestamp & Timerange Editor</h4>
                 </div>
-                <div class="modal-body"></div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="timestamp-input" class="control-label">Timestamp:</label>
+                            <input type="text" class="form-control" id="timestamp-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="timerange-input" class="control-label">Timerange:</label>
+                            <textarea class="form-control" id="timerange-input"></textarea>
+                        </div>
+                    </form>
+                </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Abort</button>
+                    <button type="button" class="btn btn-primary" id="modal-ok-btn">Ok</button>
                 </div>
-            </div><!-- /.modal-content -->
-        </div><!-- /.modal-dialog -->
-    </div><!-- /.modal -->
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block body_scripts %}
 <script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/parser-table.js') }}"></script>
-<script src="{{ url_for('static', filename='js/parser.js') }}"></script>
+<script src="{{ url_for('static', filename='js/miner.js') }}"></script>
 <script>
     var rtypes = {{ rtypes|tojson }};
 
@@ -316,14 +336,10 @@
     $(document).on("click", ".record-remove-btn", function() {
         $(this).closest("tr").remove();
     });
-    
-    $("#export-btn").on("click", function() {
-       var records = readRecords("#ics-table");
-       alert(JSON.stringify(records));
-    });
-    
+
     activateFocusOnInputs("#ics-table");
     activateFocusOnInputs("#bls-table");
+    activateFocusOnInputs("#cfs-table");
     
     $("#column-editor").on("show.bs.modal", function(event) {
         var $caller = $(event.relatedTarget); 
@@ -351,7 +367,28 @@
         if (!$currentRow.next().hasClass("record-form")) {
             wrapWith("tr",
                 wrapWith("td",
-                    createRecordForm(rtypes),
+                    createRecordForm({
+                        "rtypes": rtypes,
+                        "abortCallback": function() {
+                            $(this).closest("tr").remove();
+                        },
+                        "addCallback": function() {
+                            var recordsData = readDataFromRecordForm($(this).closest("form"));
+                            if (recordsData.type === "NONE") {
+                                alert("No item selected. Please select one of the item from the list.");
+                            } else {
+                                if (recordsData.statement == "BLS") {
+                                    addRow("#bls-table", rtypes, recordsData);
+                                } else if (recordsData.statement == "ICS") {
+                                    addRow("#ics-table", rtypes, recordsData);
+                                } else {
+                                    addRow("#cfs-table", rtypes, recordsData);
+                                }
+                                alert("The item has been successfully added to the list.");
+                                $(this).closest("tr").remove();
+                            }
+                        }
+                    }),
                     {"colspan": "100%"}
                 ),
                 {"class": "record-form"}
@@ -359,21 +396,8 @@
         }
     });
 
-    $("#item-source-modal").on("show.bs.modal", function (e) {
-        var $invoker = $(e.relatedTarget); 
-        $(this).find(".modal-title").text(
-            "Reference for '" + $invoker.text() + "'"
-        );
-        $(this).find(".modal-body").html(
-            "<p>" + $invoker.closest("td").data("item-source") + "</p>"
-        );
-    });
-
-    $(document).on("click", ".btn-item-remove", function() {
-        $(this).closest("tr").remove();
-    });
-
-    $("#report-remove-btn").click(function() {
+    // Setting report-ui
+    $("#row-remove-btn").click(function() {
         
         alert($("#report-content tbody tr").first().position().top);
 
@@ -417,47 +441,17 @@
         }
     );
 
-    $(document).on("click", ".btn-record-abort", function() {
-        $(this).closest("tr").remove();
-    });
-
-    $(document).on("click", ".btn-record-add", function() {
-        var recordsData = {
-            "type": $("#new-record-name :selected").val(),
-            "statement": $("#new-record-statement :selected").text(),
-            "values": 
-                $(this).closest("form").find("input.record-value").map(
-                    function () {
-                        return $(this).val();
-                    }
-                ).get()
-        };
-        if (recordsData.type === "NONE") {
-            alert("No item selected. Please select one of the item from the list.");
-        } else {
-            if (recordsData.statement == "BLS") {
-                addRow("#bls-table", rtypes, recordsData);
-            } else if (recordsData.statement == "ICS") {
-                addRow("#ics-table", rtypes, recordsData);
-            } else {
-                addRow("#cfs-table", rtypes, recordsData);
-            }
-            alert("The item has been successfully added to the list.");
-            $(this).closest("tr").remove();
-        }
-    });
-
     function refreshReportUI() {
         var counter = $(".selector > input:checkbox:checked").length;
         if (counter > 0) {
             $("#stm-dropdown").css("display","inline-block");
-            $("#report-remove-btn").css("display","inline-block");
+            $("#row-remove-btn").css("display","inline-block");
 
             $("#stm-filter-btn").text("NONE");
             $("#stm-filter-btn").data("select-type", "NONE");
         } else {
             $("#stm-dropdown").css("display","none"); 
-            $("#report-remove-btn").css("display","none"); 
+            $("#row-remove-btn").css("display","none"); 
 
             $("#stm-filter-btn").text("ALL");
             $("#stm-filter-btn").data("select-type", "ALL");
@@ -487,34 +481,5 @@
         });
         return data;
     }
-
-    function readRecordsFromTable(selector, companyId) {
-        if (companyId === undefined) companyId = null;
-
-        var table = $(selector);
-        var headers = table.find("thead tr th").slice(FIXED_COLUMNS).map(function() {
-            return {
-                "timerange": $(this).find(".column-timerange").text(),
-                "timestamp": $(this).find(".column-timestamp").text()       
-            };
-        }).get();
-
-        var records = table.find("tbody tr").map(function(rowIndex) {
-            var tds = $(this).find("td");
-            var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").val();
-            return $(this).find("td").slice(FIXED_COLUMNS).map(function(columnIndex) {
-                return {
-                    "company_id": companyId,
-                    "value": parseFloat($(this).find("input").val()),
-                    "rtype_id": recordType,
-                    "timerange": parseInt(headers[columnIndex].timerange),
-                    "timestamp": headers[columnIndex].timestamp
-                }       
-            }).get();
-        }).get();
-
-        return records;
-    }
-
 </script>
 {% endblock %}

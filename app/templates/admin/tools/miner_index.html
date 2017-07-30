@@ -1,0 +1,212 @@
+{% import "bootstrap/utils.html" as utils %}
+{% extends "base.html" %}
+{% block title %}Financial Data Miner{% endblock %}
+
+
+{% block head_css %}
+{{ super() }}
+    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
+    <style>
+    .btn-file {
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-file input[type=file] {
+        position: absolute;
+        top: 0;
+        right: 0;
+        min-width: 100%;
+        min-height: 100%;
+        font-size: 100px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        background: red;
+        cursor: inherit;
+        display: block;
+    }
+    input[readonly] {
+        background-color: white !important;
+        cursor: text !important;
+    }
+    .file-browser {
+        margin-bottom: 10px;
+    }
+    .page-header {
+        border-bottom: 1px solid black;
+    }
+    textarea {
+        min-width: 100%;
+    }
+    </style>
+{% endblock %}
+
+{% block page_body %}
+<div class="container">
+  <div>
+    <!-- Nav tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+      <li role="presentation" class="active">
+          <a href="#pdf-file" aria-controls="pdf-file" role="tab" data-toggle="tab">PDF File</a>
+      </li>
+      <li role="presentation">
+          <a href="#direct-input" aria-controls="direct-input" role="tab" data-toggle="tab">Direct Input</a>
+      </li>
+    </ul>
+    <!-- Tab panes -->
+    <div class="tab-content">
+      <!-- PDF File -->
+      <div role="tabpanel" class="tab-pane fade in active" id="pdf-file">
+        <div class="page-header">
+          <h4>Extract financial data from report (PDF files only).</h4>
+        </div>
+        <form method="post" enctype="multipart/form-data" action="{{url_for('dbmd_tools.pdf_file_miner') }}">
+            {{ pdf_file_form.csrf_token }}
+            <div class="from-group {% if pdf_file_form.file.errors %}has-error{% endif %}">
+              <label class="control-label">Report<strong style="color: red">&#42;</strong></label>
+              <div class="input-group file-browser col-sm-5">
+                  <span class="input-group-btn">
+                      <span class="btn btn-primary btn-file btn-sm">
+                          Browse&hellip; <input type="file" single name="file" id="file">
+                      </span>
+                  </span>
+                  <input type="text" class="form-control input-sm" readonly>
+              </div>
+              {% for error in pdf_file_form.file.errors %}
+                  <p class="help-block">{{error}}</p>
+              {% endfor %}
+            </div>
+            <div class="form-group {% if pdf_file_form.language.errors %}has-error{% endif %}">
+              <label for="language" class="control-label">Language<strong style="color: red">&#42;</strong></label>
+              <div>
+                {{pdf_file_form.language}}
+              </div>
+              {% for error in pdf_file_form.language.errors %}
+                  <p class="help-block">{{error}}</p>
+              {% endfor %}
+            </div>
+            <div class="form-group {% if pdf_file_form.company.errors %}has-error{% endif %}">
+              <label for="company" class="control-label">Company</label>
+              <div>
+                {{pdf_file_form.company}}
+                <p class="help-block">Not required. Can be enter later.</p>
+              </div>
+              {% for error in pdf_file_form.company.errors %}
+                  <p class="help-block">{{error}}</p>
+              {% endfor %}
+            </div>
+            <div class="form-group {% if pdf_file_form.report_timerange.errors %}has-error{% endif %}">
+              <label for="report_timerange" class="control-label">Report Timerange</label>
+              <div>
+                {{pdf_file_form.report_timerange}}
+                <p class="help-block">Not required. Can be enter later.</p>
+              </div>
+              {% for error in pdf_file_form.report_timerange.errors %}
+                  <p class="help-block">{{error}}</p>
+              {% endfor %}
+            </div>
+            <div class="form-group {% if pdf_file_form.report_timestamp.errors %}has-error{% endif %}">
+              <label for="report_timestamp" class="control-label">Report Timestamp</label>
+              <div>
+                {{pdf_file_form.report_timestamp(placeholder="(detect automatically)")}}
+                <p class="help-block">Not required. Can be enter later.</p>
+              </div>
+              {% for error in pdf_file_form.report_timestamp.errors %}
+                  <p class="help-block">{{error}}</p>
+              {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-success">Upload Report</button>
+        </form>
+      </div>
+      <!-- Direct Input -->
+      <div role="tabpanel" class="tab-pane fdae" id="direct-input">
+        <div class="page-header">
+          <h4>Extract financial data from given text.</h4>
+        </div>
+        <form method="post" enctype="multipart/form-data" action="{{url_for('dbmd_tools.direct_input_miner') }}">
+          {{ direct_input_form.csrf_token }}
+          <div class="form-group {% if direct_input_form.content.errors %}has-error{% endif %}">
+            <label for="content" class="control-label">Content<strong style="color: red">&#42;</strong></label>
+            <div>
+              {{direct_input_form.content(rows='10')}}
+            </div>
+            {% for error in direct_input_form.content.errors %}
+                <p class="help-block">{{error}}</p>
+            {% endfor %}
+          </div>
+          <div class="form-group {% if direct_input_form.language.errors %}has-error{% endif %}">
+            <label for="language" class="control-label">Language<strong style="color: red">&#42;</strong></label>
+            <div>
+              {{direct_input_form.language}}
+            </div>
+            {% for error in direct_input_form.language.errors %}
+                <p class="help-block">{{error}}</p>
+            {% endfor %}
+          </div>
+          <div class="form-group {% if direct_input_form.company.errors %}has-error{% endif %}">
+            <label for="company" class="control-label">Company<strong style="color: red">&#42;</strong></label>
+            <div>
+              {{direct_input_form.company}}
+            </div>
+            {% for error in direct_input_form.company.errors %}
+                <p class="help-block">{{error}}</p>
+            {% endfor %}
+          </div>
+          <div class="form-group {% if direct_input_form.report_timerange.errors %}has-error{% endif %}">
+            <label for="report_timerange" class="control-label">Report Timerange</label>
+            <div>
+              {{direct_input_form.report_timerange}}
+            </div>
+            {% for error in direct_input_form.report_timerange.errors %}
+                <p class="help-block">{{error}}</p>
+            {% endfor %}
+          </div>
+          <div class="form-group {% if direct_input_form.report_timestamp.errors %}has-error{% endif %}">
+            <label for="report_timestamp" class="control-label">Report Timestamp</label>
+            <div>
+              {{direct_input_form.report_timestamp}}
+            </div>
+            {% for error in direct_input_form.report_timestamp.errors %}
+                <p class="help-block">{{error}}</p>
+            {% endfor %}
+          </div>
+          <button type="submit" class="btn btn-success">Process Input</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/miner.js') }}"></script>
+<script>
+    $("select").applySelect2();
+    $('input[name="report_timestamp"]').singleDatePicker({"drops": "up"});
+
+    // File browse 
+    $(document).on('change', '.btn-file :file', function() {
+      var input = $(this),
+          numFiles = input.get(0).files ? input.get(0).files.length : 1,
+          label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+      input.trigger('fileselect', [numFiles, label]);
+    });
+
+    $(document).ready( function() {
+        $('.btn-file :file').on('fileselect', function(event, numFiles, label) {
+            
+            var input = $(this).parents('.input-group').find(':text'),
+                log = numFiles > 1 ? numFiles + ' files selected' : label;
+            
+            if( input.length ) {
+                input.val(log);
+            } else {
+                if( log ) alert(log);
+            }
+            
+        });
+    });
+</script>
+{% endblock %}

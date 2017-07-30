@@ -23,7 +23,9 @@ class PDFFileIO(io.BytesIO):
     PDFFileIO represents PDF file as an in-memory bytes buffer. It inherits
     io.BytesIO and provides similar interface.
     '''
-    def __init__(self, path, first_page=None, last_page=None, **kwargs):
+    def __init__(
+        self, path, first_page=None, last_page=None, **kwargs
+    ):
         pdf_content, warnings = util.read_pdf(
             path, layout=True, first_page=first_page, last_page=last_page
         )    
@@ -97,7 +99,7 @@ class Document:
 class UnevenTable():
     '''Two-dimensional table. Expects str object and products table.'''
     
-    RE_ROWS_SEPARATORS = re.compile(r"\n")
+    RE_ROWS_SEPARATORS = re.compile(r"\n|\r\n")
     RE_FIELDS_SEPARATORS = re.compile(r"(?:\s)*(?:\||\s{2,}|\t|;)(?:\s)*")
 
     def __init__(self, text):
@@ -157,8 +159,8 @@ class RecordsCollector(UserDict):
     record_spec_id = "name" 
     
     def __init__(self, table, spec, voc=None):
-        adjusted_table = self.adjust_table(deepcopy(table), spec, voc)
-        records = self.identify_records(adjusted_table, spec)
+        self.table = self.adjust_table(deepcopy(table), spec, voc)
+        records = self.identify_records(self.table, spec)
         self.records = self.remove_column_with_note_reference(records)
         self.records_map = self.create_records_map(self.records)
         self.rows_map = self.create_rows_map(self.records)
@@ -393,7 +395,7 @@ class RecordsCollector(UserDict):
                         stack.append((s_label, s_numbers, s_csims, s_index))
             else:
                 continue
-    
+
         # Reduce stack
         ident_records = list()
         for label, numbers, csims, rows_indices in stack:
@@ -588,10 +590,13 @@ class FinancialStatement(RecordsCollector):
         if remove_nonascii:
             text = util.remove_non_ascii(text)
         super().__init__(UnevenTable(text), spec, voc)
-        self.names = self.identify_names(
-            text, self.records_map, ncols=max(map(len, self.values())), 
-            report_timerange=timerange, report_timestamp=timestamp
-        )
+        if len(self) == 0: # no records identified
+            self.names = []
+        else:
+            self.names = self.identify_names(
+                text, self.records_map, ncols=max(map(len, self.values())), 
+                report_timerange=timerange, report_timestamp=timestamp
+            )
         self.uom = self.identify_unit_of_measure(text)
         
     def identify_names(

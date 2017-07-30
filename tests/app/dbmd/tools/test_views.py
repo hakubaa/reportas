@@ -10,7 +10,7 @@ from flask import url_for, current_app
 
 from app import db
 from app.models import File, User, DBRequest
-from app.dbmd.tools.forms import ReportUploaderForm
+from app.dbmd.tools.forms import ReportUploaderForm, DirectInputForm
 from db import models
 from db.models import Company
 from app.rapi.util import DatetimeEncoder
@@ -18,28 +18,63 @@ from app.rapi.util import DatetimeEncoder
 from tests.app import AppTestCase, create_and_login_user
 
 
-class LoaderViewTest(AppTestCase):
+def create_fake_company(isin="#TEST", name="TEST"):
+    company = db.session.query(models.Company).filter_by(isin=isin).first()
+    if company:
+        return company
 
-    def tearDown(self):
-        super().tearDown()
-        # remove all files from uploads_test
-        folder = self.app.config.get("UPLOAD_FOLDER")
-        for file in os.listdir(folder):
-            file_path = os.path.join(folder, file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-            except Exception as e:
-                pass
-            
+    company = models.Company(isin="#TEST", name="TEST")
+    db.session.add(company)
+    db.session.commit()
+    return company
+
+
+class MinerIndexViewTest(AppTestCase):
+
+    def send_get_request(self, **kwargs):
+        response = self.client.get(
+            url_for("dbmd_tools.miner_index"),
+            **kwargs
+        )    
+        return response
+
     @create_and_login_user()    
     def test_get_request_renders_template(self):
-        response = self.client.get(url_for("dbmd_tools.report_uploader"))
-        self.assert_template_used("admin/tools/report_uploader.html")
+        response = self.send_get_request()
+        self.assert_template_used("admin/tools/miner_index.html")
         
     def test_unauthenticated_users_are_redirected(self):
-        response = self.client.get(
-            url_for("dbmd_tools.report_uploader"),
+        response = self.send_get_request(follow_redirects = False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            urlparse(response.location).path, 
+            url_for("user.login")
+        )
+        
+    @create_and_login_user(role_name="Visitor")
+    def test_unauthorized_users_get_403(self):
+        response = self.send_get_request(follow_redirects = False)
+        self.assertEqual(response.status_code, 403)
+
+    @create_and_login_user()    
+    def test_for_passing_pdf_file_form_to_template(self):
+        response = self.send_get_request()
+        form = self.get_context_variable("pdf_file_form")
+        self.assertIsInstance(form, ReportUploaderForm) 
+
+    @create_and_login_user()    
+    def test_for_passing_direct_input_form_to_template(self):
+        response = self.send_get_request()
+        form = self.get_context_variable("direct_input_form")
+        self.assertIsInstance(form, DirectInputForm) 
+
+
+class PDFFileMinerViewTest(AppTestCase):
+
+    def test_unauthenticated_users_are_redirected(self):
+        response = self.client.post(
+            url_for("dbmd_tools.pdf_file_miner"),
             follow_redirects = False
         )
         self.assertEqual(response.status_code, 302)
@@ -50,50 +85,24 @@ class LoaderViewTest(AppTestCase):
         
     @create_and_login_user(role_name="Visitor")
     def test_unauthorized_users_get_403(self):
-        response = self.client.get(
-            url_for("dbmd_tools.report_uploader"),
+        response = self.client.post(
+            url_for("dbmd_tools.pdf_file_miner"),
             follow_redirects = False    
         )
         self.assertEqual(response.status_code, 403)
-    
+
     @create_and_login_user()    
-    def test_for_passing_proper_form_to_template(self):
-        response = self.client.get(url_for("dbmd_tools.report_uploader"))
-        form = self.get_context_variable("form")
-        self.assertIsInstance(form, ReportUploaderForm)
-    
-    @create_and_login_user()    
-    def test_for_saving_file_to_disc(self):
-        data = dict(
-            file=(BytesIO(b"Content of the file."), "report.pdf"),
-        )
+    def test_render_miner_index_template_when_errors_in_form(self):
         response = self.client.post(
-            url_for("dbmd_tools.report_uploader"), data=data, 
-            follow_redirects=False, content_type="multipart/form-data"
+            url_for("dbmd_tools.pdf_file_miner"), follow_redirects=True,
+            content_type="multipart/form-data"
         )
-        self.assertTrue(os.path.exists(
-            os.path.join(self.app.config["UPLOAD_FOLDER"], data["file"][1])
-        ))
-        
-    @create_and_login_user()    
-    def test_for_redirecting_after_successful_read(self):
-        data = dict(
-            file=(BytesIO(b"Content of the file."), "report.pdf"),
-        )
-        response = self.client.post(
-            url_for("dbmd_tools.report_uploader"), data=data, 
-            follow_redirects=False, content_type="multipart/form-data"
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            urlparse(response.location).path, 
-            url_for("dbmd_tools.parser")
-        )
-        
+        self.assert_template_used("admin/tools/miner_index.html")
+
     @create_and_login_user()
     def test_for_showing_alert_when_no_file(self):
         response = self.client.post(
-            url_for("dbmd_tools.report_uploader"), follow_redirects=True,
+            url_for("dbmd_tools.pdf_file_miner"), follow_redirects=True,
             content_type="multipart/form-data"
         )
         content = response.data.decode("utf-8")
@@ -105,7 +114,7 @@ class LoaderViewTest(AppTestCase):
             file=(BytesIO(b"Content of the file."), ""),
         )
         response = self.client.post(
-            url_for("dbmd_tools.report_uploader"), data=data, 
+            url_for("dbmd_tools.pdf_file_miner"), data=data, 
             follow_redirects=False, content_type="multipart/form-data"
         )
         content = response.data.decode("utf-8")
@@ -117,11 +126,25 @@ class LoaderViewTest(AppTestCase):
             file=(BytesIO(b"Content of the file."), "report.exe"),
         )
         response = self.client.post(
-            url_for("dbmd_tools.report_uploader"), data=data, 
+            url_for("dbmd_tools.pdf_file_miner"), data=data, 
             follow_redirects=False, content_type="multipart/form-data"
         )
         content = response.data.decode("utf-8")
         self.assertIn("Not allowed extension", content)
+
+    @create_and_login_user()    
+    @mock.patch("app.dbmd.tools.views.render_pdf_file_miner") 
+    def test_render_pdf_file_miner_when_form_validates(self, render_mock):
+        render_mock.return_value = ""
+        data = dict(
+            file=(BytesIO(b"Content of the file."), "report.pdf"),
+        )
+        response = self.client.post(
+            url_for("dbmd_tools.pdf_file_miner"), data=data, 
+            follow_redirects=False, content_type="multipart/form-data"
+        )
+        self.assertTrue(render_mock.called)
+        
 
     @unittest.skip #TODO: problem with current_user during tests
     @create_and_login_user(pass_user=True)
@@ -130,7 +153,7 @@ class LoaderViewTest(AppTestCase):
             file=(BytesIO(b"Content of the file."), "report.pdf"),
         )
         response = self.client.post(
-            url_for("dbmd_tools.report_uploader"), data=data, 
+            url_for("dbmd_tools.pdf_file_miner"), data=data, 
             follow_redirects=False, content_type="multipart/form-data"
         )
         self.assertEqual(db.session.query(File).count(), 1)
@@ -139,91 +162,12 @@ class LoaderViewTest(AppTestCase):
         self.assertEqual(file.user, user)
 
 
-@mock.patch("app.dbmd.tools.views.read_report_from_file")
-@mock.patch("app.dbmd.tools.views.get_company")
-class ParserViewTest(AppTestCase):
+class DirectInputMinerViewTest(AppTestCase):
 
-    def create_fake_file(self, name="test.pdf", content=b"test"):
-        file = File(name=name)
-        db.session.add(file)
-        db.session.commit()
-        path = os.path.join(current_app.config.get("UPLOAD_FOLDER"), name)
-        with open(path, "wb") as f:
-            f.write(content)
-        return file
-
-    def create_fake_company(self, name="TEST", fullname="TEST COMPANY", 
-                            isin="TEST"):
-        company = Company(name=name, fullname=fullname, isin=isin)
-        db.session.add(company)
-        db.session.commit()
-        return company
-        
-    @create_and_login_user()
-    def test_render_proper_template(self, company_mock, report_mock):
-        file = self.create_fake_file()
-        response = self.client.get(
-            url_for("dbmd_tools.parser"), query_string = {"filename": file.name}
-        )
-        self.assert_template_used("admin/tools/parser.html")
-        
-    @create_and_login_user()
-    def test_for_redirecting_to_report_uploader_file_doest_not_exist(
-        self, company_mock, report_mock
-    ):
-        response = self.client.get(
-            url_for("dbmd_tools.parser"), 
-            query_string = {"filename": "report.pdf"},
-            follow_redirects=False
-        )
-        self.assertRedirects(response, url_for("dbmd_tools.report_uploader"))
-     
-    @create_and_login_user()
-    def test_for_redirecting_to_report_uploader_when_no_filename(
-        self, company_mock, report_mock
-    ):
-        response = self.client.get(
-            url_for("dbmd_tools.parser"), follow_redirects=False
-        )
-        self.assertRedirects(response, url_for("dbmd_tools.report_uploader"))
-        
-    @create_and_login_user()
-    def test_for_creating_financial_report(self, company_mock, report_mock):
-        file = self.create_fake_file()
-    
-        response = self.client.get(
-            url_for("dbmd_tools.parser"), query_string = {"filename": file.name}
-        )
-        
-        self.assertTrue(report_mock.called_once)
-    
-    @create_and_login_user()
-    def test_for_passing_report_to_template(self, company_mock, report_mock):
-        fake_report = mock.Mock()
-        fake_report.company = dict()
-        fake_report.rows = []
-        fake_report.bls.items.return_value = []
-        fake_report.bls.names = []
-        fake_report.ics.items.return_value = []
-        fake_report.ics.names = []
-        fake_report.cfs.items.return_value = []
-        fake_report.cfs.names = []
-        report_mock.return_value = fake_report
-        file = self.create_fake_file()
-    
-        response = self.client.get(
-            url_for("dbmd_tools.parser"), query_string = {"filename": file.name}
-        )
-        
-        report = self.get_context_variable("report")
-        self.assertIsNotNone(report)
-        self.assertEqual(report, fake_report)
-
-    def test_unauthenticated_users_are_redirected(
-        self, company_mock, report_mock
-    ):
-        response = self.client.get(
-            url_for("dbmd_tools.parser"), follow_redirects = False
+    def test_unauthenticated_users_are_redirected(self):
+        response = self.client.post(
+            url_for("dbmd_tools.direct_input_miner"),
+            follow_redirects = False
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
@@ -232,24 +176,48 @@ class ParserViewTest(AppTestCase):
         )
         
     @create_and_login_user(role_name="Visitor")
-    def test_unauthorized_users_get_403(self, company_mock, report_mock):
-        response = self.client.get(
-            url_for("dbmd_tools.parser"), follow_redirects = False    
+    def test_unauthorized_users_get_403(self):
+        response = self.client.post(
+            url_for("dbmd_tools.direct_input_miner"),
+            follow_redirects = False    
         )
         self.assertEqual(response.status_code, 403)
 
 
+    @create_and_login_user()    
+    def test_render_miner_index_template_when_errors_in_form(self):
+        response = self.client.post(
+            url_for("dbmd_tools.direct_input_miner"), follow_redirects=True,
+            content_type="multipart/form-data"
+        )
+        self.assert_template_used("admin/tools/miner_index.html")
+
+    @create_and_login_user()
+    def test_for_showing_alert_when_no_content(self):
+        response = self.client.post(
+            url_for("dbmd_tools.direct_input_miner"), follow_redirects=True,
+            content_type="multipart/form-data"
+        )
+        content = response.data.decode("utf-8")
+        self.assertIn("This field is required.", content)
+
+    @create_and_login_user()    
+    @mock.patch("app.dbmd.tools.views.render_direct_input_miner") 
+    def test_render_direct_input_miner_when_form_validates(self, render_mock):
+        render_mock.return_value = ""
+        company = create_fake_company()
+        data = dict(
+            content="NET PROFIT      100          200",
+            company=str(company.id)
+        )
+        response = self.client.post(
+            url_for("dbmd_tools.direct_input_miner"), data=data, 
+            follow_redirects=False, content_type="multipart/form-data"
+        )
+        self.assertTrue(render_mock.called)
+
+
 class ParserPostViewTest(AppTestCase):
-
-    def create_fake_company(self, isin="#TEST", name="TEST"):
-        company = db.session.query(models.Company).filter_by(isin=isin).first()
-        if company:
-            return company
-
-        company = models.Company(isin="#TEST", name="TEST")
-        db.session.add(company)
-        db.session.commit()
-        return company
 
     def create_fake_report(self, timestamp, timerange, company):
         report = models.Report(
@@ -262,7 +230,7 @@ class ParserPostViewTest(AppTestCase):
     def create_data_for_request(self, records=True):
         rtype = models.RecordType(name="NETPROFIT", statement="nls")
         db.session.add(rtype)
-        company = self.create_fake_company()
+        company = create_fake_company()
         
         data = {
             "timestamp": "2015-03-31", "timerange": 12,
@@ -284,7 +252,7 @@ class ParserPostViewTest(AppTestCase):
 
     def send_post_request(self, data, **kwargs):
         return self.client.post(
-            url_for("dbmd_tools.parser_post"),
+            url_for("dbmd_tools.upload_data"),
             data = {"data": json.dumps(data, cls=DatetimeEncoder) },
             **kwargs
         )
@@ -323,7 +291,7 @@ class ParserPostViewTest(AppTestCase):
     @create_and_login_user()
     def test_create_update_request_when_report_exists(self):
         data = self.create_data_for_request(records=False)
-        company = self.create_fake_company()
+        company = create_fake_company()
         report = self.create_fake_report(
             timestamp=datetime.strptime(data["timestamp"], "%Y-%m-%d"),
             timerange=data["timerange"],
