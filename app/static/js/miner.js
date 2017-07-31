@@ -173,14 +173,20 @@ function activateFocusOnInputs(selector) {
     });
 }
 
-function addRow(selector, rtypes, data) {
-    if (selector === undefined) throw "Undefined selector.";
-    var numberOfColumns = getNumberOfColumns(selector);
-    $("" + selector).find("tbody").append(createNewRow(numberOfColumns, rtypes, data));
-    refreshSelects(selector);
+function addRowToTable(table, row) {
+    if (table === undefined) throw "Undefined table.";
+    table.find("tbody").append(row);
 }
 
-function addColumn(selector) {
+function addEmptyRow(selector, rtypes) {
+    if (selector === undefined) throw "Undefined selector.";
+    var numberOfColumns = getNumberOfColumns(selector);
+    var $newRow = createNewRecordRow(numberOfColumns);
+    $newRow.find(".rtype-selection").applySelect2(rtypes, text="name");
+    $("" + selector).find("tbody").append($newRow);
+}
+
+function addEmptyColumn(selector) {
     if (selector === undefined) throw "Undefined selector.";
     var table = $("" + selector)
     table.find("thead tr").append(createHeaderElement(selector));
@@ -208,16 +214,16 @@ function removeColumn(selector, columnId) {
     }           
 }
 
-function refreshSelects(selector) {
-    if (selector === undefined) selector = "*";
-    $(selector).find(".rtype-selection").select2({
-        dropdownAutoWidth: true,
-        placeholder: {
-            id: "-1",
-            text: "Select an option"
-        }
-    });
-}
+// function refreshSelects(selector) {
+//     if (selector === undefined) selector = "*";
+//     $(selector).find(".rtype-selection").select2({
+//         dropdownAutoWidth: true,
+//         placeholder: {
+//             id: "-1",
+//             text: "Select an option"
+//         }
+//     });
+// }
 
 function createHeaderElement(selector) {
     if (selector === undefined) throw "Undefined selector.";
@@ -255,38 +261,74 @@ function generateColumnId(selector) {
     return maxColumnId + 1;
 }
 
-function createNewRow(numberOfColumns, rtypes, data) {
-    if (numberOfColumns === undefined) throw "Undefined number of columns.";
-    if (data === undefined) data = {"type": undefined, "values": []}
-    var $row = $("<tr></tr>", {
-        "class": "record-row ui-widget-content",
-        "id": adjustRecordType(data.type_name)
-    });
-    var value; 
+
+function createNewRecordRow(numberOfValueInputs, attributes) {
+    if (numberOfValueInputs === undefined) {
+        throw "Undefined number of columns with inputs for values.";
+    }
+    if (attributes === undefined) attributes = {};
+
+    var defaultAttributes = {
+        "class": "record-row ui-widget-content"
+    };
+    $.extend(defaultAttributes, attributes);
+    var $row = $("<tr></tr>", defaultAttributes);
 
     $row.append(
         wrapWith("td", 
             wrapWith("div",
                 [
                     createRecordRemoveButton(),
-                    createRecordScrollToRowButton(data.type_name),
+                    createRecordScrollToRowButton(),
                 ],
                 {"class": "btn-group btn-group-xs"}
             )
         )
     );
-    $row.append(wrapWith("td", createRecordTypeSelect(rtypes, data.type)));
-
-    for (var i = 0; i < numberOfColumns; i++) {
-        if (i < data.values.length) {
-            value = data.values[i];
-        } else {
-            value = 0;
-        }
-        $row.append(wrapWith("td", createRecordInputValue(value)));
+    $row.append(wrapWith(
+        "td", $("<select></select>", {"class": "rtype-selection"})
+    ));
+    for (var i = 0; i < numberOfValueInputs; i++) {
+        $row.append(wrapWith("td", createRecordInputValue()));
     }
+
     $row.makeDraggable().makeDroppable();
+
     return $row;
+}
+
+function populateRowWithData(row, rtypes, data) {
+    if (data === undefined) data = {"type": undefined, "values": []}
+
+    var valueInputs = row.find(".record-value");
+    for (var i = 0; i < valueInputs.length; i++) {
+        var value = 0;
+        if (data.values.length  > i) {
+            value = data.values[i];
+        }
+        $(valueInputs[i]).val(value);
+    }
+
+    row.find(".rtype-selection").applySelect2(rtypes, text="name");
+    if (data.type !== undefined) {
+        row.find(".rtype-selection").val(String(data.type)).trigger("change");
+    }
+}
+
+function bindRecordToRow(row, recordType) {
+    row.attr("data-row-name", recordType);
+    row.find(".record-name").empty()
+    row.find(".record-name").append(createLinkToRecord(recordType));
+}
+
+function createLinkToRecord(recordType) {
+    return wrapWith("a",
+        $("<span>" + recordType + "</span>"),
+        { 
+            "href": "javascript:void(0);",
+            "onclick": "focusOnRecord('*[data-record-name=\"" + recordType + "\"]');"
+        }
+    );
 }
 
 function wrapWith(wrapper, elements, attributes) {
@@ -311,20 +353,48 @@ function createRecordRemoveButton() {
     ); 
 }
 
-function createRecordScrollToRowButton(rtype) {
-    var rtypeName = adjustRecordType(rtype);
+function createRecordScrollToRowButton() {
     return wrapWith("button",
         $("<span></span>", {"class": "glyphicon glyphicon-arrow-up"}),
         {
-            "class": "btn btn-primary btn-xs",
-            "onclick": "highlightRow('#row_" + rtypeName + "')",
+            "class": "btn btn-primary btn-xs btn-to-row",
             "type": "button"
         }
     );    
 }
 
-function adjustRecordType(rtype) {
-    return rtype.replace("#", "_");
+
+function focusOnRecord(selector) {
+    var element = $(selector);
+    if (element.length == 0) {
+        alert("There is no coressponding record. Probably it was removed.");
+    } else {
+        $(selector).addClass("backgroundAnimated");
+        $("html, body").animate({
+            scrollTop: $(selector).offset().top
+        }, 500);
+    }
+}
+
+function focusOnRow(selector) {
+    var element = $(selector);
+    if (element.length == 0) {
+        alert("There is no coressponding row. Probably it was removed.");
+    } else {
+        scrollToRow(selector); 
+        location.hash = "#report-wrapper";
+        $(selector).addClass("backgroundAnimated");
+    }
+}
+
+function scrollToRow(selector) {
+    var toffset = $("#report-content thead").position().top;
+    var $frow = $("#report-content tbody " + selector);
+    var roffset = $frow.position().top;
+    // $("#report-content").scrollTop(roffset - toffset);
+    $("#report-content").animate({
+        scrollTop: roffset - toffset
+    }, 1000);
 }
 
 function createRecordTypeSelect(options, selected) {
@@ -359,7 +429,7 @@ function createRecordInputValue(value) {
     var $div = $("<div></div>", {"class": "form-group"});
     $("<input></input>", {
         "type": "text",
-        "class": "form-control input-sm",
+        "class": "form-control input-sm record-value",
         "val": value
     }).appendTo($div);
     return $div;
@@ -420,12 +490,6 @@ function switchLayout() {
     }
 }
 
-function scrollToRecords(selector) {
-    var toffset = $("#report-content thead").position().top;
-    var $frow = $("#report-content tbody " + selector);
-    var roffset = $frow.position().top;
-    $("#report-content").scrollTop(roffset - toffset);
-}
 
 function wrapWith(wrapper, elements, attributes) {
     if (attributes === undefined) attributes = {};

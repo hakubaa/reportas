@@ -105,11 +105,11 @@ def render_direct_input_miner(form, session):
 def get_records_spec(session, spec_name=None):
     spec = list()
     if spec_name in ("bls", None):
-        spec.extend(get_records_reprs(session, "bls", record_spec_id="name"))
+        spec.extend(get_records_reprs(session, "bls"))
     if spec_name in ("ics", None):
-        spec.extend(get_records_reprs(session, "ics", record_spec_id="name"))
+        spec.extend(get_records_reprs(session, "ics"))
     if spec_name in ("cfs", None):
-        spec.extend(get_records_reprs(session, "cfs", record_spec_id="name"))
+        spec.extend(get_records_reprs(session, "cfs"))
     return spec
 
 

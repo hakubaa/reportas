@@ -46,7 +46,7 @@
         (<a href="#column-editor" data-toggle="modal" data-target="#column-editor">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
         <p>
             <label>Company </label>
-            <select>
+            <select id="company-select">
                 <option disabled selected value> -- select a company -- </option>
                 {% for comp in companies %}<option value="{{comp.id}}" {% if company and company.name == comp.name %}selected="selected"{% endif %}>{{comp.name}}</option>{% endfor %}
             </select>
@@ -90,7 +90,7 @@
                         {% for row in content %}
                             {% set record_name = data.rows_map.get(loop.index0, None) %}
                             {% if record_name %}
-                                <tr id="row_{{record_name | adjust_rtype}}">
+                                <tr data-row-name="{{record_name}}">
                             {% else %}
                                 <tr>
                             {% endif %}
@@ -101,7 +101,7 @@
                                 <td class="pageno">{{loop.index}}</td>
                                 <td class="record-name">
                                     {% if record_name %}
-                                        <a href="#{{record_name | adjust_rtype}}" onclick='highlightRecord("#{{record_name | adjust_rtype}}");''>{{record_name}}</a>
+                                        <a href="javascript:void(0);" onclick="focusOnRecord('*[data-record-name=\'{{record_name}}\']');">{{record_name}}</a>
                                     {% else %}
                                         <span>---</span>
                                     {% endif %}
@@ -140,13 +140,13 @@
             </thead>
             <tbody>
                 {% for record_name, values in data.items() %}
-                    <tr class="record-row ui-widget-content" id="{{ record_name | adjust_rtype }}">
+                    <tr class="record-row ui-widget-content" data-record-name="{{record_name}}">
                         <td>
                             <div class="btn-group btn-group-xs">
                                 <button type="button" class="btn btn-danger record-remove-btn">
                                     <span class="glyphicon glyphicon-remove"></span>
                                 </button>      
-                                <button type="button" class="btn btn-primary" onclick="highlightRow('#row_{{record_name | adjust_rtype}}');">
+                                <button type="button" class="btn btn-primary btn-to-row">
                                     <span class="glyphicon glyphicon-arrow-up"></span>
                                 </button>   
                             </div>           
@@ -165,8 +165,27 @@
                 {% endfor %}
             </tbody>
         </table>
-        <button class="btn btn-primary" onclick="addRow('#identified-records', rtypes);">Add Record</button>
-        <button class="btn btn-primary" onclick="addColumn('#identified-records');">Add Column</button>
+        <button class="btn btn-primary" onclick="addEmptyRow('#identified-records', rtypes);">Add Record</button>
+        <button class="btn btn-primary" onclick="addEmptyColumn('#identified-records');">Add Column</button>
+    </div>
+
+    <div class="container container-full">
+        <div style="margin-top:30px"></div>
+        <div>
+            <form method="POST" action="{{ url_for('dbmd_tools.upload_data') }}" id="export-data-form">
+                <input type="hidden" name="data" value="" id="data-to-export">
+                <button class="btn btn-info">Validate Data</button>
+                <input class="btn btn-success" name="submit" type="submit" value="Export Data">
+            </form>
+        </div>
+        <ul>
+            <li>check columnas</li>
+            <li>search for duplicate records</li>
+            <li>check company</li>
+            <li>chek report (warning) </li>
+            <li>check comlums compare the same</li>
+            <li>add unit of measure</li>
+        </ul>
     </div>
 
     <div class="modal fade" id="column-editor" tabindex="-1" role="dialog" aria-labelledby="modal-label">
@@ -214,6 +233,7 @@
     var rtypes = {{ rtypes|tojson }};
 
     $("select.rtype-selection").applySelect2(rtypes, text="name");
+    $("#company-select").applySelect2();
     $(".record-row").makeDraggable().makeDroppable();
 
     $(document).on("click", ".record-remove-btn", function() {
@@ -223,26 +243,6 @@
     activateFocusOnInputs("#identified-records");
 
     // Seting animation when user clisk record in rows-table
-    function highlightRecord(selector) {
-        var element = $(selector);
-        if (element.length == 0) {
-            alert("There is no coressponding record. Probably it was removed.");
-        } else {
-            $(selector).addClass("backgroundAnimated");
-        }
-    }
-
-    function highlightRow(selector) {
-        var element = $(selector);
-        if (element.length == 0) {
-            alert("There is no coressponding row. Probably it was removed.");
-        } else {
-            scrollToRecords(selector); 
-            location.hash = "#report-wrapper";
-            $(selector).addClass("backgroundAnimated");
-        }
-    }
-
     $("tr").on( // remove class from row to enable next animation
         "webkitAnimationEnd oanimationend msAnimationEnd animationend",
         function() {
@@ -282,6 +282,17 @@
     });
     $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
 
+    $(document).on("change", ".record-row select", function() {
+        var recordType = $(this).find("option:selected").text();
+        var $row = $(this).closest("tr");
+        $row.attr("data-record-name", recordType);
+    });
+
+    $(document).on("click", ".btn-to-row", function() {
+        var recordType = $(this).closest("tr").attr("data-record-name");
+        focusOnRow("*[data-row-name='" + recordType + "']");
+    });
+
     // Config form for adding new records
     $(document).on("click", ".recordform-btn", function() {
         var $currentRow = $(this).closest("tr");
@@ -298,10 +309,14 @@
                             if (recordsData.type === "NONE") {
                                 alert("No item selected. Please select one of the item from the list.");
                             } else {
-                                addRow("#identified-records", rtypes, recordsData);
-                                $currentRow.attr("id", "row_" + adjustRecordType(recordsData.type_name));
-                                $currentRow.find(".record-name").empty();
-                                $currentRow.find(".record-name").append(createLinkToRecord(recordsData.type_name));
+                                var recordType = recordsData.type_name;
+                                var $newRow = createNewRecordRow(
+                                    getNumberOfColumns("#identified-records"), 
+                                    {"data-record-name": recordType}
+                                );
+                                populateRowWithData($newRow, rtypes, recordsData);
+                                addRowToTable($("#identified-records"), $newRow);
+                                bindRecordToRow($currentRow, recordType);
                                 $(this).closest("tr").remove();
                             }
                         }
@@ -312,16 +327,6 @@
             ).insertAfter($currentRow);
         }
     });
-
-    function createLinkToRecord(rtype) {
-        return wrapWith("a",
-            $("<span>" + rtype + "</span>"),
-            { 
-                "href": "#" + adjustRecordType(rtype),
-                "onclick": "highlightRecord('#'" + adjustRecordType(rtype) + "');"
-            }
-        );
-    }
 
     // Setting report-ui
     $("#row-remove-btn").click(function() {
