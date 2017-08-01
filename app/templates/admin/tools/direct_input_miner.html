@@ -8,34 +8,7 @@
     <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/parser.css') }}" rel="stylesheet">
-
-    <style>
-        @-webkit-keyframes fadeIt {
-          0%   { background-color: #2487C9; }
-          100% { background-color: #FFFFFF; }
-        }
-        @-moz-keyframes fadeIt {
-          0%   { background-color: #2487C9; }
-          100% { background-color: #FFFFFF; }
-        }
-        @-o-keyframes fadeIt {
-          0%   { background-color: #2487C9; }
-          100% { background-color: #FFFFFF; }
-        }
-        @keyframes fadeIt {
-          0%   { background-color: #2487C9; }
-          100% { background-color: #FFFFFF; }
-        }
-
-        .backgroundAnimated{    
-            background-image:none !important;
-            -webkit-animation: fadeIt 1s ease-in-out; 
-               -moz-animation: fadeIt 1s ease-in-out; 
-                 -o-animation: fadeIt 1s ease-in-out; 
-                    animation: fadeIt 1s ease-in-out; 
-        }
-    </style>
+    <link href="{{ url_for('static', filename='css/miner.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block page_body %}
@@ -118,8 +91,13 @@
     <div class="container container-full">
         <h3>Identified Records</h3>
         <table id="identified-records" class="table table-hover records-table">
-            <thead>
+            {% if data|length == 0%}
+                <thead style="display: none;">
+            {% else %}
+                <thead>
+            {% endif %}
                 <tr>
+                    <th></th>
                     <th></th>
                     <th>Record Type</th>
                     {% for i in range(data.ncols) %}
@@ -139,17 +117,24 @@
                 </tr>  
             </thead>
             <tbody>
+                <tr class="empty-row" {% if data|length > 0 %} style="display: none;" {% endif %}>
+                    <td colspan="999">
+                        <div>
+                            <strong>No record has been identified.</strong>
+                        </div>
+                    </td>
+                </tr>
                 {% for record_name, values in data.items() %}
                     <tr class="record-row ui-widget-content" data-record-name="{{record_name}}">
-                        <td>
-                            <div class="btn-group btn-group-xs">
-                                <button type="button" class="btn btn-danger record-remove-btn">
-                                    <span class="glyphicon glyphicon-remove"></span>
-                                </button>      
-                                <button type="button" class="btn btn-primary btn-to-row">
-                                    <span class="glyphicon glyphicon-arrow-up"></span>
-                                </button>   
-                            </div>           
+                        <td class="no-right-padding">
+                            <button type="button" class="btn btn-xs btn-danger record-remove-btn">
+                                <span class="glyphicon glyphicon-remove"></span>
+                            </button>      
+                        </td>
+                        <td class="no-left-padding">
+                            <button type="button" class="btn btn-xs btn-primary btn-to-row">
+                                <span class="glyphicon glyphicon-arrow-up"></span>
+                            </button>   
                         </td>
                         <td>
                             <select class="rtype-selection" data-init-selected="{{record_name}}"></select>
@@ -237,7 +222,9 @@
     $(".record-row").makeDraggable().makeDroppable();
 
     $(document).on("click", ".record-remove-btn", function() {
+        var $table = $(this).closest("table");
         $(this).closest("tr").remove();
+        toggleTable($table);
     });
     
     activateFocusOnInputs("#identified-records");
@@ -310,8 +297,15 @@
                                 alert("No item selected. Please select one of the item from the list.");
                             } else {
                                 var recordType = recordsData.type_name;
+                                var numberOfColumns = getNumberOfColumns("#identified-records");
+                                if (numberOfColumns < recordsData.values.length) {
+                                    for(var i = 0; i < recordsData.values.length - numberOfColumns; i++) {
+                                        addEmptyColumn("#identified-records");
+                                    }
+                                    numberOfColumns = recordsData.values.length;
+                                }
                                 var $newRow = createNewRecordRow(
-                                    getNumberOfColumns("#identified-records"), 
+                                    numberOfColumns, 
                                     {"data-record-name": recordType}
                                 );
                                 populateRowWithData($newRow, rtypes, recordsData);

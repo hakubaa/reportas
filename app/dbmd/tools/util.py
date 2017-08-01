@@ -30,13 +30,13 @@ class FinancialReportDB(FinancialReport):
         self.session = session
             
     def get_bls_spec(self):
-        return get_records_reprs(self.session, "bls", record_spec_id="name")
+        return get_records_reprs(self.session, "bls")
     
     def get_ics_spec(self):
-        return get_records_reprs(self.session, "ics", record_spec_id="name")
+        return get_records_reprs(self.session, "ics")
     
     def get_cfs_spec(self):
-        return get_records_reprs(self.session, "cfs", record_spec_id="name")
+        return get_records_reprs(self.session, "cfs")
         
     def get_companies_spec(self):
         return get_companies_reprs(self.session)
@@ -70,10 +70,11 @@ def render_pdf_file_miner(form, session):
         company = get_company(report.company["isin"], session)
 
     rtypes = get_record_types(session)
+    companies = session.query(models.Company.id, models.Company.name).all()
 
     return render_template(
         "admin/tools/pdf_file_miner.html", report=report, 
-        company=company, rtypes=rtypes
+        company=company, rtypes=rtypes, companies=companies
     )
 
 

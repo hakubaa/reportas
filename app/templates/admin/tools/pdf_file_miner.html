@@ -7,24 +7,30 @@
     <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/parser.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/parser-table.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/miner.css') }}" rel="stylesheet">
+    <style>
+        .backgroundAnimated{    
+            background-image:none !important;
+            -webkit-animation: fadeIt 3s ease-in-out; 
+               -moz-animation: fadeIt 3s ease-in-out; 
+                 -o-animation: fadeIt 3s ease-in-out; 
+                    animation: fadeIt 3s ease-in-out; 
+        }
+    </style>
 {% endblock %}
 
 {% block page_body %}
 {{ super() }}
     <div class="container container-full">
         <h3>Financial Data Miner - Summary</h3>
-        <p>Financial report for <strong><span id="report-timerange">{{report.timerange}}</span></strong> months ended on <strong><span id="report-timestamp">{{report.timestamp.strftime('%Y-%m-%d')}}</span></strong> 
-        (<a href="#">Edit</a>).</p>
-        <p>Company:
-            {% if company %}
-                <div id="company-id" data-company-id="{{company.id}}"></div>
-                <a href="#", target="_blank">{{company.fullname}}</a>
-            {% else %}
-                Not identified
-            {% endif %} 
-            (<a href="#">Select Company</a>)</button>
+        <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report.timerange %}{{report.timerange}}{% else %}(not identified){% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report.timestamp %}{{report.timestamp.strftime('%Y-%m-%d')}} {% else %}(not identified){% endif %}</span></strong> 
+        (<a href="#column-editor" data-toggle="modal" data-target="#column-editor">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+        <p>
+            <label>Company </label>
+            <select id="company-select">
+                <option disabled selected value> -- select a company -- </option>
+                {% for comp in companies %}<option value="{{comp.id}}" {% if company and company.name == comp.name %}selected="selected"{% endif %}>{{comp.name}}</option>{% endfor %}
+            </select>
         </p>
 
         <div id="report-wrapper">
@@ -54,13 +60,13 @@
                     </ul>
                 </div>
                 <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-default" id="report-bls-btn" title="BLS" onclick="scrollToRecords('tr.bls-style');">
+                    <button type="button" class="btn btn-default" id="report-bls-btn" title="BLS" onclick="scrollToRow('tr.bls-style');">
                         <span>BLS</span>
                     </button>
-                    <button type="button" class="btn btn-default" id="report-ics-btn" title="ICS" onclick="scrollToRecords('tr.ics-style');">
+                    <button type="button" class="btn btn-default" id="report-ics-btn" title="ICS" onclick="scrollToRow('tr.ics-style');">
                         <span>ICS</span>
                     </button>
-                    <button type="button" class="btn btn-default" id="report-cfs-btn" title="CFS" onclick="scrollToRecords('tr.cfs-style');">
+                    <button type="button" class="btn btn-default" id="report-cfs-btn" title="CFS" onclick="scrollToRow('tr.cfs-style');">
                         <span>CFS</span>
                     </button>
                 </div> 
@@ -94,14 +100,15 @@
                     </thead>
                     <tbody>
                         {% for doc_row, page_no, page_row, content in report.rows %}
+                            {% set record_name = report.rows_map.get(loop.index0, None) %}
                             {% if page_no in report.ics_pages %}
-                                <tr class="ics-style" data-stm="ics">
+                                <tr class="ics-style" data-stm="ics" data-row-name="{{record_name}}">
                             {% elif page_no in report.bls_pages %}
-                                <tr class="bls-style" data-stm="bls">
+                                <tr class="bls-style" data-stm="bls" data-row-name="{{record_name}}">
                             {% elif page_no in report.cfs_pages %}
-                                <tr class="cfs-style" data-stm="cfs">
+                                <tr class="cfs-style" data-stm="cfs" data-row-name="{{record_name}}">
                             {% else %}
-                                <tr data-stm="none">
+                                <tr data-stm="none" data-row-name="{{record_name}}">
                             {% endif %}
                                  <td class="selector">
                                     <a href="javascript:void(0);" class="recordform-btn"><span class="glyphicon glyphicon-plus"></span></a>
@@ -109,7 +116,17 @@
                                 </td>
                                 <td class="pageno">{{page_no}}</td>
                                 <td class="record-name">
-                                    <span>{{report.rows_map.get(doc_row, None)}}</span>
+                                    {% if record_name %}
+                                        {% if page_no in report.ics_pages %}
+                                            <a href="javascript:void(0);" onclick="activateTab('wrapper-ics'); focusOnRecord('*[data-record-name=\'{{record_name}}\']');">{{record_name}}</a>
+                                        {% elif page_no in report.bls_pages %}
+                                            <a href="javascript:void(0);" onclick="activateTab('wrapper-bls'); focusOnRecord('*[data-record-name=\'{{record_name}}\']');">{{record_name}}</a>
+                                        {% elif page_no in report.cfs_pages %}
+                                            <a href="javascript:void(0);" onclick="activateTab('wrapper-cfs'); focusOnRecord('*[data-record-name=\'{{record_name}}\']');">{{record_name}}</a>
+                                        {% endif %}
+                                    {% else %}
+                                        <span>---</span>
+                                    {% endif %}
                                 </td>
                                 <td class="content">{{content}}</td>
                             </tr>
@@ -124,7 +141,7 @@
         <h3>Identified Records</h3>
         <div>
             <!-- Nav tabs -->
-            <ul class="nav nav-tabs" role="tablist">
+            <ul class="nav nav-tabs" role="tablist" id="stm-wrappers">
                 <li role="presentation" class="active"><a href="#wrapper-bls" aria-controls="wrapper-bls" role="tab" data-toggle="tab">BLS</a></li>
                 <li role="presentation"><a href="#wrapper-ics" aria-controls="wrapper-ics" role="tab" data-toggle="tab">ICS</a></li>
                 <li role="presentation"><a href="#wrapper-cfs" aria-controls="wrapper-cfs" role="tab" data-toggle="tab">CFS</a></li>
@@ -133,103 +150,19 @@
             <div class="tab-content">
                 <div role="tabpanel" class="tab-pane active" id="wrapper-bls">
                     <table id="bls-table" class="table table-hover records-table">
-                        <thead>
+                        {% if report.bls|length == 0%}
+                            <thead style="display: none;">
+                        {% else %}
+                            <thead>
+                        {% endif %}
                             <tr>
                                 <th></th>
-                                <th>Record Type</th>
-                                {% for timerange, timestamp in report.bls.names %}
-                                    <th data-column-id="{{loop.index}}">
-                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp|join('-')}}</span>
-                                        <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
-                                        <a href="javascript:void(0);" onclick="removeColumn('#bls-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
-                                    </th>
-                                {% endfor %}
-                            </tr>  
-                        </thead>
-                        <tbody>
-                            {% for record_name, values in report.bls.items() %}
-                                <tr class="record-row ui-widget-content">
-                                    <td>
-                                        <button type="button" class="btn btn-danger btn-xs record-remove-btn">
-                                            <span class="glyphicon glyphicon-remove"></span>
-                                        </button>      
-                                    </td>
-                                    <td>
-                                        <select class="rtype-selection">
-                                            {% for rtype in rtypes %}
-                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
-                                    {% for value in values %}
-                                        <td>
-                                            <div class="form-group">
-                                                <input type="text" class="form-control input-sm" value="{{value}}">
-                                            </div>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <button class="btn btn-primary" onclick="addRow('#bls-table', rtypes);">Add Record</button>
-                    <button class="btn btn-primary" onclick="addColumn('#bls-table');">Add Column</button>
-                </div>
-
-                <div role="tabpanel" class="tab-pane" id="wrapper-ics">
-                    <table id="ics-table" class="table table-hover records-table">
-                        <thead>
-                            <tr>
                                 <th></th>
                                 <th>Record Type</th>
-                                {% for timerange, timestamp in report.ics.names %}
-                                    <th data-column-id="{{loop.index}}">
-                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp|join('-')}}</span>
-                                        <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
-                                        <a href="javascript:void(0);" onclick="removeColumn('#ics-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
-                                    </th>
-                                {% endfor %}
-                            </tr>  
-                        </thead>
-                        <tbody>
-                            {% for record_name, values in report.ics.items() %}
-                                <tr class="record-row ui-widget-content">
-                                    <td>
-                                        <button type="button" class="btn btn-danger btn-xs record-remove-btn">
-                                            <span class="glyphicon glyphicon-remove"></span>
-                                        </button>      
-                                    </td>
-                                    <td>
-                                        <select class="rtype-selection">
-                                            {% for rtype in rtypes %}
-                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
-                                    {% for value in values %}
-                                        <td>
-                                            <div class="form-group">
-                                                <input type="text" class="form-control input-sm" value="{{value}}">
-                                            </div>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <button class="btn btn-primary" onclick="addRow('#ics-table', rtypes);">Add Record</button>
-                    <button class="btn btn-primary" onclick="addColumn('#ics-table');">Add Column</button>
-                </div>
-                <div role="tabpanel" class="tab-pane" id="wrapper-cfs">
-                    <table id="cfs-table" class="table table-hover records-table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>Record Type</th>
-                                {% for i in range(report.cfs.ncols) %}
-                                    {% if report.cfs.names|length > i %}
-                                        {% set timerange = report.cfs.names[0] %}
-                                        {% set timestamp = report.cfs.names[1]|join('-') %}
+                                {% for i in range(report.bls.ncols) %}
+                                    {% if report.bls.names|length > i %}
+                                        {% set timerange = report.bls.names[i][0] %}
+                                        {% set timestamp = report.bls.names[i][1]|join('-') %}
                                     {% else %}
                                         {% set timerange = '(not identified)' %}
                                         {% set timestamp = timerange %}
@@ -243,12 +176,24 @@
                             </tr>  
                         </thead>
                         <tbody>
-                            {% for record_name, values in report.cfs.items() %}
-                                <tr class="record-row ui-widget-content">
-                                    <td>
-                                        <button type="button" class="btn btn-danger btn-xs record-remove-btn">
+                            <tr class="empty-row" {% if report.bls|length > 0 %} style="display: none;" {% endif %}>
+                                <td colspan="999">
+                                    <div>
+                                        <strong>No record has been identified.</strong>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% for record_name, values in report.bls.items() %}
+                                <tr class="record-row ui-widget-content" data-record-name="{{record_name}}">
+                                    <td class="no-right-padding">
+                                        <button type="button" class="btn btn-xs btn-danger record-remove-btn">
                                             <span class="glyphicon glyphicon-remove"></span>
-                                        </button>      
+                                        </button>     
+                                    </td>
+                                    <td class="no-left-padding"> 
+                                        <button type="button" class="btn btn-xs btn-primary btn-to-row">
+                                            <span class="glyphicon glyphicon-arrow-up"></span>
+                                        </button>   
                                     </td>
                                     <td>
                                         <select class="rtype-selection">
@@ -268,12 +213,149 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    <button class="btn btn-primary" onclick="addRow('#cfs-table', rtypes);">Add Record</button>
-                    <button class="btn btn-primary" onclick="addColumn('#cfs-table');">Add Column</button>
+                    <button class="btn btn-primary" onclick="addEmptyRow('#bls-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addEmptyColumn('#bls-table');">Add Column</button>
+                </div>
+
+                <div role="tabpanel" class="tab-pane" id="wrapper-ics">
+                    <table id="ics-table" class="table table-hover records-table">
+                        {% if report.ics|length == 0%}
+                            <thead style="display: none;">
+                        {% else %}
+                            <thead>
+                        {% endif %}
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th>Record Type</th>
+                                {% for i in range(report.ics.ncols) %}
+                                    {% if report.ics.names|length > i %}
+                                        {% set timerange = report.ics.names[i][0] %}
+                                        {% set timestamp = report.ics.names[i][1]|join('-') %}
+                                    {% else %}
+                                        {% set timerange = '(not identified)' %}
+                                        {% set timestamp = timerange %}
+                                    {% endif %}
+                                    <th data-column-id="{{loop.index}}">
+                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp}}</span>
+                                        <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
+                                        <a href="javascript:void(0);" onclick="removeColumn('#ics-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                                    </th>
+                                {% endfor %}
+                            </tr>  
+                        </thead>
+                        <tbody>
+                            <tr class="empty-row" {% if report.ics|length > 0 %} style="display: none;" {% endif %}>
+                                <td colspan="999">
+                                    <div>
+                                        <strong>No record has been identified.</strong>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% for record_name, values in report.ics.items() %}
+                                <tr class="record-row ui-widget-content" data-record-name="{{record_name}}">
+                                    <td class="no-right-padding">
+                                        <button type="button" class="btn btn-xs btn-danger record-remove-btn">
+                                            <span class="glyphicon glyphicon-remove"></span>
+                                        </button>      
+                                    </td>
+                                    <td class="no-left-padding">
+                                        <button type="button" class="btn btn-xs btn-primary btn-to-row">
+                                            <span class="glyphicon glyphicon-arrow-up"></span>
+                                        </button>   
+                                    </td>
+                                    <td>
+                                        <select class="rtype-selection">
+                                            {% for rtype in rtypes %}
+                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    {% for value in values %}
+                                        <td>
+                                            <div class="form-group">
+                                                <input type="text" class="form-control input-sm" value="{{value}}">
+                                            </div>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <button class="btn btn-primary" onclick="addEmptyRow('#ics-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addEmptyColumn('#ics-table');">Add Column</button>
+                </div>
+                <div role="tabpanel" class="tab-pane" id="wrapper-cfs">
+                    <table id="cfs-table" class="table table-hover records-table">
+                        {% if report.cfs|length == 0%}
+                            <thead style="display: none;">
+                        {% else %}
+                            <thead>
+                        {% endif %}
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th>Record Type</th>
+                                {% for i in range(report.cfs.ncols) %}
+                                    {% if report.cfs.names|length > i %}
+                                        {% set timerange = report.cfs.names[i][0] %}
+                                        {% set timestamp = report.cfs.names[i][1]|join('-') %}
+                                    {% else %}
+                                        {% set timerange = '(not identified)' %}
+                                        {% set timestamp = timerange %}
+                                    {% endif %}
+                                    <th data-column-id="{{loop.index}}">
+                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp}}</span>
+                                        <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
+                                        <a href="javascript:void(0);" onclick="removeColumn('#cfs-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                                    </th>
+                                {% endfor %}
+                            </tr>  
+                        </thead>
+                        <tbody>
+                            <tr class="empty-row" {% if report.cfs|length > 0 %} style="display: none;" {% endif %}>
+                                <td colspan="999">
+                                    <div>
+                                        <strong>No record has been identified.</strong>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% for record_name, values in report.cfs.items() %}
+                                <tr class="record-row ui-widget-content" data-record-name="{{record_name}}">
+                                    <td class="no-right-padding">
+                                        <button type="button" class="btn btn-xs btn-danger record-remove-btn">
+                                            <span class="glyphicon glyphicon-remove"></span>
+                                        </button>      
+                                    </td>
+                                    <td class="no-left-padding">
+                                        <button type="button" class="btn btn-xs btn-primary btn-to-row">
+                                            <span class="glyphicon glyphicon-arrow-up"></span>
+                                        </button>   
+                                    </td>
+                                    <td>
+                                        <select class="rtype-selection">
+                                            {% for rtype in rtypes %}
+                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    {% for value in values %}
+                                        <td>
+                                            <div class="form-group">
+                                                <input type="text" class="form-control input-sm" value="{{value}}">
+                                            </div>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <button class="btn btn-primary" onclick="addEmptyRow('#cfs-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addEmptyColumn('#cfs-table');">Add Column</button>
                 </div>
             </div>
         </div>
-        <div style="margin-top:15px"></div>
+        <div style="margin-top:30px"></div>
         <div>
             <form method="POST" action="{{ url_for('dbmd_tools.upload_data') }}" id="export-data-form">
                 <input type="hidden" name="data" value="" id="data-to-export">
@@ -306,11 +388,18 @@
                     <form>
                         <div class="form-group">
                             <label for="timestamp-input" class="control-label">Timestamp:</label>
-                            <input type="text" class="form-control" id="timestamp-input">
+                            <input type="text" class="form-control input-sm" id="timestamp-input">
                         </div>
                         <div class="form-group">
                             <label for="timerange-input" class="control-label">Timerange:</label>
-                            <textarea class="form-control" id="timerange-input"></textarea>
+                            <div>
+                                <select class="form-control" id="timerange-input" style="width: 100%;">
+                                    <option value="3">3</option>
+                                    <option value="6">6</option>
+                                    <option value="9">9</option>
+                                    <option value="12">12</option>
+                                </select>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -330,38 +419,72 @@
 <script>
     var rtypes = {{ rtypes|tojson }};
 
-    refreshSelects();
+    $("select.rtype-selection").applySelect2(rtypes, text="name");
+    $("#company-select").applySelect2();
     $(".record-row").makeDraggable().makeDroppable();
 
     $(document).on("click", ".record-remove-btn", function() {
+        var $table = $(this).closest("table");
         $(this).closest("tr").remove();
+        toggleTable($table);
     });
 
     activateFocusOnInputs("#ics-table");
     activateFocusOnInputs("#bls-table");
     activateFocusOnInputs("#cfs-table");
-    
+
+    // Seting animation when user clisk record in rows-table
+    $("tr").on( // remove class from row to enable next animation
+        "webkitAnimationEnd oanimationend msAnimationEnd animationend",
+        function() {
+            $(this).removeClass("backgroundAnimated");
+        }
+    );
+
+    // Config bootstrap modal for updating column names
     $("#column-editor").on("show.bs.modal", function(event) {
         var $caller = $(event.relatedTarget); 
-        var $timerangeSpan = $caller.parent().find(".column-timerange");
-        var $timestampSpan = $caller.parent().find(".column-timestamp");
-        
+        var $timerangeSpan = $caller.parent().find(".timerange");
+        var $timestampSpan = $caller.parent().find(".timestamp");
+
         var modal = $(this);
         var $timerangeInput = modal.find("#timerange-input");
         var $timestampInput = modal.find("#timestamp-input");
 
         // update inputs with current values
+        var timestamp = moment($timestampSpan.text(), "YYYY-MM-DD");
+        if (timestamp != null && timestamp.isValid()) {
+            $timestampInput.val(timestamp.format("YYYY-MM-DD"));
+        } else {
+            $timestampInput.val("");    
+        }
         $timerangeInput.val($timerangeSpan.text());
-        $timestampInput.val($timestampSpan.text());
 
         // set callback for Ok button
-        modal.find("#modal-ok-btn").click(function(event) {
-            $timerangeSpan.text($timerangeInput.val());
-            $timestampSpan.text($timestampInput.val());
+        var okButton = modal.find("#modal-ok-btn");
+        okButton.click(function(event) {
+            $timerangeSpan.text($timerangeInput.find(":selected").val());
+            if ($timestampInput.val() != "") {
+                $timestampSpan.text($timestampInput.val());
+            }
             modal.modal("hide");
+            okButton.unbind("click");
         });
     });
+    $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
 
+    $(document).on("change", ".record-row select", function() {
+        var recordType = $(this).find("option:selected").text();
+        var $row = $(this).closest("tr");
+        $row.attr("data-record-name", recordType);
+    });
+
+    $(document).on("click", ".btn-to-row", function() {
+        var recordType = $(this).closest("tr").attr("data-record-name");
+        focusOnRow("*[data-row-name='" + recordType + "']");
+    });
+
+    // Config form for adding new records
     $(document).on("click", ".recordform-btn", function() {
         var $currentRow = $(this).closest("tr");
         if (!$currentRow.next().hasClass("record-form")) {
@@ -377,14 +500,23 @@
                             if (recordsData.type === "NONE") {
                                 alert("No item selected. Please select one of the item from the list.");
                             } else {
-                                if (recordsData.statement == "BLS") {
-                                    addRow("#bls-table", rtypes, recordsData);
-                                } else if (recordsData.statement == "ICS") {
-                                    addRow("#ics-table", rtypes, recordsData);
-                                } else {
-                                    addRow("#cfs-table", rtypes, recordsData);
+                                var tableSelector = "#" + recordsData.statement.toLowerCase() + "-table";
+
+                                var recordType = recordsData.type_name;
+                                var numberOfColumns = getNumberOfColumns(tableSelector);
+                                if (numberOfColumns < recordsData.values.length) {
+                                    for(var i = 0; i < recordsData.values.length - numberOfColumns; i++) {
+                                        addEmptyColumn(tableSelector);
+                                    }
+                                    numberOfColumns = recordsData.values.length;
                                 }
-                                alert("The item has been successfully added to the list.");
+                                var $newRow = createNewRecordRow(
+                                    numberOfColumns, 
+                                    {"data-record-name": recordType}
+                                );
+                                populateRowWithData($newRow, rtypes, recordsData);
+                                addRowToTable($(tableSelector), $newRow);
+                                bindRecordToRow($currentRow, recordType);
                                 $(this).closest("tr").remove();
                             }
                         }
@@ -398,16 +530,11 @@
 
     // Setting report-ui
     $("#row-remove-btn").click(function() {
-        
-        alert($("#report-content tbody tr").first().position().top);
-
-        // var ics = $("#report-content tr.ics-style").first();
-        var ics = $("#report-content tbody tr.ics-style");
-        var _offset = ics.position();
-        var _topoffset = _offset.top;
-
-        $("#report-content").scrollTop(_topoffset - temp);            
+        $("#report-content").find(".selector input:checked").each(function() {
+            $(this).closest("tr").remove();
+        });
     });
+
 
     $(".selector > input").change(function() {
         refreshReportUI();
@@ -481,5 +608,9 @@
         });
         return data;
     }
+
+    function activateTab(tab){
+        $('.nav-tabs a[href="#' + tab + '"]').tab('show');
+    };
 </script>
 {% endblock %}

@@ -91,5 +91,49 @@ td.record-name {
     white-space: nowrap;
 }
 .rtype-selection {
-    max-width: 200px;
+    width: 200px;
 }
+
+.no-left-padding {
+    padding-left: 0px !important;
+    width: 30px !important;
+}
+
+.no-left-padding .btn {
+    float: left;
+}
+
+.no-right-padding {
+    padding-right: 0px !important;
+    width: 30px !important;
+}
+
+.no-right-padding .btn {
+    float: right;
+}
+
+@-webkit-keyframes fadeIt {
+  0%   { background-color: #2487C9; }
+  100% { background-color: #FFFFFF; }
+}
+@-moz-keyframes fadeIt {
+  0%   { background-color: #2487C9; }
+  100% { background-color: #FFFFFF; }
+}
+@-o-keyframes fadeIt {
+  0%   { background-color: #2487C9; }
+  100% { background-color: #FFFFFF; }
+}
+@keyframes fadeIt {
+  0%   { background-color: #2487C9; }
+  100% { background-color: #FFFFFF; }
+}
+
+.backgroundAnimated{    
+    background-image:none !important;
+    -webkit-animation: fadeIt 1s ease-in-out; 
+       -moz-animation: fadeIt 1s ease-in-out; 
+         -o-animation: fadeIt 1s ease-in-out; 
+            animation: fadeIt 1s ease-in-out; 
+}
+

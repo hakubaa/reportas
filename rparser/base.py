@@ -574,6 +574,8 @@ class RecordsCollector(UserDict):
 
     @property
     def ncols(self):
+        if len(self) == 0:
+            return 0
         return max(map(len, self.values()))
 
 

@@ -1174,6 +1174,43 @@ finrecords = [
         ]
     },
     {
+        "statement": "ics", "name": "ICS#NETPROFITPERSHARE",
+        "reprs": [
+            {
+                "lang": "PL",
+                "value": "Zysk netto na akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk netto na jedną akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk/strata na akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk/strata na jedną akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) na akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) na jedną akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Starta na akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Starta na jedną akcję"
+            }
+        ]
+    },
+    {
         "statement": "ics", "name": "ICS#NETPROFITCONT",
         "repr": [
             {

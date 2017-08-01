@@ -1,5 +1,5 @@
-var FIXED_COLUMNS = 2;
-var RECORD_TYPE_COLUMN = 1;
+var FIXED_COLUMNS = 3;
+var RECORD_TYPE_COLUMN = 2;
 
 //------------------------------------------------------------------------------
 // XMLHttpRequests Functions
@@ -176,6 +176,21 @@ function activateFocusOnInputs(selector) {
 function addRowToTable(table, row) {
     if (table === undefined) throw "Undefined table.";
     table.find("tbody").append(row);
+    toggleTable(table);
+}
+
+function toggleTable(table) {
+    var numberOfRows = table.find("tbody tr:visible").not(".empty-row").length;
+    if (numberOfRows === 0) { // show empty row
+        table.find(".empty-row").show();
+        table.find("thead").hide();
+    } else {
+        var $firstRow = table.find("tbody tr:visible:first");
+        if ($firstRow.hasClass("empty-row") && numberOfRows > 0) {
+            $firstRow.hide();
+            table.find("thead").show();
+        } 
+    }
 }
 
 function addEmptyRow(selector, rtypes) {
@@ -183,17 +198,18 @@ function addEmptyRow(selector, rtypes) {
     var numberOfColumns = getNumberOfColumns(selector);
     var $newRow = createNewRecordRow(numberOfColumns);
     $newRow.find(".rtype-selection").applySelect2(rtypes, text="name");
-    $("" + selector).find("tbody").append($newRow);
+    addRowToTable($(""+selector), $newRow);
 }
 
 function addEmptyColumn(selector) {
     if (selector === undefined) throw "Undefined selector.";
     var table = $("" + selector)
-    table.find("thead tr").append(createHeaderElement(selector));
-    var rows = table.find("tbody tr");
-    for(var i = 0; i < rows.length; i++) {
-        $(rows[i]).append(wrapWith("td", createRecordInputValue()));    
-    }
+
+        table.find("thead tr").append(createHeaderElement(selector));
+        var rows = table.find("tbody tr").not(".empty-row");
+        for(var i = 0; i < rows.length; i++) {
+            $(rows[i]).append(wrapWith("td", createRecordInputValue()));    
+        }
 }
 
 function removeColumn(selector, columnId) {
@@ -230,12 +246,12 @@ function createHeaderElement(selector) {
     var columnId = generateColumnId(selector);
     var $th = $("<th></th>", {"data-column-id": String(columnId)});
     $("<span></span>", {
-        "class": "column-timerange",
+        "class": "timerange",
         "text": "0"
     }).appendTo($th);
     $("<span> months ended on </span>").appendTo($th);
     $("<span></span>", {
-        "class": "column-timestamp",
+        "class": "timestamp",
         "text": "0001-01-01"
     }).appendTo($th);
     $("<span> </span>").appendTo($th);
@@ -276,15 +292,16 @@ function createNewRecordRow(numberOfValueInputs, attributes) {
 
     $row.append(
         wrapWith("td", 
-            wrapWith("div",
-                [
-                    createRecordRemoveButton(),
-                    createRecordScrollToRowButton(),
-                ],
-                {"class": "btn-group btn-group-xs"}
-            )
+            createRecordRemoveButton(),
+            {"class": "no-right-padding"}
         )
     );
+    $row.append(
+        wrapWith("td", 
+            createRecordScrollToRowButton(), 
+            {"class": "no-left-padding"}
+        )
+    );  
     $row.append(wrapWith(
         "td", $("<select></select>", {"class": "rtype-selection"})
     ));
@@ -364,7 +381,8 @@ function createRecordScrollToRowButton() {
 }
 
 
-function focusOnRecord(selector) {
+function focusOnRecord(selector, time) {
+    if (time === undefined) time = 500;
     var element = $(selector);
     if (element.length == 0) {
         alert("There is no coressponding record. Probably it was removed.");
@@ -372,7 +390,7 @@ function focusOnRecord(selector) {
         $(selector).addClass("backgroundAnimated");
         $("html, body").animate({
             scrollTop: $(selector).offset().top
-        }, 500);
+        }, time);
     }
 }
 
@@ -417,11 +435,7 @@ function createRecordTypeSelectOption(value, name) {
 
 function getNumberOfColumns(selector) {
     if (selector === undefined) throw "Undefined selector.";
-    var $tableRows = $("" + selector).find("thead tr");
-    var maxNumberOfCells = Math.max.apply(null, $tableRows.map(function() {
-        return $(this).find("th").length - FIXED_COLUMNS;
-    }).get());
-    return maxNumberOfCells;
+    return $("" + selector).find("thead th").length - FIXED_COLUMNS;
 }
 
 function createRecordInputValue(value) {
