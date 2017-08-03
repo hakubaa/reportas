@@ -46,7 +46,7 @@ class ReportUploaderForm(LanguageMixin, FlaskForm):
 
 
 class DirectInputForm(LanguageMixin, FlaskForm):
-    content = fields.TextAreaField("Content", [validators.required()])
+    content = fields.TextAreaField("Content", [validators.DataRequired()])
     company = QuerySelectField(
         query_factory=lambda: db.session.query(Company).all(),
         get_label=lambda item: item.name, get_pk=lambda item: item.id

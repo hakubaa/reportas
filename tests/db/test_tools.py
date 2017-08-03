@@ -6,10 +6,10 @@ import operator
 
 from tests.db import DbTestCase
 
-import db.util as util
+import db.util as utils
 import db.models as models
 
-from db.util import upload_records_spec
+from db.utils import upload_records_spec
 from db.models import RecordType, RecordTypeRepr, Company, Record
 
 

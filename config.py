@@ -38,7 +38,8 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
 	TESTING = True
 	SQLALCHEMY_DATABASE_URI = (
-		"sqlite:///:memory:"
+		os.environ.get("DATABASE_URL_TEST", None) 
+		or "sqlite:///:memory:"
 		or 'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
 	)
 	UPLOAD_FOLDER = os.path.join(basedir, "uploads_test")

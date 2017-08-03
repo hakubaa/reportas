@@ -178,3 +178,155 @@ Różnice kursowe z przeliczenia jednostek zagranicznych                        
 Całkowite dochody ogółem                                                             2 114                3 062
 
 Całkowite dochody ogółem, przypadające na:                                           2 114                3 062
+
+
+
+
+
+
+
+
+
+
+
+
+#DONE
+- add transform method to formula
+
+#TODO
+- move to bootstra-datepicker.js - show only months and yeras
+- add some validations from timestamps, to accept only last day of month
+- add financial year start data to company (some companies have shifted financial year)
+    - financial_year_start_month = Column(Integer, default=1)
+
+- take into account start month of financial year when calculating syntehtic
+  records
+- syntehtic records are calculated only wihtin single financial year
+- add timestamp_start = timestamp - timerange
+
+#THOUGHTS:
+1)
+- who should create records? where should be located logic concerning creating
+  syntetic records? who should be responsible for records? who is the closetst
+  to records and db? the answer is: 
+- Record(Model)
+- Ok, I understand it wil lbe static method?
+- Yes, and what about its name? Have you got any ideas?
+- I don't know yet, but I know what it should do.
+- what exacly?
+- Returns records when exsit in db, or create new syntethic records if possible.
+- So, two separate functionalities? ARe you not violating SRP ?
+- It seems I do. Better to split this into two methods: create_syntethic_record,
+  and get record. But what if user would like to create synthetic record which
+  already exists in db? Should we create new one?
+- No, definitely not. Hymmm. What about function to check whether the record exist?
+- It will be helpful, but very often user would like to get record regardless
+  of its existance in db?
+- So, what about the method get_or_create?
+- No, I don't like this idea, we will never pass value and report.
+- get_or_create_syntetic_suger?
+- To long.
+- get_or_generate?
+- That's better. What are the synonyms for generate?
+- create, make, produc, induce, form
+- generate is the best. get_or_generate is ok.
+
+2)
+- synthetic records should be overridable
+
+3) Synthetic records - When should they be generated?
+- I don't know. There will be planty of possibilties. How to represent timerange and record types?
+
+- How it will work ? 
+
+User creates new dbrequest to upload one or planty records. Or even worse user
+sends request to modify some old data. What about records that are deleted and
+took part in creating synthetic records? FUCK. So many different problems which
+should be solved with one simple solution:(
+
+There are two possibilities:
+- synthetic records are created simultaneously at some specific daytime
+- synthetic records are created when sth has change in db (new record,
+  modified record etc)
+- synthetic records are created with every dbrequest => moderator accepts 
+  request, new records are created, updated. It will work just like some 
+  impulse started at given record and traverse newtork of formulas to find
+  possible places to update records. Trigger changes. Sth like observer
+  pattern. Record change, wha
+- some kind of combination of above solutions?
+- what about when someone update many records simultaneously
+
+Single record scenario:
+
+1. User creates request to create/update one record.
+2. Moderator accepts the request.
+3. Request is being executed and there is a result with instance of
+   modified records.
+4. Algorithm for creating synthetic records is being triggered with one 
+   initial record.
+4.1. Find all formulas involving type of initial record (reverse-formulas).
+4.2. Extend 'space' formulas with 'time' formulas.
+4.4. Filter computable formulas. 
+4.5. Filter formulas for records that do not exist in db.
+4.6. Execute formulas to create synthetic records.
+4.7. Repeat the algorithm for synthetic records as initial records.
+    - keep created records to prevent situation when one record will be created
+      many times
+
+Multiple records scenario:
+
+1. User creates request to create/updaty many records.
+2. Moderator accepts the request.
+3. Request is being executed and there are some results with instances of
+   modified records.
+4. Algorithm for creating synthetic records is being triggered with many
+   initial records.
+4.1. Find all formulas involving type of initial records (reverse-formulas).
+4.2. Filter computable formulas.
+4.3. Filter distinct formulas in terms of left-hand side.
+4.4. Filter formulas for records that do not exist in db.;
+4.5. Execute formulas to create synthetic records.
+4.6. Repeat the algorithm for synthetic records as initial records.
+    - keep created records to prevent situation when one record will be created
+      many times
+
+The algorithm looks great but what about time formulas. There should be somehow
+defined. 
+- I do not want to treat space formulas differently than time formulas. They
+  should have the same format. 
+- How do you incorporate time into formulas? How? How? How?
+- I do not want to keep these formulas in db.
+
+1. Load formulas from database.
+
+record.revformulas
+- extend them by transformation
+
+create wrapper for formula but not the model TimeRecordFormula, which adds
+timerange
+
+- you have to define timerange wihtin which the algorith will work - 12 months
+- you have company and financial_year_start_month, you have record from specific month
+- e.g.
+
+9 months ended on 2015-9
+- fiscal year starts at 7, so your timerange is 2015-07 - 2016-09
+12 months ended on 2015-12
+- fiscal year starts at 1, so your timerange is 2015-01 - 2015-12
+
+
+class TimerangeRecordFormula:
+
+    def __init__(self, formula, start, end):
+        self.formula = formula
+        self.start = start
+        self.end = end
+        
+        
+def extend_with_timerange(formula, start, end):
+    return TimerangeRecordFormula(formula, start, end)
+    
+    
+- load all records within given timerange
+- add calcualbe fieldto record 
+- start_date

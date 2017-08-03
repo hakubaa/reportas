@@ -3,7 +3,7 @@ import json
 from sqlalchemy.orm.query import Query
 from flask import request, current_app
 
-import db.util as dbutil
+import db.utils as dbutil
 import rparser.util as putil
 from rparser.base import FinancialReport
 
