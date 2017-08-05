@@ -60,7 +60,7 @@ def create_rtypes():
     return total_assets, current_assets, fixed_assets
 
 
-def create_formula(left, right):
+def create_db_formula(left, right):
     formula = RecordFormula(rtype=left)
     db.session.add(formula)
     for item in right:
@@ -138,14 +138,6 @@ class RecordFormulaTest(AppTestCase):
         db.session.commit()    
         return total_assets, current_assets, fixed_assets
 
-    def create_formula(self, left, right):
-        formula = RecordFormula(rtype=left)
-        db.session.add(formula)
-        for item in right:
-            formula.add_component(rtype=item[1], sign=item[0])
-        db.session.commit()
-        return formula
-
     def test_add_component_creates_new_components(self):
         ta, ca, fa = self.create_rtypes()
         
@@ -185,7 +177,7 @@ class RecordFormulaTest(AppTestCase):
 
     def test_transform_creates_and_returns_new_formula(self):
         ta, ca, fa = self.create_rtypes()
-        formula = self.create_formula(ta, ((1, ca), (1, fa)))
+        formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
         new_formula = formula.transform(ca)
         db.session.add(new_formula)
@@ -198,14 +190,14 @@ class RecordFormulaTest(AppTestCase):
         eq = RecordType(name="EQUITY", statement="bls")
         db.session.add(eq)
         db.session.commit()
-        formula = self.create_formula(ta, ((1, ca), (1, fa)))
+        formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
         with self.assertRaises(Exception):
             formula.transform(eq)
 
     def test_transform_sets_proper_left_hand_side(self):
         ta, ca, fa = self.create_rtypes()
-        formula = self.create_formula(ta, ((1, ca), (1, fa)))
+        formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
         new_formula = formula.transform(ca)
         
@@ -213,7 +205,7 @@ class RecordFormulaTest(AppTestCase):
 
     def test_transform_sets_proper_right_hand_side(self):
         ta, ca, fa = self.create_rtypes()
-        formula = self.create_formula(ta, ((1, ca),))
+        formula = create_db_formula(ta, ((1, ca),))
         
         new_formula = formula.transform(ca)
 
@@ -224,16 +216,16 @@ class RecordFormulaTest(AppTestCase):
     def test_similar_formula_have_the_same_hash(self):
         ta, ca, fa = self.create_rtypes()
         
-        formula1 = self.create_formula(ta, ((1, ca), (1, fa)))
-        formula2 = self.create_formula(ta, ((1, ca), (1, fa)))
+        formula1 = create_db_formula(ta, ((1, ca), (1, fa)))
+        formula2 = create_db_formula(ta, ((1, ca), (1, fa)))
 
         self.assertEqual(hash(formula1), hash(formula2))
 
     def test_similar_formula_are_equal(self):
         ta, ca, fa = self.create_rtypes()
         
-        formula1 = self.create_formula(ta, ((1, ca), (1, fa)))
-        formula2 = self.create_formula(ta, ((1, ca), (1, fa)))
+        formula1 = create_db_formula(ta, ((1, ca), (1, fa)))
+        formula2 = create_db_formula(ta, ((1, ca), (1, fa)))
 
         self.assertEqual(formula1, formula2)
 
@@ -443,56 +435,7 @@ class SyntheticReccordsTest(AppTestCase):
             )
         return records
 
-    def test_group_records_by_company(self):
-        company1 = create_company()
-        company2 = create_company()
-        rtype = create_rtype()
-        records = self.create_records([
-            (company1, rtype, 12, date(2015, 12, 31), 0),
-            (company1, rtype, 12, date(2014, 12, 31), 0),
-            (company2, rtype, 12, date(2015, 12, 31), 0)
-        ])        
-        
-        records_map = utils.group_objects(records, key=lambda item: item.company)
-        
-        self.assertIsInstance(records_map, dict)
-        self.assertEqual(len(records_map), 2)
-        self.assertCountEqual(records_map.keys(), (company1, company2))
-        self.assertEqual(len(records_map[company1]), 2)
-        self.assertEqual(len(records_map[company2]), 1)
-        
-    def test_group_records_by_fiscal_year(self):
-        company = create_company()  
-        rtype = create_rtype()
-        records = self.create_records([
-            (company, rtype, 12, date(2015, 12, 31), 0),
-            (company, rtype, 12, date(2014, 12, 31), 0),
-            (company, rtype, 3, date(2015, 3, 31), 0)
-        ])     
-        
-        records_map = utils.group_objects(
-            records, key=lambda item: item.determine_fiscal_year()
-        )
-        
-        fy_1 = (date(2015, 1, 1), date(2015, 12, 31))
-        fy_2 = (date(2014, 1, 1), date(2014, 12, 31))
-        
-        self.assertIsInstance(records_map, dict)
-        self.assertEqual(len(records_map), 2)
-        self.assertCountEqual(records_map.keys(), (fy_1, fy_2))
-        self.assertEqual(len(records_map[fy_1]), 2)
-        self.assertEqual(len(records_map[fy_2]), 1)        
-        
-    def test_concatenate_lists(self):
-        test_list1 = [1, 2, 3]
-        test_list2 = [4, 5, 6]
-        test_list3 = [7, 8, 9]
-        
-        full_list = utils.concatenate_lists((test_list1, test_list2, test_list3))
-        
-        self.assertEqual(len(full_list), 9)
-        self.assertCountEqual(full_list, range(1, 10))
-        
+
     @mock.patch("db.models.Record.create_synthetic_records_for_company")
     def test_create_synthetic_records(self, csr_mock):
         csr_mock.return_value = list()
@@ -561,149 +504,52 @@ class SyntheticReccordsTest(AppTestCase):
         timerange = utils.TimeRange(
             start=date(2015, 1, 1), end=date(2015, 12, 31)
         )
-        records_ = tools.get_records_for_company_within_fiscal_year(
+        records_ = Record.get_records_for_company_within_fiscal_year(
             db.session, company1, timerange
         )
 
         self.assertEqual(len(records_), 2)
         self.assertCountEqual(records_, (records[0], records[1]))
         
-        
-    def test_represent_records_as_matrix(self):
+    def test_csr_creates_new_records(self):
         company = create_company()
-        rtype1 = create_rtype(name="NET_PROFIT")
-        rtype2 = create_rtype(name="REVENUE")
-        records = self.create_records([
-            (company, rtype1, 3, date(2015, 3, 31), 1),
-            (company, rtype1, 6, date(2015, 6, 30), 2),
-            (company, rtype2, 9, date(2015, 9, 30), 3),
-            (company, rtype2, 12, date(2015, 12, 31), 4)
-        ])    
+        ta, ca, fa = create_rtypes()
+        formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
-        recmat = tools.represent_records_as_matrix(records)
-
-        self.assertEqual(len(recmat), 2)
-        self.assertCountEqual(recmat.keys(), (rtype1, rtype2))
-        self.assertEqual(recmat[rtype1][utils.TimeRange(1, 3)], 1)
-        self.assertEqual(recmat[rtype1][utils.TimeRange(1, 6)], 2)
-        self.assertEqual(recmat[rtype2][utils.TimeRange(1, 9)], 3)
-        self.assertEqual(recmat[rtype2][utils.TimeRange(1, 12)], 4)
-
-
-class UtilsFormulaTest(AppTestCase):
-
-    def test_convert_db_formula(self):
+        records = self.create_records([
+            (company, ca, 12, date(2015, 12, 31), 40),
+            (company, fa, 12, date(2015, 12, 31), 60),
+        ]) 
+        
+        new_records = Record.create_synthetic_records_for_company_within_fiscal_year(
+            db.session, company=company,
+            fiscal_year=utils.FiscalYear(date(2015, 1, 1), date(2015, 12, 31)),
+            base_records = [records[0]]
+        )
+        
+        self.assertEqual(len(new_records), 1)
+        self.assertEqual(new_records[0].rtype, ta)
+        self.assertEqual(new_records[0].value, 100)
+        self.assertEqual(new_records[0].timerange, 12)
+        self.assertEqual(new_records[0].timestamp, date(2015, 12, 31))
+        
+    def test_csr_creates_new_records_with_timerange(self):
+        company = create_company()
         ta, ca, fa = create_rtypes()
-        db_formula = create_formula(ta, ((1, ca), (1, fa)))
-
-        formula = utils.convert_db_formula(db_formula)
-
-        self.assertIsInstance(formula, utils.Formula)
-        self.assertEqual(formula.lhs.rtype, ta)
-        self.assertEqual(len(formula.rhs), 2)
-
-    def test_extend_formula_with_timerange(self):
-        ta, ca, fa = create_rtypes()
-        db_formula = create_formula(ta, ((1, ca), (1, fa)))
-
-        formula = utils.convert_db_formula(db_formula)
-        formula = formula.extend_with_timerange(utils.TimeRange(1, 3))
-
-        self.assertIsInstance(formula.lhs, utils.Formula.TimeRangeComponent)
-        self.assertTrue(all(
-            map(lambda item: item.timerange == utils.TimeRange(1, 3), 
-                formula.rhs))
+        
+        records = self.create_records([
+            (company, ta, 3, date(2015, 3, 31), 40),
+            (company, ta, 6, date(2015, 6, 30), 60),
+        ])        
+        
+        new_records = Record.create_synthetic_records_for_company_within_fiscal_year(
+            db.session, company=company,
+            fiscal_year=utils.FiscalYear(date(2015, 1, 1), date(2015, 12, 31)),
+            base_records = [records[0]]
         )
 
-    def test_calculate_formula(self):
-        ta, ca, fa = create_rtypes()
-        db_formula = create_formula(ta, ((1, ca), (1, fa)))
-
-        data = {
-            ta: { utils.TimeRange(1, 3): 10 },
-            ca: { utils.TimeRange(1, 3): 5 },
-            fa: { utils.TimeRange(1, 3): 5 }
-        }
-
-        formula = utils.convert_db_formula(db_formula)
-        formula = formula.extend_with_timerange(utils.TimeRange(1, 3))
-
-        self.assertEqual(formula.calculate(data), 10)
-
-    def test_is_calculable_returns_true_when_all_records_available(self):
-        ta, ca, fa = create_rtypes()
-        db_formula = create_formula(ta, ((1, ca), (1, fa)))
-
-        data = {
-            ta: { utils.TimeRange(1, 3): 10 },
-            ca: { utils.TimeRange(1, 3): 5 },
-            fa: { utils.TimeRange(1, 3): 5 }
-        }
-
-        formula = utils.convert_db_formula(db_formula)
-        formula = formula.extend_with_timerange(utils.TimeRange(1, 3))
-
-        self.assertTrue(formula.is_calculable(data))        
-
-    def test_is_calculable_returns_false_when_not_all_records_available(self):
-        ta, ca, fa = create_rtypes()
-        db_formula = create_formula(ta, ((1, ca), (1, fa)))
-
-        data = {
-            ta: { utils.TimeRange(1, 3): 10 },
-            fa: { utils.TimeRange(1, 3): 5 }
-        }
-
-        formula = utils.convert_db_formula(db_formula)
-        formula = formula.extend_with_timerange(utils.TimeRange(1, 3))
-
-        self.assertFalse(formula.is_calculable(data))        
-
-    def test_timerange_formula(self):
-        ta, ca, fa = create_rtypes()
-
-        data = {
-            ta: { 
-                utils.TimeRange(1, 6): 10, 
-                utils.TimeRange(1, 3): 5,
-                utils.TimeRange(4, 6): 5
-            }
-        }
-
-        formula = utils.create_timerange_formula(
-            ta, lhs_spec=(utils.TimeRange(1, 6), 0),
-            rhs_spec=[(utils.TimeRange(1, 3), 1), (utils.TimeRange(4, 6), 1)]
-        )
-
-        self.assertTrue(formula.is_calculable(data))
-        self.assertEqual(formula.calculate(data), 10)
-
-    def test_similar_formula_have_the_same_hash(self):
-        ta, ca, fa = create_rtypes()
-        db_formula = create_formula(ta, ((1, ca), (1, fa)))
-
-        data = {
-            ta: { utils.TimeRange(1, 3): 10 },
-            ca: { utils.TimeRange(1, 3): 5 },
-            fa: { utils.TimeRange(1, 3): 5 }
-        }
-
-        formula1 = utils.convert_db_formula(db_formula)
-        formula2 = utils.convert_db_formula(db_formula)
-
-        self.assertEqual(hash(formula1), hash(formula2))
-
-    def test_similar_formula_are_equal(self):
-        ta, ca, fa = create_rtypes()
-        db_formula = create_formula(ta, ((1, ca), (1, fa)))
-
-        data = {
-            ta: { utils.TimeRange(1, 3): 10 },
-            ca: { utils.TimeRange(1, 3): 5 },
-            fa: { utils.TimeRange(1, 3): 5 }
-        }
-
-        formula1 = utils.convert_db_formula(db_formula)
-        formula2 = utils.convert_db_formula(db_formula)
-
-        self.assertEqual(formula1, formula2)
+        self.assertEqual(len(new_records), 1)
+        self.assertEqual(new_records[0].rtype, ta)
+        self.assertEqual(new_records[0].value, 20)
+        self.assertEqual(new_records[0].timerange, 3)
+        self.assertEqual(new_records[0].timestamp, date(2015, 6, 30))

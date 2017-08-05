@@ -5,8 +5,8 @@ from datetime import date, timedelta
 from functools import reduce
 
 from sqlalchemy import (
-	Column, Integer, String, Boolean, Float,
-	UniqueConstraint, CheckConstraint, Date
+    Column, Integer, String, Boolean, Float,
+    UniqueConstraint, CheckConstraint, Date
 )
 from sqlalchemy import func, bindparam, cast
 from sqlalchemy.orm import relationship, backref
@@ -91,14 +91,14 @@ class Company(VersionedModel):
 
 
 class CompanyRepr(VersionedModel):
-	id = Column(Integer, primary_key=True)
-	value = Column(String, nullable=False)
+    id = Column(Integer, primary_key=True)
+    value = Column(String, nullable=False)
 
-	company_id = Column(Integer, ForeignKey("company.id"))
-	company = relationship(
-		"Company", 
-		backref=backref("reprs", lazy="joined", cascade="all, delete")
-	)
+    company_id = Column(Integer, ForeignKey("company.id"))
+    company = relationship(
+        "Company", 
+        backref=backref("reprs", lazy="joined", cascade="all, delete")
+    )
 
 
 class Report(VersionedModel):
@@ -116,7 +116,7 @@ class Report(VersionedModel):
 
     __table_args__ = (
     UniqueConstraint("timestamp", "timerange", "company_id", 
-	                name='_timestamp_timerange_company'),
+                    name='_timestamp_timerange_company'),
     )
 
     def __repr__(self):
@@ -130,7 +130,7 @@ class Report(VersionedModel):
 
     def add_record(self, record=None, **kwargs):
         if not record:
-        	record = Record(**kwargs)
+            record = Record(**kwargs)
         self.records.append(record)
         return record
 
@@ -167,14 +167,14 @@ class RecordType(VersionedModel):
 
 
 class RecordTypeRepr(VersionedModel):
-	id = Column(Integer, primary_key=True)
-	lang = Column(String, default="PL")
-	value = Column(String, nullable=False)
+    id = Column(Integer, primary_key=True)
+    lang = Column(String, default="PL")
+    value = Column(String, nullable=False)
 
-	rtype_id = Column(Integer, ForeignKey("recordtype.id"))
-	rtype = relationship("RecordType", backref=backref("reprs", lazy="joined"))
+    rtype_id = Column(Integer, ForeignKey("recordtype.id"))
+    rtype = relationship("RecordType", backref=backref("reprs", lazy="joined"))
 
-	
+    
 class Record(VersionedModel):
     id = Column(Integer, primary_key=True)
     value = Column(Float, nullable=False)
@@ -263,6 +263,9 @@ class Record(VersionedModel):
         pend = pstart + self.timerange - 1
         return utils.TimeRange(start=pstart, end=pend)
 
+    def get_formulas(self):
+        return [ item.formula for item in self.rtype.revformulas ]
+
     @staticmethod
     def create_synthetic_records(session, base_records):
         if not isinstance(base_records, collections.Iterable):
@@ -299,40 +302,67 @@ class Record(VersionedModel):
     def create_synthetic_records_for_company_within_fiscal_year(
         session, company, fiscal_year, base_records
     ):
-        if not isinstance(e, collections.Iterable):
+        if not isinstance(base_records, collections.Iterable):
             base_records = [base_records]      
     
         db_formulas = utils.concatenate_lists(
-            record.revformulas for record in base_records
+            record.get_formulas() for record in base_records
         )
 
-        data = represent_records_as_matrix(
-            get_records_for_company_within_timerange(
-                session, company, fiscal_year.start, fiscal_year.end
+        data = utils.represent_records_as_matrix(
+            Record.get_records_for_company_within_fiscal_year(
+                session, company, fiscal_year
             )
         )
-        formulas = utils.create_formulas_for_csr(db_formulas)
-        
-        # base_formulas = [ 
-        #     convert_db_formula(formula) 
-        #     for record in base_records
-        #     for formula in record.revformulas
-        # ]
-        
-        # formula_timerange = 
-        
-        # formulas = list()
-        # for formula in base_formulas:
-        #     for timerange in formula_timeranges:
-        #         formula.extend_with_timerange
-            
-        # formulas.extend(
-        #     create_timerange_formulas(rtypes, timerange_formulas_spec)
-        # )
 
+        formulas = utils.create_inverted_mapping(
+            utils.create_formulas_for_csr(
+                db_formulas, rtypes = session.query(RecordType).all(),
+                timeranges = utils.Formula.TIMERANGES,
+                timerange_formulas = utils.Formula.TIMERANGE_FORMULAS_SPEC
+            )
+        )
+        
+        records = list()
+        for record in base_records:
+            record_timerange = record.project_onto_fiscal_year(fiscal_year)
+            new_records = utils.create_synthetic_records(
+                base_record = (record.rtype, record_timerange),
+                data = data, formulas = formulas
+            )
+            records.extend(
+                Record(
+                    company = company, rtype = record["rtype"],
+                    value = record["value"], 
+                    timerange = record["timerange"].end \
+                                - record["timerange"].start + 1,
+                    timestamp = utils.project_timerange_onto_fiscal_year(
+                        record["timerange"], fiscal_year
+                    ).end
+                )
+                for record in new_records
+            )
+        return records
 
-
+    @staticmethod
+    def get_records_for_company_within_fiscal_year(session, company, fiscal_year):
+        # postgre sql only
+        # records = session.query(Record).filter( 
+        #     Record.company == company,
+        #     Record.timestamp_start >= fiscal_year.start, 
+        #     Record.timestamp <= fiscal_year.end
+        # ).all()
+        records = session.query(Record).filter(Record.company == company).all()
+        records = list(filter(
+            lambda record: record.timestamp_start >= fiscal_year.start \
+                           and record.timestamp <= fiscal_year.end,
+            records
+        ))
+        return records
+        
+        
 class RecordFormula(VersionedModel):
+
     id = Column(Integer, primary_key=True)
     
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)

@@ -127,26 +127,3 @@ def create_vocabulary(session, min_len=2, remove_non_alphabetic=True,
         voc.update(text.split(" "))
 
     return voc
-
-
-def get_records_for_company_within_fiscal_year(session, company, fiscal_year):
-    # records = session.query(Record).filter(
-    #     Record.company == company,
-    #     Record.timestamp_start >= fiscal_year.start, 
-    #     Record.timestamp <= fiscal_year.end
-    # ).all()
-    records = session.query(Record).filter(Record.company == company).all()
-    records = list(filter(
-        lambda record: record.timestamp_start >= fiscal_year.start \
-                       and record.timestamp <= fiscal_year.end,
-        records
-    ))
-    return records
-    
-
-def represent_records_as_matrix(records, fiscal_year=None):
-    matrix = dict()
-    for record in records:
-        timerange = record.project_onto_fiscal_year(fiscal_year)
-        matrix.setdefault(record.rtype, dict()).update({timerange: record.value})
-    return matrix

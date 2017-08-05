@@ -1,10 +1,13 @@
 from collections import namedtuple
+import collections
 from functools import reduce
 import operator
+from datetime import date, timedelta
 
 
 FiscalYear = namedtuple("FiscalYear", field_names="start, end")
 TimeRange = namedtuple("TimeRange", field_names="start, end")
+TimestampRange = namedtuple("TimestampRange", field_names="start, end")
 
 
 def group_objects(objs, key):
@@ -15,11 +18,76 @@ def group_objects(objs, key):
     
 
 def concatenate_lists(lists):
-    return reduce(lambda list_1, list_2: list_1 + list_2, lists)
+    return reduce(lambda list_1, list_2: list_1 + list_2, lists, [])
     
-
+    
+def represent_records_as_matrix(records, fiscal_year=None):
+    matrix = dict()
+    for record in records:
+        timerange = record.project_onto_fiscal_year(fiscal_year)
+        matrix.setdefault(record.rtype, dict()).update({timerange: record.value})
+    return matrix
+    
+#-------------------------------------------------------------------------------
+# Utils for formulas
+#-------------------------------------------------------------------------------
 
 class Formula:
+
+    TIMERANGES = [
+        # 3-month length timeranges
+        TimeRange(1, 3),
+        TimeRange(4, 6),
+        TimeRange(7, 9),
+        TimeRange(10, 12),
+        # 6-month length timeranges
+        TimeRange(1, 6),
+        TimeRange(7, 12),
+        # 9-month length timeranges
+        TimeRange(1, 9),
+        # 12-month length timeranges
+        TimeRange(1, 12)
+    ]
+    
+    TIMERANGE_FORMULAS_SPEC = [
+        ((0, TimeRange(1, 3)), [(1, TimeRange(1, 6)), (-1, TimeRange(4, 6))]),
+        ((0, TimeRange(1, 3)), [(1, TimeRange(1, 9)), (-1, TimeRange(4, 9))]),
+        ((0, TimeRange(1, 3)), [(1, TimeRange(1, 9)), (-1, TimeRange(4, 6)), (-1, TimeRange(7, 9))]),
+        ((0, TimeRange(1, 3)), [(1, TimeRange(1, 12)), (-1, TimeRange(4, 12))]),
+        ((0, TimeRange(1, 3)), [(1, TimeRange(1, 12)), (-1, TimeRange(4, 6)), (-1, TimeRange(7, 9)), (-1, TimeRange(10, 12))]),
+        
+        ((0, TimeRange(4, 6)), [(1, TimeRange(1, 6)), (-1, TimeRange(1, 3))]),
+        ((0, TimeRange(4, 6)), [(1, TimeRange(1, 9)), (-1, TimeRange(1, 3)), (-1, TimeRange(7, 9))]),
+        ((0, TimeRange(4, 6)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 3)), (-1, TimeRange(7, 9)), (-1, TimeRange(10, 12))]),
+        ((0, TimeRange(4, 6)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 3)), (-1, TimeRange(7, 12))]),
+        
+        ((0, TimeRange(7, 9)), [(1, TimeRange(1, 9)), (-1, TimeRange(1, 6))]),
+        ((0, TimeRange(7, 9)), [(1, TimeRange(1, 9)), (-1, TimeRange(1, 3)), (-1, TimeRange(4, 6))]),
+        ((0, TimeRange(7, 9)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 6)), (-1, TimeRange(10, 12))]),
+        ((0, TimeRange(7, 9)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 3)), (-1, TimeRange(4, 6)), (-1, TimeRange(10, 12))]),
+       
+        ((0, TimeRange(10, 12)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 3)), (-1, TimeRange(4, 6)), (-1, TimeRange(7, 9))]),
+        ((0, TimeRange(10, 12)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 9))]),
+        ((0, TimeRange(10, 12)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 6)), (-1, TimeRange(7, 9))]),
+        ((0, TimeRange(10, 12)), [(1, TimeRange(7, 12)), (-1, TimeRange(7, 9))]),
+        
+        ((0, TimeRange(1, 6)), [(1, TimeRange(1, 3)), (1, TimeRange(4, 6))]),
+        ((0, TimeRange(1, 6)), [(1, TimeRange(1, 12)), (-1, TimeRange(7, 12))]),
+        ((0, TimeRange(1, 6)), [(1, TimeRange(1, 9)), (-1, TimeRange(7, 9))]),
+        
+        ((0, TimeRange(7, 12)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 6))]),
+        ((0, TimeRange(7, 12)), [(1, TimeRange(1, 12)), (-1, TimeRange(1, 3)), (-1, TimeRange(4, 6))]),
+        ((0, TimeRange(7, 12)), [(1,TimeRange (7, 9)), (1, TimeRange(10, 12))]),
+        
+        ((0, TimeRange(1, 9)), [(1, TimeRange(1, 3)), (1, TimeRange(4, 6)), (1, TimeRange(7, 9))]),
+        ((0, TimeRange(1, 9)), [(1, TimeRange(1, 12)), (-1, TimeRange(10, 12))]),
+        ((0, TimeRange(1, 9)), [(1, TimeRange(1, 6)), (1, TimeRange(7, 9))]),
+        ((0, TimeRange(1, 9)), [(1, TimeRange(1, 3)), (1, TimeRange(4, 9))]),
+        
+        ((0, TimeRange(1, 12)), [(1, TimeRange(1, 3)), (1, TimeRange(4, 6)), (1, TimeRange(7, 9)), (1, TimeRange(10, 12))]),
+        ((0, TimeRange(1, 12)), [(1, TimeRange(1, 6)), (1, TimeRange(7, 12))]),
+        ((0, TimeRange(1, 12)), [(1, TimeRange(1, 9)), (1, TimeRange(10, 12))])
+    ]
     
     class Component:
     
@@ -108,8 +176,44 @@ class Formula:
                 Formula.TimeRangeComponent(item.rtype, item.sign, timerange)
             )
         return new_formula
+        
+    def is_calculated(self, data):
+        try:
+            self.lhs.get_value(data)
+            return True
+        except KeyError:
+            return False
 
 
+def create_formulas_for_csr(
+    base_formulas, rtypes=None, timeranges=None, timerange_formulas=None
+):
+    if not isinstance(base_formulas, collections.Iterable):
+        base_formulas = [base_formulas]
+    formulas = list(base_formulas)
+    formulas.extend(create_db_formulas_transformations(formulas))
+    formulas = convert_db_formulas(formulas)
+    formulas = extend_formulas_with_timerange(formulas, timeranges)
+    if rtypes:
+        formulas.extend(create_timerange_formulas(rtypes, timerange_formulas))
+    formulas = remove_duplicated_formulas(formulas)
+    return formulas
+    
+
+def create_db_formulas_transformations(formulas):
+    if not isinstance(formulas, collections.Iterable):
+        formulas = [formulas]
+    new_formulas = list()
+    for formula in formulas:
+        rhs_rtypes = map(lambda item: item.rtype, formula.rhs)
+        new_formulas.extend(formula.transform(rtype) for rtype in rhs_rtypes)
+    return new_formulas
+    
+
+def convert_db_formulas(formulas):
+    return [ convert_db_formula(formula) for formula in formulas ]
+    
+    
 def convert_db_formula(formula):
     new_formula = Formula(Formula.Component(formula.rtype, 0))
     for item in formula.rhs:
@@ -117,16 +221,115 @@ def convert_db_formula(formula):
     return new_formula
 
 
+def extend_formulas_with_timerange(formulas, timerange_spec):
+    if not isinstance(formulas, collections.Iterable):
+        formulas = [formulas]
+
+    return [ 
+        formula.extend_with_timerange(timerange) 
+        for formula in formulas
+        for timerange in timerange_spec 
+    ]
+
+
+def create_timerange_formulas(rtypes, timerange_formulas):
+    formulas = list()
+    for rtype in rtypes:
+        formulas.extend(
+            create_timerange_formula(rtype, lhs_spec, rhs_spec)
+            for lhs_spec, rhs_spec in timerange_formulas
+        )
+    return formulas
+
+
 def create_timerange_formula(rtype, lhs_spec, rhs_spec):
     formula = Formula(
-        Formula.TimeRangeComponent(rtype, lhs_spec[1], lhs_spec[0])
+        Formula.TimeRangeComponent(
+            rtype, timerange=lhs_spec[1], sign=lhs_spec[0]
+        )
     )
     for spec in rhs_spec:
         formula.add_component(
-            Formula.TimeRangeComponent(rtype, spec[1], spec[0])
+            Formula.TimeRangeComponent(
+                rtype, timerange=spec[1], sign=spec[0]
+            )
         )
     return formula  
 
 
-def create_formulas_for_csr(formulas):
-    pass
+def remove_duplicated_formulas(formulas):
+    return list(set(formulas))
+    
+
+def create_inverted_mapping(formulas):
+    mapping = dict()
+    for formula in formulas:
+        for item in formula:
+            mapping.setdefault(item.rtype, dict()).\
+                    setdefault(item.timerange, list()).append(formula)
+    return mapping
+    
+    
+def create_synthetic_records(base_record, data, formulas):
+    rtype, timerange = base_record
+    
+    # Filter all formulas involving base record.
+    record_formulas = formulas.get(rtype, dict()).get(timerange, None)
+    if not record_formulas:
+        return list()
+    
+    # Filter calculable formulas which output is not present in data
+    calc_formulas = [ 
+        formula for formula in record_formulas 
+        if formula.is_calculable(data) and not formula.is_calculated(data)
+    ]
+
+    # Create synthetic records
+    synthetic_records = [ 
+        {
+            "value": formula.calculate(data) ,
+            "rtype": formula.lhs.rtype,
+            "timerange": formula.lhs.timerange
+        }
+        for formula in calc_formulas 
+    ]
+
+    # Update data
+    for record in synthetic_records:
+        data.setdefault(record["rtype"], dict())[record["timerange"]] =\
+            record["value"]
+        
+    # Create synthetic records for newly created records
+    synthetic_records_2nd = concatenate_lists(
+        create_synthetic_records(
+            (record["rtype"], record["timerange"]), data, formulas
+        )
+        for record in synthetic_records
+    )
+
+    synthetic_records.extend(synthetic_records_2nd)
+    return synthetic_records
+
+
+def project_timerange_onto_fiscal_year(timerange, fiscal_year):
+    start_month = fiscal_year.start.month + timerange.start - 1
+    if start_month > 12:
+        start_month -= 12
+        start_year = fiscal_year.start.year + 1
+    else:
+        start_year = fiscal_year.start.year
+    start_timestamp = date(start_year, start_month, 1)
+    
+    end_month = fiscal_year.start.month + timerange.end - 1
+    if end_month > 12:
+        end_month -= 12
+        end_year = fiscal_year.start.year + 1
+    else:
+        end_year = fiscal_year.start.year
+
+    if end_month == 12:
+        end_timestamp = date(end_year+1, 1, 1) - timedelta(days=1)    
+    else:
+        end_timestamp = date(end_year, end_month+1, 1) - timedelta(days=1)
+    
+    return TimestampRange(start=start_timestamp, end=end_timestamp)
