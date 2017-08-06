@@ -8,18 +8,11 @@ from flask_login import current_user
 from tests.app import AppTestCase, create_basic_httpauth_header
 
 from app import db
-from app.models import User
+from app.models import User, Role
 from app.user.forms import LoginForm, RegistrationForm
 
 
 class LoginViewTest(AppTestCase):
-
-    def setUp(self): 
-        User.__table__.create(db.session.bind)
-
-    def tearDown(self): 
-        db.session.remove()
-        User.__table__.drop(db.session.bind)
 
     def test_for_rendering_correct_template(self):  
         response = self.client.get(url_for("user.login"))
@@ -31,21 +24,17 @@ class LoginViewTest(AppTestCase):
         self.assertIsInstance(form, LoginForm)
 
     def test_for_redirecting_after_successful_login(self):
-        user = User(email="test@test.com", password="test")
-        db.session.add(user)
-        db.session.commit()
+        user = self.create_user()
 
         response = self.client.post(
             url_for("user.login"),
             data={"email": user.email, "password": "test"}
         )
 
-        self.assertRedirects(response, url_for("main.index"))
+        self.assertRedirects(response, url_for("home.homepage"))
 
     def test_renders_login_template_when_login_fails(self):
-        user = User(email="test@test.com", password="test")
-        db.session.add(user)
-        db.session.commit()
+        user = self.create_user()
 
         response = self.client.post(
             url_for("user.login"),
@@ -55,9 +44,7 @@ class LoginViewTest(AppTestCase):
         self.assert_template_used("user/login.html")     
 
     def test_for_passing_logged_in_user_to_template(self):
-        user = User(email="test@test.com", password="test")
-        db.session.add(user)
-        db.session.commit()
+        user = self.create_user()
 
         with self.client:
             response = self.client.post(
@@ -67,9 +54,7 @@ class LoginViewTest(AppTestCase):
             self.assertEqual(user, current_user)
 
     def test_show_message_when_invalid_user_or_password(self):
-        user = User(email="test@test.com", password="test")
-        db.session.add(user)
-        db.session.commit()
+        user = self.create_user()
 
         response = self.client.post(
             url_for("user.login"),
@@ -79,9 +64,7 @@ class LoginViewTest(AppTestCase):
         self.assertMessageFlashed("Invalid username or password.")     
 
     def test_for_redirecting_to_url_in_next_argument(self):
-        user = User(email="test@test.com", password="test")
-        db.session.add(user)
-        db.session.commit()
+        user = self.create_user()
 
         response = self.client.post(
             url_for("user.login"),
@@ -93,13 +76,6 @@ class LoginViewTest(AppTestCase):
 
 
 class LogoutViewTest(AppTestCase):
-
-    def setUp(self): 
-        User.__table__.create(db.session.bind)
-
-    def tearDown(self): 
-        db.session.remove()
-        User.__table__.drop(db.session.bind)
 
     def test_for_loging_out_the_user(self):
         user = self.create_user()
@@ -113,7 +89,7 @@ class LogoutViewTest(AppTestCase):
         self.create_user()
         self.login_user()
         response = self.client.get(url_for("user.logout"))
-        self.assertRedirects(response, url_for("main.index"))
+        self.assertRedirects(response, url_for("home.homepage"))
 
     def test_for_redirecting_to_url_in_next_argument(self):
         self.create_user()
@@ -134,11 +110,8 @@ class LogoutViewTest(AppTestCase):
 class RegistrationViewTest(AppTestCase):
 
     def setUp(self): 
-        User.__table__.create(db.session.bind)
-
-    def tearDown(self): 
-        db.session.remove()
-        User.__table__.drop(db.session.bind)
+        super().setUp()
+        Role.insert_roles()
 
     def test_for_rendering_correct_template(self):  
         response = self.client.get(url_for("user.register"))
@@ -185,13 +158,6 @@ class RegistrationViewTest(AppTestCase):
 
 class ConfirmationViewTest(AppTestCase):
 
-    def setUp(self): 
-        User.__table__.create(db.session.bind)
-
-    def tearDown(self): 
-        db.session.remove()
-        User.__table__.drop(db.session.bind)
-
     def test_for_confirming_user_with_valid_token(self):
         user = self.create_user()
         token = user.generate_token()
@@ -208,33 +174,23 @@ class ConfirmationViewTest(AppTestCase):
         token = user.generate_token()
         self.login_user()
         response = self.client.get(url_for("user.confirm", token="abc.abc"))
-        self.assertRedirects(response, url_for("main.index"))
+        self.assertRedirects(response, url_for("home.homepage"))
 
     def test_unauthenticated_user_are_redirected_to_login_page(self):
         user = self.create_user()
         token = user.generate_token()
         response = self.client.get(url_for("user.confirm", token=token))
         self.assertEqual(urlparse(response.location).path, url_for("user.login"))
-        self.assertFalse(user.confirmed)
 
 
 class AuthorizationTest(AppTestCase):
-
-    def setUp(self): 
-        User.__table__.create(db.session.bind)
-
-    def tearDown(self): 
-        db.session.remove()
-        User.__table__.drop(db.session.bind)
 
     def test_returns_unauthorized_access_for_not_authenticated_user(self):
         response = self.client.get(url_for("user.get_token"))
         self.assertEqual(response.status_code, 401)
 
     def test_authenticate_user_with_http_authentication(self):
-        user = User(email="test@test.com", password="test", name="Test")
-        db.session.add(user)
-        db.session.commit()
+        user = self.create_user()
         response = self.client.get(
             url_for("user.get_token"),
             headers=create_basic_httpauth_header(user.email, "test")
@@ -255,7 +211,7 @@ class AuthorizationTest(AppTestCase):
         self.assertIn("token", data)
 
     def test_auathetnicate_user_with_token(self):
-        user = User(email="test@test.com", password="test", name="Test")
+        user = self.create_user()
         db.session.add(user)
         db.session.commit()
         token = user.generate_token()

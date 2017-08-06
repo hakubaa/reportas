@@ -13,6 +13,10 @@ import db.models as models
 
 class UploadingSpecTest(DbTestCase):
 
+	def setUp(self):
+		super().setUp()
+		models.FinancialStatementType.insert_defaults(self.db.session)
+
 	def test_for_creating_records_types(self):
 		testspec = [ 
 			{ "statement": "cfs", "name": "CF#CFFO" }, 
@@ -68,14 +72,20 @@ class UploadingSpecTest(DbTestCase):
 				]
 			} 
 		]
-		tools.upload_records_spec(self.db.session, testspec)	
-		spec = tools.get_records_reprs(self.db.session, statement="cfs")
+		tools.upload_records_spec(self.db.session, testspec)
+		ftype = self.db.session.query(models.FinancialStatementType).\
+		            filter_by(name="cfs").one()	
+		spec = tools.get_records_reprs(self.db.session, ftype=ftype)
 		self.assertEqual(len(spec), 1)
 		self.assertEqual(spec[0]["name"], "CF#CFFO")
 
 
 class CompaniesReprsTest(DbTestCase):
 
+	def setUp(self):
+		super().setUp()
+		models.FinancialStatementType.insert_defaults(self.db.session)
+		
 	def test_get_companies_reprs_returns_isins_and_fullnames(self):
 		company = models.Company.get_or_create(
 			self.db.session, name="test", isin="test#isin", fullname="test"

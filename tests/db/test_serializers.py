@@ -15,6 +15,16 @@ from marshmallow import fields
 from marshmallow_sqlalchemy import field_for, ModelSchema
 
 
+#-------------------------------------------------------------------------------
+
+def create_ftype(session, name="bls"):
+    ftype = models.FinancialStatementType(name=name)
+    session.add(ftype)
+    session.commit()
+    return ftype
+
+#-------------------------------------------------------------------------------
+
 class CompanyReprSchemaTest(DbTestCase):
 
     def test_company_id_attribute_is_required(self):
@@ -196,6 +206,148 @@ class CompanySchemaTest(DbTestCase):
         self.assertFalse(errors)
 
 
+class FinancialStatementTypeReprSchemaTest(DbTestCase):
+
+    def test_ftype_id_attribute_is_required(self):
+        data = {"value": "Test Value", "lang": "PL"}
+        
+        obj, errors = FinancialStatementTypeReprSchema().load(
+            data, session=self.db.session
+        )
+        
+        self.assertTrue(errors)
+        self.assertIn("ftype_id", errors)
+
+    def test_ftype_has_to_exist_in_db(self):
+        data = {"value": "Test Value", "ftype_id": 1, "lang": "PL"}
+        
+        obj, errors = FinancialStatementTypeReprSchema().load(
+            data, session=self.db.session
+        )
+        
+        self.assertTrue(errors)
+        self.assertIn("ftype_id", errors)
+
+    def test_load_creates_new_ftype_repr(self):
+        ftype = models.FinancialStatementType(name="bls")
+        self.db.session.add(ftype)
+        self.db.session.commit()
+        
+        data = {"value": "NET PROFIT", "ftype_id": ftype.id, "lang": "PL"}
+        obj, errors = FinancialStatementTypeReprSchema().load(
+            data, session=self.db.session
+        )
+        self.db.session.add(obj)
+        self.db.session.commit()
+        
+        ftype_repr = self.db.session.query(
+            models.FinancialStatementTypeRepr
+        ).first()
+        self.assertIsNotNone(ftype_repr)
+        self.assertEqual(ftype_repr.value, data["value"])
+        self.assertEqual(ftype_repr.ftype, ftype)
+        
+
+class FinancialStatementTypeSchemaTest(DbTestCase):
+
+    def test_name_is_required(self):
+        data = {}
+
+        obj, errors = FinancialStatementTypeSchema().load(
+            data, session=self.db.session
+        )
+
+        self.assertTrue(errors)
+        self.assertIn("name", errors)
+
+    def test_name_has_to_be_unique(self):
+        ftype = models.FinancialStatementType(name="bls")
+        self.db.session.add(ftype)
+        self.db.session.commit()
+
+        data = {"name": "bls"}
+
+        obj, errors = FinancialStatementTypeSchema().load(
+            data, session=self.db.session
+        )
+
+        self.assertTrue(errors)
+        self.assertIn("name", errors)   
+
+    def test_load_creates_new_type(self):
+        data = {"name": "bls"}
+
+        obj, errors = FinancialStatementTypeSchema().load(
+            data, session=self.db.session
+        )
+
+        self.db.session.add(obj)
+        self.db.session.commit()
+
+        rtype = self.db.session.query(models.FinancialStatementType).first()
+        self.assertIsNotNone(rtype)
+        self.assertEqual(rtype.name, data["name"])
+
+    def test_deserialized_data_contains_recordtype_reprs(self):
+        ftype = models.FinancialStatementType(name="bls")
+        self.db.session.add(ftype)
+        self.db.session.flush()
+        self.db.session.add_all((
+            models.FinancialStatementTypeRepr(value="Repr #1", ftype_id=ftype.id),
+            models.FinancialStatementTypeRepr(value="Repr #2", ftype_id=ftype.id),
+            models.FinancialStatementTypeRepr(value="Repr #3", ftype_id=ftype.id)
+        ))
+        self.db.session.commit()
+        data = FinancialStatementTypeSchema().dump(ftype).data
+        self.assertEqual(len(data["reprs"]), 3)
+        values = [ item["value"] for item in data["reprs"] ]
+        self.assertCountEqual(values, ["Repr #1", "Repr #2", "Repr #3"])
+        
+    def test_create_new_financial_type_with_reprs(self):
+        data = {
+            "name": "bls",
+            "reprs": [{"value": "Repr #1"}, {"value": "Repr #2"}]
+        }
+        
+        obj, errors = FinancialStatementTypeSchema().load(
+            data=data, session=self.db.session
+        )
+        self.db.session.add(obj)
+        self.db.session.commit()
+        
+        self.assertEqual(
+            self.db.session.query(models.FinancialStatementType).count(), 
+            1
+        )
+        self.assertEqual(
+            self.db.session.query(models.FinancialStatementTypeRepr).count(), 
+            2
+        )
+        
+        ftype = self.db.session.query(models.FinancialStatementType).one()
+        
+        self.assertEqual(len(ftype.reprs), 2)
+        self.assertIn(ftype.reprs[0].value, ["Repr #1", "Repr #2"])
+        self.assertIn(ftype.reprs[1].value, ["Repr #1", "Repr #2"])
+        
+    def test_invalid_repr_makes_impossible_to_create_financial_type(self):
+        data = {
+            "name": "bls",
+            "reprs": [{"value": "Repr #1"}, {"valu": "Repr #2"}]
+        }
+        
+        obj, errors = FinancialStatementTypeSchema().load(
+            data=data, session=self.db.session
+        )
+
+        self.assertTrue(errors)
+        self.assertIn("reprs", errors)
+        self.assertIn(1, errors["reprs"])
+        self.assertEqual(
+            self.db.session.query(models.FinancialStatementType).count(), 0
+        )
+
+
 class RecordTypeReprSchemaTest(DbTestCase):
 
     def test_rtype_id_attribute_is_required(self):
@@ -215,7 +367,8 @@ class RecordTypeReprSchemaTest(DbTestCase):
         self.assertIn("rtype_id", errors)
 
     def test_load_creates_new_recordtype_repr(self):
-        rtype = models.RecordType(name="NETPROFIT", statement="nls")
+        ftype = models.FinancialStatementType(name="bls")
+        rtype = models.RecordType(name="NETPROFIT", ftype=ftype)
         self.db.session.add(rtype)
         self.db.session.commit()
         
@@ -228,47 +381,56 @@ class RecordTypeReprSchemaTest(DbTestCase):
         self.assertIsNotNone(rtype_repr)
         self.assertEqual(rtype_repr.value, data["value"])
         self.assertEqual(rtype_repr.rtype, rtype)
-        
-        
+
+
 class RecordTypeSchemaTest(DbTestCase):
 
     def test_name_attribute_is_required(self):
-        data = {"statement": "bls"}
+        data = {"ftype_id": "bls"}
+
         obj, errors = RecordTypeSchema().load(data, session=self.db.session)
+
         self.assertTrue(errors)
         self.assertIn("name", errors)
 
-    def test_statement_attribute_is_required(self):
+    def test_financial_statement_attribute_is_required(self):
         data = {"name": "TEST"}
+
         obj, errors = RecordTypeSchema().load(data, session=self.db.session)
+
         self.assertTrue(errors)
-        self.assertIn("statement", errors)
+        self.assertIn("ftype_id", errors)
+
+    def test_financial_statement_has_to_exist_in_db(self):
+        data = {"name": "TEST", "ftype_id": 1}
+
+        obj, errors = RecordTypeSchema().load(data, session=self.db.session)
+
+        self.assertTrue(errors)
+        self.assertIn("ftype_id", errors)
 
     def test_name_has_to_be_unique(self):
-        self.db.session.add(models.RecordType(name="TEST", statement="bls"))
-        data = {"statement": "nls", "name": "TEST"}
+        ftype = create_ftype(self.db.session)
+        self.db.session.add(models.RecordType(name="TEST", ftype=ftype))
+        data = {"ftype_id": ftype.id, "name": "TEST"}
         obj, errors = RecordTypeSchema().load(data, session=self.db.session)
         self.assertTrue(errors)
         self.assertIn("name", errors)
 
     def test_load_creates_new_recordtype(self):
-        data = {"name": "TEST", "statement": "bls"}
+        ftype = create_ftype(self.db.session)
+        data = {"name": "TEST", "ftype_id": ftype.id}
         obj, errors = RecordTypeSchema().load(data, session=self.db.session)
         self.db.session.add(obj)
         self.db.session.commit()
         rtype = self.db.session.query(models.RecordType).first()
         self.assertIsNotNone(rtype)
         self.assertEqual(rtype.name, data["name"])
-        self.assertEqual(rtype.statement, data["statement"])
-
-    def test_statement_has_to_be_one_of_nls_bls_cls(self):
-        data = {"statement": "nie", "name": "TEST"}
-        obj, errors = RecordTypeSchema().load(data, session=self.db.session)
-        self.assertTrue(errors)
-        self.assertIn("statement", errors)
+        self.assertEqual(rtype.ftype.id, data["ftype_id"])
 
     def test_deserialized_data_contains_recordtype_reprs(self):
-        rtype = models.RecordType(name="TEST", statement="bls")
+        ftype = create_ftype(self.db.session)
+        rtype = models.RecordType(name="TEST", ftype=ftype)
         self.db.session.add(rtype)
         self.db.session.flush()
         self.db.session.add_all((
@@ -283,8 +445,9 @@ class RecordTypeSchemaTest(DbTestCase):
         self.assertCountEqual(values, ["Repr #1", "Repr #2", "Repr #3"])
         
     def test_create_new_record_type_with_reprs(self):
+        ftype = create_ftype(self.db.session)
         data = {
-            "name": "NETPROFIT", "statement": "nls",
+            "name": "NETPROFIT", "ftype_id": ftype.id,
             "reprs": [{"value": "NET INCOME"}, {"value": "NET PROFIT"}]
         }
         
@@ -302,8 +465,9 @@ class RecordTypeSchemaTest(DbTestCase):
         self.assertIn(rtype.reprs[1].value, ["NET INCOME", "NET PROFIT"])
         
     def test_invalid_repr_makes_impossible_to_create_record_type(self):
+        ftype = create_ftype(self.db.session)
         data = {
-            "name": "NETPROFIT", "statement": "nls",
+            "name": "NETPROFIT", "ftype_id": ftype.id,
             # no value for repr
             "reprs": [{"lang": "PL"}, {"value": "NET PROFIT", "lang": "PL"}]
         } 
@@ -316,8 +480,9 @@ class RecordTypeSchemaTest(DbTestCase):
         self.assertEqual(self.db.session.query(models.RecordType).count(), 0)
 
     def test_empty_id_field_in_reprs_with_is_ignored(self):
+        ftype = create_ftype(self.db.session)
         data = {
-            "name": "NET PROFIT", "statement": "nls",
+            "name": "NET PROFIT", "ftype_id": ftype.id,
             "reprs": [{"value": "TEST REPR", "id": "", "lang": "PL"}]
         }
         
@@ -403,7 +568,8 @@ class RecordSchemaTest(DbTestCase):
 
     def test_load_creates_new_record(self):
         company = models.Company(name="TEST", isin="TEST")
-        rtype = models.RecordType(name="TEST", statement="bls")
+        ftype = create_ftype(self.db.session)
+        rtype = models.RecordType(name="TEST", ftype=ftype)
         self.db.session.add_all((company, rtype))
         self.db.session.commit()
         data = {
@@ -423,7 +589,8 @@ class RecordSchemaTest(DbTestCase):
 
     def test_deserialized_data_contains_type_of_record(self):
         company = models.Company(name="TEST", isin="TEST")
-        rtype = models.RecordType(name="TEST", statement="bls")
+        ftype = create_ftype(self.db.session)
+        rtype = models.RecordType(name="TEST", ftype=ftype)
         self.db.session.add_all((company, rtype))
         self.db.session.flush()
         record = models.Record(
@@ -433,11 +600,12 @@ class RecordSchemaTest(DbTestCase):
         self.db.session.add(record)
         self.db.session.commit()
         data = RecordSchema().dump(record).data
-        self.assertEqual(data["rtype"]["name"], "TEST")
+        self.assertEqual(data["rtype"], "TEST")
 
     def test_combination_company_rtype_timestamp_and_timerange_is_unique(self):
+        ftype = create_ftype(self.db.session)
         company = models.Company(name="TEST", isin="TEST")
-        rtype = models.RecordType(name="TEST", statement="bls")
+        rtype = models.RecordType(name="TEST", ftype=ftype)
         self.db.session.add_all((company, rtype))
         self.db.session.flush()
         record = models.Record(
@@ -471,7 +639,8 @@ class ReportSchemaTest(DbTestCase):
         self.assertIn("timestamp", errors)
         
     def test_create_report_with_records(self):
-        rtype = models.RecordType(name="NETPROFIT", statement="nls")
+        ftype = create_ftype(self.db.session)
+        rtype = models.RecordType(name="NETPROFIT", ftype=ftype)
         self.db.session.add(rtype)
         company = models.Company(isin="#TEST", name="TEST")
         self.db.session.add(company)
@@ -511,7 +680,8 @@ class ReportSchemaTest(DbTestCase):
         self.assertEqual(records[1].timerange, 12)
         
     def test_invalid_record_makes_impossible_to_create_report(self):
-        rtype = models.RecordType(name="NETPROFIT", statement="nls")
+        ftype = create_ftype(self.db.session)
+        rtype = models.RecordType(name="NETPROFIT", ftype=ftype)
         self.db.session.add(rtype)
         company = models.Company(isin="#TEST", name="TEST")
         self.db.session.add(company)
@@ -555,9 +725,10 @@ class ReportSchemaTest(DbTestCase):
 
         
 def create_formula(session):
-    total_assets = models.RecordType(name="TOTAL_ASSETS", statement="bls")
-    current_assets = models.RecordType(name="CURRENT_ASSETS", statement="bls")
-    fixed_assets = models.RecordType(name="FIXED_ASSETS", statement="bls")
+    ftype = create_ftype(session)
+    total_assets = models.RecordType(name="TOTAL_ASSETS", ftype=ftype)
+    current_assets = models.RecordType(name="CURRENT_ASSETS", ftype=ftype)
+    fixed_assets = models.RecordType(name="FIXED_ASSETS", ftype=ftype)
     session.add_all((total_assets, current_assets, fixed_assets))
     session.flush()    
     
@@ -585,7 +756,8 @@ class RecordFormulaTest(DbTestCase):
         self.assertIn("rtype_id", errors)
         
     def test_load_creates_new_formula(self):
-        rtype = models.RecordType(name="TEST TYPE", statement="nls")
+        ftype = create_ftype(self.db.session)
+        rtype = models.RecordType(name="TEST TYPE", ftype=ftype)
         self.db.session.add(rtype)
         self.db.session.flush()
         

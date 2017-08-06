@@ -22,7 +22,7 @@ from tests.app import AppTestCase, create_and_login_user
 
 class Student(Model):
     __tablename__ = "students"
-
+    
     id = Column(Integer, primary_key=True)
     age = Column(Integer)
     name = Column(String)

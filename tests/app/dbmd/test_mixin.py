@@ -18,7 +18,7 @@ from tests.app import AppTestCase, create_and_login_user
 
 class Student(Model):
     __tablename__ = "students"
-
+    
     id = Column(Integer, primary_key=True)
     age = Column(Integer)
     name = Column(String, nullable=False)
@@ -38,7 +38,7 @@ dbmd.add_view(StudentView(Student, db.session))
 class PermissionRequiredMixinTest(AppTestCase):
     models = [Student, User, Role]
 
-    @create_and_login_user(role="Administrator")
+    @create_and_login_user(role_name="Administrator")
     def test_testing_environment(self):
         response = self.client.get(url_for("student.index_view"))
         self.assertEqual(response.status_code, 200)

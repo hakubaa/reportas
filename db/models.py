@@ -135,10 +135,83 @@ class Report(VersionedModel):
         return record
 
 
+class FinancialStatementType(VersionedModel):
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+
+    DEFAULT_FTYPES = [
+        {
+            "name": "bls",
+            "reprs": [
+                {"default": True, "lang": "en", "value": "Balance Sheet"}
+            ]
+        },
+        {
+            "name": "ics",
+            "reprs": [
+                {"default": True, "lang": "en", "value": "Income Statement"}
+            ]
+        },
+        {
+            "name": "cfs",
+            "reprs": [
+                {"default": True, "lang": "en", "value": "Cash Flow Statement"}
+            ]
+        }
+    ]
+
+    def __repr__(self):
+        return "FinancialStatementType({!r})".format(self.name)
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def insert_defaults(    session):
+        for ftype_spec in FinancialStatementType.DEFAULT_FTYPES:
+            ftype = FinancialStatementType(name=ftype_spec["name"])
+            for ftype_repr_spec in ftype_spec["reprs"]:
+                ftype.reprs.append(
+                    FinancialStatementTypeRepr(**ftype_repr_spec)       
+                )
+            session.add(ftype)
+
+
+class FinancialStatementTypeRepr(VersionedModel):
+    id = Column(Integer, primary_key=True)
+    value = Column(String, nullable=False)
+    lang = Column(String, nullable=False, default="en")
+    default = Column(Boolean, nullable=False, default=False)
+
+    ftype_id = Column(
+        Integer, ForeignKey("financialstatementtype.id"), nullable=False
+    )
+    ftype = relationship(
+        "FinancialStatementType", 
+        backref=backref("reprs", lazy="joined", cascade="all, delete")
+    )
+
+    def __repr__(self):
+        return "FinancialStatementTypeRepr({!r}, {!r}, {!r})".format(
+            self.ftype, self.lang, self.value
+        )    
+
+    def __str__(self):
+        return self.value
+
+        
 class RecordType(VersionedModel):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-    statement = Column(String, nullable=False)
+
+    # statement = Column(String, nullable=False)
+
+    ftype_id = Column(
+        Integer, ForeignKey("financialstatementtype.id"), nullable=False
+    )
+    ftype = relationship(
+        "FinancialStatementType",backref=backref("rtypes", lazy="select")
+    )
 
     # __table_args__ = (
     #     CheckConstraint("statement in ('ics', 'bls', 'cfs')"),  
@@ -153,7 +226,7 @@ class RecordType(VersionedModel):
         return False
 
     def __repr__(self):
-        return "<RecordType('{!s}')>".format(self.name)
+        return "RecordType({!r})".format(self.name)
 
     def __str__(self):
         return self.name
@@ -168,8 +241,9 @@ class RecordType(VersionedModel):
 
 class RecordTypeRepr(VersionedModel):
     id = Column(Integer, primary_key=True)
-    lang = Column(String, default="PL")
+    lang = Column(String, default="en")
     value = Column(String, nullable=False)
+    default = Column(Boolean, default=False)
 
     rtype_id = Column(Integer, ForeignKey("recordtype.id"))
     rtype = relationship("RecordType", backref=backref("reprs", lazy="joined"))

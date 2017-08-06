@@ -2,7 +2,8 @@ __all__ = [
     "CompanyReprSchema", "CompanySchema", "CompanySimpleSchema", 
     "RecordTypeSchema", "RecordTypeReprSchema", "RecordTypeSimpleSchema",
     "RecordSchema", "ReportSchema", "RecordFormulaSchema",
-    "FormulaComponentSchema", "SectorSchema"
+    "FormulaComponentSchema", "SectorSchema", "FinancialStatementTypeSchema",
+    "FinancialStatementTypeReprSchema"
 ]
 
 from marshmallow import validates, ValidationError, fields, validates_schema
@@ -56,7 +57,7 @@ class SectorSchema(ModelSchema):
 
     @validates("name")
     def validate_name(self, value):
-        if self.instance and self.instance.isin == value:
+        if self.instance and self.instance.name == value:
             return True
 
         (ret, ), = self.session.query(
@@ -123,6 +124,54 @@ class CompanySimpleSchema(ModelSchema):
 
 
 @records_factory.register_schema()
+class FinancialStatementTypeReprSchema(ModelSchema):
+    class Meta:
+        model = models.FinancialStatementTypeRepr
+        fields = ("id", "value", "lang", "ftype_id")
+
+    id = MyInteger()
+    ftype_id = field_for(
+        models.FinancialStatementTypeRepr, "ftype_id", required=True,
+        error_messages={"required": "FinancialStatementType is required."}
+    )   
+
+    @validates("ftype_id")
+    def validate_rtype(self, value):
+        (ret, ), = self.session.query(
+            exists().where(models.FinancialStatementType.id == value)
+        )
+        if not ret:
+            raise ValidationError(
+                "FinancialStatementType with id '{}' does not exist.".format(value)
+            )
+        return True
+
+
+@records_factory.register_schema()        
+class FinancialStatementTypeSchema(ModelSchema):
+    class Meta:
+        model = models.FinancialStatementType
+        fields = ("id", "name", "reprs")
+
+    id = MyInteger()
+    reprs = fields.Nested(
+        FinancialStatementTypeReprSchema, only=("id", "value"), many=True
+    )
+
+    @validates("name")
+    def validate_name(self, value):
+        if self.instance and self.instance.name == value:
+            return True
+
+        (ret, ), = self.session.query(
+            exists().where(models.FinancialStatementType.name == value)
+        )
+        if ret:
+            raise ValidationError("name not unique")
+        return True
+
+
+@records_factory.register_schema()
 class RecordTypeReprSchema(ModelSchema):
     class Meta:
         model = models.RecordTypeRepr
@@ -150,13 +199,15 @@ class RecordTypeReprSchema(ModelSchema):
 class RecordTypeSchema(ModelSchema):
     class Meta:
         model = models.RecordType
-        exclude = ("records", "version", "revcomponents")
+        exclude = ("records", "version", "revcomponents", "ftype_id")
 
     id = MyInteger()
-    statement = field_for(
-        models.RecordType, "statement", required=True,
-        error_messages={"required": "Statement is required."},
-        validate=[OneOf(("bls", "nls", "cfs"))]
+    ftype = fields.Nested(
+        FinancialStatementTypeSchema, only=("name"), many=False
+    )
+    ftype_id = field_for(
+        models.RecordType, "ftype_id", required=True,
+        error_messages={"required": "FinancialStatementType is required."}
     )
     reprs = fields.Nested(
         RecordTypeReprSchema, only=("id", "value"), many=True
@@ -174,11 +225,23 @@ class RecordTypeSchema(ModelSchema):
             raise ValidationError("name not unique")
         return True
 
+    @validates("ftype_id")
+    def validate_rtype(self, value):
+        (ret, ), = self.session.query(
+            exists().where(models.FinancialStatementType.id == value)
+        )
+        if not ret:
+            raise ValidationError(
+                "FinancialStatementType with id '{}' does not " 
+                "exist.".format(value)
+            )
+        return True
+
 
 class RecordTypeSimpleSchema(ModelSchema):
     class Meta:
         model = models.RecordType
-        fields = ("id", "name", "statement", "uri")
+        fields = ("id", "name", "uri", "ftype_id")
 
     id = MyInteger()
 
@@ -190,10 +253,10 @@ class RecordSchema(ModelSchema):
         exclude = ("version",)
 
     id = MyInteger()
-    rtype = fields.Nested(
-        RecordTypeSchema, only=("name", "statement"), many=False
-    )
     timestamp = fields.Date("%Y-%m-%d", required=True)
+    rtype = fields.Nested(
+        RecordTypeSchema, only=("name"), many=False
+    )
     rtype_id = field_for(
         models.Record, "rtype_id", required=True,
         error_messages={"required": "RecordType is required."}

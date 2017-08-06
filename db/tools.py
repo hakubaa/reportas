@@ -9,7 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from bs4 import BeautifulSoup
 
 from db.models import (
-    Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr, Sector
+    Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr, Sector,
+    FinancialStatementType
 )
 from rparser.nlp import find_ngrams
 import rparser.util as putil
@@ -51,22 +52,21 @@ def upload_records_spec(session, spec):
         spec = [spec]
 
     for record_spec in spec:
-        rtype = RecordType(
-            name=record_spec["name"],
-            statement=record_spec["statement"]
-        )
+        ftype = session.query(FinancialStatementType).\
+                    filter_by(name=record_spec["statement"]).one()
+        rtype = RecordType(name=record_spec["name"], ftype=ftype)
         session.add(rtype)
         for repr_spec in record_spec.get("repr", list()):
             repr_spec["rtype"] = rtype
             rtype_repr = RecordTypeRepr.create(session, **repr_spec)
 
 
-def get_records_reprs(session, statement, lang="PL", n=1, min_len=2, 
+def get_records_reprs(session, ftype, lang="PL", n=1, min_len=2, 
                       remove_non_alphabetic=True):
     '''Get list of items representations for selected statement.'''
     spec = list()
     records = session.query(RecordTypeRepr).join(RecordType).\
-                  filter(RecordType.statement.ilike(statement), 
+                  filter(RecordType.ftype == ftype,
                          RecordTypeRepr.lang.ilike(lang)
                   ).all()
     for record in records:

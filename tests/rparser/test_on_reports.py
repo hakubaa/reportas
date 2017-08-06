@@ -5,7 +5,7 @@ import io
 from rparser.base import FinancialReport, PDFFileIO
 from db.core import SQLAlchemy
 from db.models import RecordTypeRepr
-from db.util import (
+from db.tools import (
     upload_records_spec, get_records_reprs, get_companies_reprs, 
     upload_companies
 )

@@ -6,7 +6,7 @@ from flask_login import login_user, login_required, logout_user, current_user
 from app.user import user as user_blueprint
 from app.user.util import get_redirect_target, send_email
 from app.user.forms import LoginForm, RegistrationForm
-from app.models import User
+from app.models import User, Role
 from app import db
 from app.user import auth
 
@@ -39,6 +39,8 @@ def register():
             email=form.email.data, name=form.name.data,
             password=form.password.data
         )
+        if not user.role and not user.role_id:
+            user.role = db.session.query(Role).filter_by(name="User").one()
         db.session.add(user)
         db.session.commit()
         token = user.generate_token()
@@ -74,7 +76,7 @@ def before_request():
 @user_blueprint.route("/unconfirmed")
 def unconfirmed():
     if current_user.is_anonymous or current_user.confirmed:
-        return redirect("main.index")
+        return redirect("home.homepage")
     return render_template("user/unconfirmed.html")
 
 

@@ -8,7 +8,7 @@ from app.rapi import api
 from app.rapi.util import DatetimeEncoder
 from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
-    RecordFormula, FormulaComponent
+    RecordFormula, FormulaComponent, FinancialStatementType
 )
 from app.models import Permission, Role, User, DBRequest
 
@@ -16,9 +16,10 @@ from tests.app import AppTestCase, create_and_login_user
 
 
 def create_test_formulas():
-    total_assets = RecordType(name="TOTAL_ASSETS", statement="bls")
-    current_assets = RecordType(name="CURRENT_ASSETS", statement="bls")
-    fixed_assets = RecordType(name="FIXED_ASSETS", statement="bls")
+    ftype = FinancialStatementType.get_or_create(db.session, name="bls")
+    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
+    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
+    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
     db.session.add_all((total_assets, current_assets, fixed_assets))
     db.session.flush()    
     
@@ -183,7 +184,8 @@ class FormulaComponentListViewTest(AppTestCase):
     @create_and_login_user(pass_user=True)
     def test_post_request_creates_dbrequest(self, user):
         create_test_formulas()
-        new_rtype = RecordType(name="TEST TYPE", statement="nls")
+        ftype = db.session.query(FinancialStatementType).one()
+        new_rtype = RecordType(name="TEST TYPE", ftype=ftype)
         db.session.add(new_rtype)
         db.session.commit()
         

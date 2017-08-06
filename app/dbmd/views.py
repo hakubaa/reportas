@@ -3,6 +3,7 @@ from datetime import date
 from flask import flash, url_for
 from flask_admin import base as admin_base
 from flask_admin.contrib import sqla
+from flask_admin.contrib.sqla.filters import FilterInList
 from flask_admin.actions import action
 from flask_login import current_user
 from flask_admin.model import typefmt
@@ -115,6 +116,18 @@ class DBRequestBasedView(
     can_set_page_size = True
     details_modal = True
 
+
+def get_default_repr(view, context, model, name):
+    try:
+        default_repr = next(filter(lambda item: item.default, model.reprs))
+    except StopIteration:
+        if len(model.reprs) > 0:
+            return model.reprs[0].value
+        else:
+            return None
+    return default_repr.value
+
+
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -147,7 +160,7 @@ class CompanyView(DBRequestBasedView):
     column_list = (
         "isin", "name", "webpage", "ticker", "debut", "fullname", "sector"
     )
-    column_labels = dict(fullname="Full Name")
+    column_labels = {"fullname": "Full Name", "sector.name": "Sector"}
     form_excluded_columns = ("version", "reports", "records")
 
     def modify_data(self, data):
@@ -162,13 +175,15 @@ class RecordView(DBRequestBasedView):
 
     column_searchable_list = ["company.name", "rtype.name"]
     column_filters = [
-        "rtype.name", "rtype.statement", "company.name", 
-        "timerange", "timestamp"
+        "rtype.name", "company.name", "timerange", "timestamp", "rtype.ftype.name"
     ]
     column_list = (
         "rtype",  "company", "timerange", "timestamp", "value"
     )
-    column_labels = dict(rtype="Record Type")
+    column_labels = {
+        "rtype": "Record Type", "rtype.name": "Record Type",
+        "company.name": "Company Name", "rtype.ftype.name": "Financial Statement"
+    }
 
     def modify_data(self, data):
         if "rtype" in data:
@@ -190,18 +205,54 @@ class RecordTypeView(DBRequestBasedView):
     inline_models = [
         (
             models.RecordTypeRepr,
-            dict(form_columns=["value", "id"], form_label="Representation")
+            dict(
+                form_columns=["value", "lang", "id"], 
+                form_label="Representation"
+            )
         )
     ]
 
     can_view_details = False
 
     column_searchable_list = ["name"]
-    column_filters = ["statement"]
-    column_list = ("name", "statement")
+    column_filters = ("ftype.name",)
+    column_list = ("name", "ftype", "default_repr")
+    column_labels = {
+        "ftype": "Financial Statement", 
+        "ftype.name": "Financial Statement",
+        "default_repr": "Default Repr."
+    }
+    column_formatters=dict(default_repr=get_default_repr)
     form_excluded_columns = ("version", "records", "formulas", "revformulas")
 
-    
+    def modify_data(self, data):
+        if "ftype" in data:
+            data["ftype_id"] = getattr(data["ftype"], "id", None)
+            del data["ftype"]
+
+        return data
+
+
+class FinancialStatementTypeView(DBRequestBasedView):
+    inline_models = [
+        (
+            models.FinancialStatementTypeRepr,
+            dict(
+                form_columns=["value", "id", "default", "lang"], 
+                form_label="Representation"
+            )
+        )
+    ]
+
+    can_view_details = False
+
+    column_searchable_list = ["name"]
+    column_list = ("name", "default_repr")
+    column_formatters = dict(default_repr=get_default_repr)
+    column_labels = dict(default_repr="Default Repr.")
+    form_excluded_columns = ("version", "records", "rtypes")
+
+
 class ReportView(DBRequestBasedView):
     inline_models = [
         (
@@ -217,8 +268,13 @@ class ReportView(DBRequestBasedView):
     
     can_view_details = False
 
-    column_filters = ["timerange", "timestamp", "company"]
+    column_filters = [
+        "timerange", "timestamp", "company.name", "company.ticker"
+    ]
     column_list = ["company", "timerange", "timestamp", "consolidated"]
+    column_labels = {
+        "company.name": "Company Name", "company.ticker": "Company Ticker"
+    }
 
     form_args = dict(file=dict(validators=[]))
     form_columns = ["company", "timestamp", "timerange", "consolidated"]
@@ -281,11 +337,6 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
     list_template = "admin/model/dbrequest_list.html"
 
     inline_models = (SubrequestModelForm(DBRequest),)
-
-    # form_edit_rules = (
-    #     "user", "model", "action", "timestamp", "moderator_action", "data", "errors",
-    #     MultiLink(endpoint="dbrequest.edit_view", relation="subrequests", attribute="id")
-    # )
 
     @action("accept", "Accept")
     def accept_requests(self, ids):

@@ -7,30 +7,32 @@ from app import db
 from app.rapi import api
 from app.rapi.util import DatetimeEncoder
 from db.models import (
-    Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record
+    Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
+    FinancialStatementType
 )
 from app.models import Permission, Role, User, DBRequest
 
 from tests.app import AppTestCase, create_and_login_user
 
 
+def create_rtype_with_reprs(n=2, name="TEST"):
+    ftype = FinancialStatementType.get_or_create(db.session, name="nls")
+    rtype = RecordType.create(db.session, name=name, ftype=ftype)
+    for i in range(n):
+        rtype.reprs.append(
+            RecordTypeRepr.create(
+                db.session, 
+                value="Test Repr. #{}".format(i), lang="PL"
+            )
+        )
+    return rtype
+
 
 class TestListView(AppTestCase):
 
-    def create_rtype_with_reprs(self, n=2, name="TEST"):
-        rtype = RecordType.create(db.session, name=name, statement="nls")
-        for i in range(n):
-            rtype.reprs.append(
-                RecordTypeRepr.create(
-                    db.session, 
-                    value="Test Repr. #{}".format(i), lang="PL"
-                )
-            )
-        return rtype
-
     @create_and_login_user()
     def test_for_retrieving_list_of_reprs(self):
-        rtype = self.create_rtype_with_reprs(n=2)
+        rtype = create_rtype_with_reprs(n=2)
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_repr_list", id=rtype.id))
         data = response.json["results"]
@@ -38,8 +40,8 @@ class TestListView(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_correct_data(self):
-        rtype = self.create_rtype_with_reprs(n=1)
-        self.create_rtype_with_reprs(n=100, name="FAKE_REPR")
+        rtype = create_rtype_with_reprs(n=1)
+        create_rtype_with_reprs(n=100, name="FAKE_REPR")
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_repr_list", id=rtype.id))
         data = response.json["results"]
@@ -49,7 +51,7 @@ class TestListView(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_raise_404_when_no_rtype(self):
-        rtype = self.create_rtype_with_reprs(n=1)
+        rtype = create_rtype_with_reprs(n=1)
         db.session.commit()
         response = self.client.get(
             url_for("rapi.rtype_repr_list", id=rtype.id+1)
@@ -58,7 +60,7 @@ class TestListView(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_post_request_creates_dbrequest(self, user):
-        rtype = self.create_rtype_with_reprs(n=0)
+        rtype = create_rtype_with_reprs(n=0)
         db.session.commit()
         response = self.client.post(
             url_for("rapi.rtype_repr_list", id=rtype.id),
@@ -71,7 +73,7 @@ class TestListView(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_post_request_creates_dbrequest_with_proper_data(self, user):
-        rtype = self.create_rtype_with_reprs(n=0)
+        rtype = create_rtype_with_reprs(n=0)
         db.session.commit()
         response = self.client.post(
             url_for("rapi.rtype_repr_list", id=rtype.id),
@@ -90,7 +92,7 @@ class TestListView(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_rtype_is_set_by_default_in_dbrequest(self, user):
-        rtype = self.create_rtype_with_reprs(n=0)
+        rtype = create_rtype_with_reprs(n=0)
         db.session.commit()
         response = self.client.post(
             url_for("rapi.rtype_repr_list", id=rtype.id),
@@ -104,107 +106,11 @@ class TestListView(AppTestCase):
         self.assertEqual(data["rtype_id"], rtype.id)
 
 
-    # @create_and_login_user()
-    # def test_limit_restuls_with_limit_and_offset(self):
-    #     rtype = self.create_rtype_with_reprs(n=10)
-    #     db.session.commit()
-    #     response = self.client.get(
-    #         url_for("rapi.rtype_repr_list", id=rtype.id),
-    #         query_string={"limit": 5, "offset": 6}
-    #     )
-    #     data = response.json
-    #     self.assertEqual(data["count"], 4)
-
-    # @create_and_login_user()
-    # def test_order_results_with_sort_parameter(self):
-    #     rtype = RecordType.create(db.session, name="TEST1", statement="nls")
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="CC", lang="PL")
-    #     )
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="BB", lang="PL")
-    #     )
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="AA", lang="PL")
-    #     )
-    #     db.session.commit()
-
-    #     response = self.client.get(
-    #         url_for("rapi.rtype_repr_list", id=rtype.id),
-    #         query_string={"sort": "value"}
-    #     )
-
-    #     data = response.json["results"]
-    #     self.assertEqual(data[0]["value"], "AA")
-    #     self.assertEqual(data[1]["value"], "BB")
-    #     self.assertEqual(data[2]["value"], "CC")
-
-    # @create_and_login_user()
-    # def test_sort_in_reverse_order(self):
-    #     rtype = RecordType.create(db.session, name="TEST1", statement="nls")
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="CC", lang="PL")
-    #     )
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="BB", lang="PL")
-    #     )
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="AA", lang="PL")
-    #     )
-    #     db.session.commit()
-
-    #     response = self.client.get(
-    #         url_for("rapi.rtype_repr_list", id=rtype.id),
-    #         query_string={"sort": "-value"}
-    #     )
-
-    #     data = response.json["results"]
-    #     self.assertEqual(data[0]["value"], "CC")
-    #     self.assertEqual(data[1]["value"], "BB")
-    #     self.assertEqual(data[2]["value"], "AA")
-
-    # @create_and_login_user()
-    # def test_sort_by_two_columns(self):
-    #     rtype = RecordType.create(db.session, name="TEST1", statement="nls")
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="CC", lang="BB")
-    #     )
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="BB", lang="AA")
-    #     )
-    #     rtype.reprs.append(
-    #         RecordTypeRepr.create(db.session, value="AA", lang="BB")
-    #     )
-    #     db.session.commit()
-
-    #     response = self.client.get(
-    #         url_for("rapi.rtype_repr_list", id=rtype.id),
-    #         query_string={"sort": "lang, -value"}
-    #     )
-
-    #     data = response.json["results"]
-    #     self.assertEqual(data[0]["value"], "BB")
-    #     self.assertEqual(data[1]["value"], "CC")
-    #     self.assertEqual(data[2]["value"], "AA")
-
-
-
 class TestDetailView(AppTestCase):
-
-    def create_rtype_with_reprs(self, n=2, name="TEST"):
-        rtype = RecordType.create(db.session, name=name, statement="nls")
-        for i in range(n):
-            rtype.reprs.append(
-                RecordTypeRepr.create(
-                    db.session, 
-                    value="Test Repr. #{}".format(i), lang="PL"
-                )
-            )
-        return rtype
 
     @create_and_login_user()
     def test_get_request_returns_repr_of_rtype(self):
-        rtype = self.create_rtype_with_reprs(n=1)
+        rtype = create_rtype_with_reprs(n=1)
         db.session.commit()
         response = self.client.get(
             url_for("rapi.rtype_repr_detail", id=rtype.id, rid=rtype.reprs[0].id)
@@ -215,7 +121,7 @@ class TestDetailView(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_put_request_creates_dbrequet(self, user):
-        rtype = self.create_rtype_with_reprs(n=1)
+        rtype = create_rtype_with_reprs(n=1)
         db.session.commit()
         self.client.put(
             url_for("rapi.rtype_repr_detail", id=rtype.id, rid=rtype.reprs[0].id),
@@ -235,7 +141,7 @@ class TestDetailView(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_delete_request_deletes_repr(self, user):
-        rtype = self.create_rtype_with_reprs(n=1)
+        rtype = create_rtype_with_reprs(n=1)
         db.session.commit()
         self.client.delete(
             url_for("rapi.rtype_repr_detail", id=rtype.id, rid=rtype.reprs[0].id),

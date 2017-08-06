@@ -7,7 +7,6 @@ from datetime import date, timedelta
 
 FiscalYear = namedtuple("FiscalYear", field_names="start, end")
 TimeRange = namedtuple("TimeRange", field_names="start, end")
-TimestampRange = namedtuple("TimestampRange", field_names="start, end")
 
 
 def group_objects(objs, key):
@@ -332,4 +331,4 @@ def project_timerange_onto_fiscal_year(timerange, fiscal_year):
     else:
         end_timestamp = date(end_year, end_month+1, 1) - timedelta(days=1)
     
-    return TimestampRange(start=start_timestamp, end=end_timestamp)
+    return TimeRange(start=start_timestamp, end=end_timestamp)

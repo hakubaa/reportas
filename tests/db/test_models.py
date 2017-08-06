@@ -9,7 +9,8 @@ from sqlalchemy.orm import relationship, backref
 from tests.app import AppTestCase
 from app import db
 from db.models import (
-    Company, RecordType, RecordFormula, FormulaComponent, Record
+    Company, RecordType, RecordFormula, FormulaComponent, Record,
+    FinancialStatementType
 )
 from db.core import Model, VersionedModel
 import db.utils as utils
@@ -17,8 +18,15 @@ import db.tools as tools
 
 #-------------------------------------------------------------------------------
 
-def create_rtype(name="TOTAL_ASSETS", statement="bls"):
-    total_assets = RecordType(name=name, statement=statement)
+def create_ftype(name="bls"):
+    ftype = FinancialStatementType(name=name)
+    db.session.add(ftype)
+    db.session.commit()
+    return ftype
+
+
+def create_rtype(ftype, name="TOTAL_ASSETS"):
+    total_assets = RecordType(name=name, ftype=ftype)
     db.session.add(total_assets)
     db.session.commit()    
     return total_assets
@@ -51,10 +59,12 @@ def create_record(**kwargs):
     return record
 
 
-def create_rtypes():
-    total_assets = RecordType(name="TOTAL_ASSETS", statement="bls")
-    current_assets = RecordType(name="CURRENT_ASSETS", statement="bls")
-    fixed_assets = RecordType(name="FIXED_ASSETS", statement="bls")
+def create_rtypes(ftype):
+    if not ftype:
+        ftype = create_ftype(name="bls")
+    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
+    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
+    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
     db.session.add_all((total_assets, current_assets, fixed_assets))
     db.session.commit()    
     return total_assets, current_assets, fixed_assets
@@ -129,17 +139,9 @@ class TestVersioning(AppTestCase):
 
 
 class RecordFormulaTest(AppTestCase):
-    
-    def create_rtypes(self):
-        total_assets = RecordType(name="TOTAL_ASSETS", statement="bls")
-        current_assets = RecordType(name="CURRENT_ASSETS", statement="bls")
-        fixed_assets = RecordType(name="FIXED_ASSETS", statement="bls")
-        db.session.add_all((total_assets, current_assets, fixed_assets))
-        db.session.commit()    
-        return total_assets, current_assets, fixed_assets
 
     def test_add_component_creates_new_components(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         
         formula = RecordFormula(rtype=ta)
         formula.add_component(rtype=ca, sign=1)
@@ -149,7 +151,7 @@ class RecordFormulaTest(AppTestCase):
         self.assertEqual(db.session.query(FormulaComponent).count(), 2)
         
     def test_add_component_accepts_predefined_components(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         comp_ca = FormulaComponent(rtype=ca, sign=1)
         comp_fa = FormulaComponent(rtype=fa, sign=1)
         db.session.add_all((comp_ca, comp_fa))
@@ -162,7 +164,7 @@ class RecordFormulaTest(AppTestCase):
         self.assertCountEqual(formula.components, [comp_ca, comp_fa])
         
     def test_repr_enables_to_identify_formula(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         
         formula = RecordFormula(rtype=ta)
         formula.add_component(rtype=ca, sign=1)
@@ -176,7 +178,7 @@ class RecordFormulaTest(AppTestCase):
         )
 
     def test_transform_creates_and_returns_new_formula(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
         new_formula = formula.transform(ca)
@@ -186,8 +188,9 @@ class RecordFormulaTest(AppTestCase):
         self.assertNotEqual(formula.id, new_formula.id)
         
     def test_transform_raises_error_when_new_left_side_not_in_components(self):
-        ta, ca, fa = self.create_rtypes()
-        eq = RecordType(name="EQUITY", statement="bls")
+        ftype = create_ftype(name="bls")
+        ta, ca, fa = create_rtypes(ftype)
+        eq = RecordType(name="EQUITY", ftype=ftype)
         db.session.add(eq)
         db.session.commit()
         formula = create_db_formula(ta, ((1, ca), (1, fa)))
@@ -196,7 +199,7 @@ class RecordFormulaTest(AppTestCase):
             formula.transform(eq)
 
     def test_transform_sets_proper_left_hand_side(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
         new_formula = formula.transform(ca)
@@ -204,7 +207,7 @@ class RecordFormulaTest(AppTestCase):
         self.assertEqual(new_formula.lhs, ca)
 
     def test_transform_sets_proper_right_hand_side(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         formula = create_db_formula(ta, ((1, ca),))
         
         new_formula = formula.transform(ca)
@@ -214,7 +217,7 @@ class RecordFormulaTest(AppTestCase):
         self.assertEqual(new_formula.rhs[0].sign, 1)
 
     def test_similar_formula_have_the_same_hash(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         
         formula1 = create_db_formula(ta, ((1, ca), (1, fa)))
         formula2 = create_db_formula(ta, ((1, ca), (1, fa)))
@@ -222,7 +225,7 @@ class RecordFormulaTest(AppTestCase):
         self.assertEqual(hash(formula1), hash(formula2))
 
     def test_similar_formula_are_equal(self):
-        ta, ca, fa = self.create_rtypes()
+        ta, ca, fa = create_rtypes(create_ftype("bls"))
         
         formula1 = create_db_formula(ta, ((1, ca), (1, fa)))
         formula2 = create_db_formula(ta, ((1, ca), (1, fa)))
@@ -234,7 +237,8 @@ class RecordTest(AppTestCase):
 
     def setUp(self):
         super().setUp()
-        self.rtype = create_rtype()
+        self.ftype_bls = create_ftype(name="bls")
+        self.rtype = create_rtype(ftype=self.ftype_bls)
         self.company = create_company(name="RecordTest", isin="#RecordTest")
 
     def create_record(
@@ -442,7 +446,8 @@ class SyntheticReccordsTest(AppTestCase):
         
         company1 = create_company()
         company2 = create_company()
-        rtype = create_rtype()
+        ftype = create_ftype(name="bls")
+        rtype = create_rtype(ftype)
         records = self.create_records([
             (company1, rtype, 12, date(2015, 12, 31), 0),
             (company1, rtype, 12, date(2014, 12, 31), 0),
@@ -466,7 +471,8 @@ class SyntheticReccordsTest(AppTestCase):
         csr_mock.return_value = list()
         
         company = create_company()
-        rtype = create_rtype()
+        ftype = create_ftype(name="bls")
+        rtype = create_rtype(ftype)
         records = self.create_records([
             (company, rtype, 12, date(2015, 12, 31), 0),
             # (company, rtype, 12, date(2014, 12, 31), 0),
@@ -493,7 +499,8 @@ class SyntheticReccordsTest(AppTestCase):
     def test_get_records_for_company_within_fiscal_year(self):
         company1 = create_company()
         company2 = create_company()
-        rtype = create_rtype()
+        ftype = create_ftype(name="bls")
+        rtype = create_rtype(ftype)
         records = self.create_records([
             (company1, rtype, 12, date(2015, 12, 31), 0),
             (company1, rtype, 3, date(2015, 3, 31), 0),
@@ -513,7 +520,8 @@ class SyntheticReccordsTest(AppTestCase):
         
     def test_csr_creates_new_records(self):
         company = create_company()
-        ta, ca, fa = create_rtypes()
+        ftype = create_ftype(name="bls")
+        ta, ca, fa = create_rtypes(ftype)
         formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
         records = self.create_records([
@@ -535,7 +543,8 @@ class SyntheticReccordsTest(AppTestCase):
         
     def test_csr_creates_new_records_with_timerange(self):
         company = create_company()
-        ta, ca, fa = create_rtypes()
+        ftype = create_ftype(name="test")
+        ta, ca, fa = create_rtypes(ftype)
         
         records = self.create_records([
             (company, ta, 3, date(2015, 3, 31), 40),
@@ -553,3 +562,15 @@ class SyntheticReccordsTest(AppTestCase):
         self.assertEqual(new_records[0].value, 20)
         self.assertEqual(new_records[0].timerange, 3)
         self.assertEqual(new_records[0].timestamp, date(2015, 6, 30))
+
+
+class FinancialStatementTypeTest(AppTestCase):
+
+    def test_insert_default_ftypes(self):
+        FinancialStatementType.insert_defaults(db.session)
+        db.session.commit()
+
+        self.assertEqual(db.session.query(FinancialStatementType).count(), 3)
+        db.session.query(FinancialStatementType).filter_by(name="bls").one()
+        db.session.query(FinancialStatementType).filter_by(name="ics").one()
+        db.session.query(FinancialStatementType).filter_by(name="cfs").one()

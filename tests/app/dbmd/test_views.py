@@ -75,8 +75,16 @@ def create_company(name="TEST", isin="#TEST"):
     db.session.commit()
     return company
 
-def create_rtype(name="TEST", statement="ics"):
-    rtype = models.RecordType(name=name, statement=statement)
+def create_ftype(name="ics"):
+    ftype = models.FinancialStatementType(name=name)
+    db.session.add(ftype)
+    db.session.commit()
+    return ftype
+
+def create_rtype(name="TEST", ftype=None):
+    if not ftype:
+        ftype = db.session.query(models.FinancialStatementType).one()
+    rtype = models.RecordType(name=name, ftype=ftype)
     db.session.add(rtype)
     db.session.commit()
     return rtype
@@ -320,9 +328,10 @@ class CreateRecordTypeViewTest(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_post_request_with_all_data_creates_new_dbrequest(self, user):
+        ftype = create_ftype()
         response = self.client.post(
             url_for("recordtype.create_view"),
-            data = dict(name="TEST", statement="ics")
+            data = dict(name="TEST", ftype=ftype.id)
         )
         
         self.assertEqual(db.session.query(models.RecordType).count(), 0)
@@ -334,7 +343,7 @@ class CreateRecordTypeViewTest(AppTestCase):
         
         data = json.loads(dbrequest.data)
         self.assertEqual(data["name"], "TEST")
-        self.assertEqual(data["statement"], "ics")
+        self.assertEqual(data["ftype_id"], ftype.id)
 
     def test_name_and_statement_are_required(self):
         view = views.RecordTypeView(models.RecordType, db.session)
@@ -344,13 +353,14 @@ class CreateRecordTypeViewTest(AppTestCase):
 
         errors = form.errors
         self.assertIn("name", errors)
-        self.assertIn("statement", errors)
+        self.assertIn("ftype", errors)
         
     @create_and_login_user()
     def test_redirects_after_successful_post_request(self):
+        ftype = create_ftype()
         response = self.client.post(
             url_for("recordtype.create_view"),
-            data = dict(name="TEST", statement="ics")
+            data = dict(name="TEST", ftype=ftype.id)
         )
         self.assertRedirects(response, url_for("recordtype.index_view"))
         
@@ -365,12 +375,6 @@ class CreateRecordTypeViewTest(AppTestCase):
 
 
 class EditRecordTypeViewTest(AppTestCase):
-
-    def create_rtype(self, name="TEST RTYPE", statement="ics"):
-        rtype = models.RecordType(name=name, statement=statement)
-        db.session.add(rtype)
-        db.session.commit()
-        return rtype
         
     @create_and_login_user()
     def test_redirects_to_list_view_when_rtype_does_not_exist(self):
@@ -382,18 +386,19 @@ class EditRecordTypeViewTest(AppTestCase):
 
     @create_and_login_user()  
     def test_form_is_populated_with_data_of_edited_object(self):
-        rtype = self.create_rtype()
+        rtype = create_rtype(name="TEST", ftype=create_ftype())
         response = self.client.get(url_for("recordtype.edit_view", id=rtype.id))
         form = self.get_context_variable("form")
         self.assertEqual(form.name.data, rtype.name)
-        self.assertEqual(form.statement.data, rtype.statement)
+        self.assertEqual(form.ftype.data, rtype.ftype)
         
     @create_and_login_user(pass_user=True)
     def test_post_request_with_all_data_creates_new_dbrequest(self, user=True):
-        rtype = self.create_rtype()
+        ftype=create_ftype()
+        rtype = create_rtype(name="TEST", ftype=ftype)
         response = self.client.post(
             url_for("recordtype.edit_view", id=rtype.id),
-            data = dict(name="NEW NAME", id=rtype.id, statement="ics")
+            data = dict(name="NEW NAME", id=rtype.id, ftype=ftype.id)
         )
         self.assertEqual(db.session.query(DBRequest).count(), 1)
         
@@ -413,16 +418,11 @@ class EditRecordTypeViewTest(AppTestCase):
 
         errors = form.errors
         self.assertIn("name", errors)
-        self.assertIn("statement", errors)
+        self.assertIn("ftype", errors)
 
 
 class DeleteRecordTypeViewTest(AppTestCase):
 
-    def create_rtype(self, name="TEST RTYPE", statement="ics"):
-        rtype = models.RecordType(name=name, statement=statement)
-        db.session.add(rtype)
-        db.session.commit()
-        return rtype
 
     @create_and_login_user()
     def test_redirects_to_list_view_when_company_does_not_exist(self):
@@ -434,7 +434,7 @@ class DeleteRecordTypeViewTest(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_for_creating_dbrequest(self, user=True):
-        rtype = self.create_rtype()
+        rtype = create_rtype(name="TEST", ftype=create_ftype())
         response = self.client.post(
             url_for("recordtype.delete_view", id=rtype.id)
         )
@@ -450,7 +450,7 @@ class DeleteRecordTypeViewTest(AppTestCase):
         
     @create_and_login_user()
     def test_redirects_after_request(self):
-        rtype = self.create_rtype()
+        rtype = create_rtype(name="TEST", ftype=create_ftype())
         response = self.client.post(
             url_for("recordtype.delete_view", id=rtype.id),
             follow_redirects=False
@@ -523,7 +523,7 @@ class RecordViewFormTest(AppTestCase):
 
     def test_view_s_form_validate_with_proper_data(self):
         company = create_company()
-        rtype = create_rtype()
+        rtype = create_rtype(name="A", ftype=create_ftype())
 
         view = views.RecordView(models.Record, db.session)
         form = view.get_form()()
@@ -537,7 +537,7 @@ class RecordViewFormTest(AppTestCase):
 
     def test_company_and_rtype_are_transformed_to_ids(self):
         company = create_company()
-        rtype = create_rtype()
+        rtype = create_rtype(name="A", ftype=create_ftype())
 
         view = views.RecordView(models.Record, db.session)
         view.get_user = types.MethodType(lambda self: create_user(), view)

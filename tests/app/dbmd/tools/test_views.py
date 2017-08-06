@@ -12,7 +12,6 @@ from app import db
 from app.models import File, User, DBRequest
 from app.dbmd.tools.forms import ReportUploaderForm, DirectInputForm
 from db import models
-from db.models import Company
 from app.rapi.util import DatetimeEncoder
 
 from tests.app import AppTestCase, create_and_login_user
@@ -27,6 +26,13 @@ def create_fake_company(isin="#TEST", name="TEST"):
     db.session.add(company)
     db.session.commit()
     return company
+
+
+def create_ftype(name="ics"):
+    ftype = models.FinancialStatementType(name=name)
+    db.session.add(ftype)
+    db.session.commit()
+    return ftype
 
 
 class MinerIndexViewTest(AppTestCase):
@@ -228,7 +234,7 @@ class ParserPostViewTest(AppTestCase):
         return report
 
     def create_data_for_request(self, records=True):
-        rtype = models.RecordType(name="NETPROFIT", statement="nls")
+        rtype = models.RecordType(name="NETPROFIT", ftype=create_ftype())
         db.session.add(rtype)
         company = create_fake_company()
         

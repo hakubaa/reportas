@@ -8,7 +8,8 @@ from sqlalchemy.orm import relationship, backref
 
 from app import db
 from db.models import (
-    Company, RecordType, RecordFormula, FormulaComponent, Record
+    Company, RecordType, RecordFormula, FormulaComponent, Record,
+    FinancialStatementType
 )
 from db.core import Model, VersionedModel
 import db.utils as utils
@@ -18,8 +19,15 @@ from tests.app import AppTestCase
 
 #-------------------------------------------------------------------------------
 
-def create_rtype(name="TOTAL_ASSETS", statement="bls"):
-    total_assets = RecordType(name=name, statement=statement)
+def create_ftype(name="bls"):
+    fst = FinancialStatementType(name=name)
+    db.session.add(fst)
+    db.session.commit()
+    return fst
+
+
+def create_rtype(name, ftype):
+    total_assets = RecordType(name=name, ftype=ftype)
     db.session.add(total_assets)
     db.session.commit()    
     return total_assets
@@ -53,9 +61,10 @@ def create_record(**kwargs):
 
 
 def create_rtypes():
-    total_assets = RecordType(name="TOTAL_ASSETS", statement="bls")
-    current_assets = RecordType(name="CURRENT_ASSETS", statement="bls")
-    fixed_assets = RecordType(name="FIXED_ASSETS", statement="bls")
+    ftype = create_ftype()
+    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
+    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
+    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
     db.session.add_all((total_assets, current_assets, fixed_assets))
     db.session.commit()    
     return total_assets, current_assets, fixed_assets
@@ -94,7 +103,7 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
     def test_group_records_by_company(self):
         company1 = create_company()
         company2 = create_company()
-        rtype = create_rtype()
+        rtype = create_rtype("ASSETS", create_ftype("bls"))
         records = self.create_records([
             (company1, rtype, 12, date(2015, 12, 31), 0),
             (company1, rtype, 12, date(2014, 12, 31), 0),
@@ -111,7 +120,7 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
         
     def test_group_records_by_fiscal_year(self):
         company = create_company()  
-        rtype = create_rtype()
+        rtype = create_rtype("ASSETS", create_ftype("bls"))
         records = self.create_records([
             (company, rtype, 12, date(2015, 12, 31), 0),
             (company, rtype, 12, date(2014, 12, 31), 0),
@@ -143,8 +152,9 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
 
     def test_represent_records_as_matrix(self):
         company = create_company()
-        rtype1 = create_rtype(name="NET_PROFIT")
-        rtype2 = create_rtype(name="REVENUE")
+        ftype = create_ftype("bls")
+        rtype1 = create_rtype(name="NET_PROFIT", ftype=ftype)
+        rtype2 = create_rtype(name="REVENUE", ftype=ftype)
         records = self.create_records([
             (company, rtype1, 3, date(2015, 3, 31), 1),
             (company, rtype1, 6, date(2015, 6, 30), 2),
@@ -408,7 +418,8 @@ class UtilsFormulaTest(AppTestCase):
     
     def test_csr_creates_new_records_recurrently(self):
         ta, ca, fa = create_rtypes()
-        lb = create_rtype(name="TOTAL LIABILITIES", statement="bls")
+        ftype = db.session.query(FinancialStatementType).one()
+        lb = create_rtype(name="TOTAL LIABILITIES", ftype=ftype)
         formula_ta = create_formula(ta, [(ca, 1), (fa, 1)])\
                          .extend_with_timerange(utils.TimeRange(1, 3))
         formula_lb = create_formula(lb, [(ta, 1)])\

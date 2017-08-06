@@ -7,20 +7,24 @@ from app import db
 from app.rapi import api
 from app.rapi.util import DatetimeEncoder
 from db.models import (
-    Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record
+    Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
+    FinancialStatementType
 )
 from app.models import Permission, Role, User, DBRequest
 
 from tests.app import AppTestCase, create_and_login_user
 
 
+def create_ftype(name="bls"):
+    return FinancialStatementType.create(db.session, name=name)
+
 
 class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_list_of_records_types(self):
-        RecordType.create(db.session, name="TEST1", statement="nls")
-        RecordType.create(db.session, name="TEST2", statement="bls")
+        RecordType.create(db.session, name="TEST1", ftype=create_ftype("ics"))
+        RecordType.create(db.session, name="TEST2", ftype=create_ftype("bls"))
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_list"))
         data = response.json["results"]
@@ -28,16 +32,18 @@ class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_proper_data(self):
-        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
+        rtype = RecordType.create(db.session, name="TEST1", 
+                                  ftype=create_ftype("ics"))
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_list"))
         data = response.json["results"][0]
         self.assertEqual(data["name"], rtype.name)
-        self.assertEqual(data["statement"], rtype.statement)
+        self.assertEqual(data["ftype_id"], rtype.ftype.id)
 
     @create_and_login_user()
     def test_get_request_returns_hyperlinks_to_detail_view(self):
-        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
+        rtype = RecordType.create(db.session, name="TEST1", 
+                                  ftype=create_ftype("ics"))
         RecordTypeRepr.create(db.session, value="TEST Repr", lang="PL", 
                               rtype=rtype)
         db.session.commit()
@@ -109,12 +115,13 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_recordtype_data(self):
-        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
+        rtype = RecordType.create(db.session, name="TEST1", 
+                                  ftype=create_ftype("ics"))
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_detail", id=rtype.id))
         data = response.json
         self.assertEqual(data["name"], rtype.name)
-        self.assertEqual(data["statement"], rtype.statement)
+        self.assertEqual(data["ftype"], rtype.ftype.name)
 
     @create_and_login_user()
     def test_get_request_returns_404_when_rtype_does_not_exist(self):
@@ -123,7 +130,8 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_delete_request_creates_dbrequest(self, user):
-        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
+        rtype = RecordType.create(db.session, name="TEST1", 
+                                  ftype=create_ftype("ics"))
         db.session.commit() 
         response = self.client.delete(url_for("rapi.rtype_detail", id=rtype.id))
         self.assertEqual(db.session.query(DBRequest).count(), 1)
@@ -135,7 +143,8 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_put_request_creates_dbrequest(self, user):
-        rtype = RecordType.create(db.session, name="TEST1", statement="nls")
+        rtype = RecordType.create(db.session, name="TEST1", 
+                                  ftype=create_ftype("bls"))
         db.session.commit()
         response = self.client.put(
             url_for("rapi.rtype_detail", id=rtype.id), 
