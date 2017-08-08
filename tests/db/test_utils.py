@@ -415,7 +415,7 @@ class UtilsFormulaTest(AppTestCase):
         self.assertEqual(
             data[ta][utils.TimeRange(1, 3)], 
             syn_records[0]["value"]
-        )
+        )        
     
     def test_csr_creates_new_records_recurrently(self):
         ta, ca, fa = create_rtypes()

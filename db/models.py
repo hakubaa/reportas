@@ -8,7 +8,7 @@ from sqlalchemy import (
     Column, Integer, String, Boolean, Float,
     UniqueConstraint, CheckConstraint, Date
 )
-from sqlalchemy import func, bindparam, cast, inspect
+from sqlalchemy import func, bindparam, cast, inspect, event
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.dialects.postgresql import INTERVAL 
@@ -170,7 +170,7 @@ class FinancialStatementType(VersionedModel):
             if len(self.reprs) > 0:
                 return self.reprs[0].value
             else:
-                return None
+                return repr(self)
         return default_repr.value
 
     @staticmethod
@@ -242,6 +242,8 @@ class RecordType(VersionedModel):
         return hash(self.name)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         if self.name == other.name:
             return True
         return False
@@ -302,25 +304,6 @@ class Record(VersionedModel):
         return "<Record({!r}, {!r}, {!r})>".format(
             self.rtype, self.value, self.report
         )
-
-    @classmethod
-    def create_or_update(
-        cls, session, rtype, value, timestamp, timerange, report, company, 
-        defaults=None, override=False
-    ):
-        import db.tools as tools
-        obj, newly_created = util.get_or_create(
-            session, cls, defaults={"value": value, "report": report},
-            rtype=rtype, timestamp=timestamp, timerange=timerange,
-            company=company
-        )
-        if ((override or report.timestamp > obj.report.timestamp)
-            and not newly_created
-        ):
-            obj.report = report
-            obj.value = value
-
-        return obj
 
     @hybrid_property
     def timestamp_start(self):
@@ -439,7 +422,8 @@ class Record(VersionedModel):
         }
 
         records = utils.concatenate_lists(
-            Record._create_records_from_json(
+            Record._create_db_records_from_json(
+                session,
                 utils.create_synthetic_records(
                     base_record = (
                         record.rtype, 
@@ -462,7 +446,9 @@ class Record(VersionedModel):
         #     Record.timestamp_start >= fiscal_year.start, 
         #     Record.timestamp <= fiscal_year.end
         # ).all()
-        records = session.query(Record).filter(Record.company == company).all()
+        records = session.query(Record).filter(
+            Record.company == company, Record.synthetic == False
+        ).all()
         records = list(filter(
             lambda record: record.timestamp_start >= fiscal_year.start \
                            and record.timestamp <= fiscal_year.end,
@@ -471,21 +457,33 @@ class Record(VersionedModel):
         return records
         
     @staticmethod
-    def _create_records_from_json(data, company, fiscal_year):
+    def _create_db_records_from_json(session, data, company, fiscal_year):
         return [
-            Record(
-                company = company, rtype = item["rtype"],
-                value = item["value"], 
+            Record.update_or_create(
+                session,
+                defaults = { "value": item["value"] },
+                company = company,
+                rtype = item["rtype"],
                 timerange = (
                     0 if item["rtype"].timeframe == "pit" 
                     else item["timerange"].end - item["timerange"].start + 1
                 ),
                 timestamp = utils.project_timerange_onto_fiscal_year(
                     item["timerange"], fiscal_year
-                ).end
+                ).end,
+                synthetic=True
             )
             for item in data
         ]
+
+# timerange of 'point-in-time' records cannot be changed, this field has
+# little sense for this records, because they show some value at specific
+# time
+@event.listens_for(Record, "refresh")
+def receive_set(target, context, attrs):
+    if "timerange" in attrs:
+        if target.rtype.timeframe == "pit":
+            target.timerange = 0
 
 
 class RecordFormula(VersionedModel):

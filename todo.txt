@@ -1,8 +1,15 @@
 ﻿TO_DO:
-- create synthetic records for financial recordfs of nls/cfs and bls
-- Record.project_onto_fiscal_year will decide how to project bls and ics/cfs
 - add warnings and errors when uploading data with tools
+- synthetic records should be overriden manually
+- show timestamp up, and only years and months
 
+DONE:
+- create synthetic records for financial recordfs of ics/cfs and bls
+- Record.project_onto_fiscal_year will decide how to project bls and ics/cfs
+- update synthetic records (when updating new field)
+- delete syntehtic records ? - no, only manually
+
+################################################################################
 
 TO DO:
 - parser

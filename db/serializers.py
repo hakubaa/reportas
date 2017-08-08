@@ -291,6 +291,9 @@ class RecordSchema(ModelSchema):
 
     @validates("report_id")
     def validate_report(self, value):
+        if value is None:
+            return True
+            
         (ret, ), = self.session.query(
             exists().where(models.Report.id == value)
         )

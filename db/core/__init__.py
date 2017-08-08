@@ -7,7 +7,7 @@ from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from .history_meta import Versioned, versioned_session
-from .util import get_or_create, create
+from .util import get_or_create, create, update_or_create
 
 
 Base = declarative_base()
@@ -25,6 +25,10 @@ class Model(Base):
     def get_or_create(cls, session, defaults=None, **kwargs):
         obj, _ = get_or_create(session, cls, defaults, **kwargs)
         return obj
+
+    @classmethod
+    def update_or_create(cls, session, defaults=None, **kwargs):
+        return update_or_create(session, cls, defaults, **kwargs)
 
     @classmethod
     def create(cls, session, defaults=None, **kwargs):

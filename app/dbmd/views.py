@@ -251,7 +251,6 @@ class RecordTypeView(DBRequestBasedView):
         if "ftype" in data:
             data["ftype_id"] = getattr(data["ftype"], "id", None)
             del data["ftype"]
-
         return data
 
 
@@ -365,6 +364,7 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
         successes_counter = 0
         requests_counter = 0
 
+        new_records = list()
         for request_id in ids:
             request = db.session.query(DBRequest).get(request_id)
             if request:
@@ -372,12 +372,23 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
                 result = request.execute(current_user, records_factory)
                 requests_counter += self._count_requests(result)
                 successes_counter += self._count_successful_requests(result)
+                new_records.extend(self._extract_records(result))
+
+        synthetic_records = list()
+        if len(new_records) > 0:
+            synthetic_records = models.Record.create_synthetic_records(
+                db.session, new_records
+            )
         db.session.commit()
 
         msg = "%d of %d requests have been successfuly executed."
         if successes_counter < requests_counter:
             msg += " The errors can be view in details of the requests."
         flash(msg % (successes_counter, requests_counter))
+        
+        if len(synthetic_records) > 0:
+            msg = "%d synthetic records have been created."
+            flash(msg % len(synthetic_records))
 
     def _count_requests(self, result):
         counter = sum(
@@ -392,6 +403,14 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
             for request in result["subrequests"] 
         ) + (0 if result["errors"] else 1)
         return counter
+
+    def _extract_records(self, result):
+        records = list()
+        if isinstance(result["instance"], models.Record):
+            records.append(result["instance"])
+        for subrequest in result["subrequests"]:
+            records.extend(self._extract_records(subrequest))
+        return records
 
     def get_query(self):
         # Return only main requests, ommit subrequests

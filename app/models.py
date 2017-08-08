@@ -247,9 +247,7 @@ class DBRequest(Model):
                 factory.session, factory.get_model(self.model)
             )
         else:
-            instance, errors = self.execute_request(
-                factory, moderator, comment
-            )
+            instance, errors = self.execute_request(factory, moderator, comment)
         
         results = []
         if not errors:

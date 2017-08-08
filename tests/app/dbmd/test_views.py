@@ -1,7 +1,7 @@
 import base64
 import json
 import unittest
-from datetime import datetime
+from datetime import datetime, date
 import unittest.mock as mock
 from urllib.parse import urlparse
 import types
@@ -81,10 +81,13 @@ def create_ftype(name="ics"):
     db.session.commit()
     return ftype
 
-def create_rtype(name="TEST", ftype=None):
+def create_rtype(name="TEST", ftype=None, timeframe="pot"):
     if not ftype:
         ftype = db.session.query(models.FinancialStatementType).one()
-    rtype = models.RecordType(name=name, ftype=ftype)
+    rtype = models.RecordType(name=name, ftype=ftype, timeframe=timeframe)
+    rtype.reprs.append(
+        models.RecordTypeRepr(value="TEST REPR", lang="PL")
+    )
     db.session.add(rtype)
     db.session.commit()
     return rtype
@@ -372,6 +375,28 @@ class CreateRecordTypeViewTest(AppTestCase):
         )
         form = self.get_context_variable("form")
         self.assertInContent(response, "TEST NAME")
+
+    def test_ftype_is_transformed_to_ftype_id(self):
+        ftype = models.FinancialStatementType(name="bls")
+        db.session.add(ftype)
+        db.session.commit()
+
+        view = views.RecordTypeView(models.RecordType, db.session)
+        view.get_user = types.MethodType(lambda self: create_user(), view)
+        form = view.get_form()()
+
+        form.process(formdata=MultiDict(dict(
+            ftype=str(ftype.id), name="TEST"
+        )))
+        validation_outcome = form.validate() 
+
+        self.assertTrue(validation_outcome)
+
+        dbrequest = view.create_model(form)
+        data = json.loads(dbrequest.data)
+
+        self.assertIn("ftype_id", data)
+        self.assertEqual(data["ftype_id"], ftype.id)
 
 
 class EditRecordTypeViewTest(AppTestCase):
@@ -679,3 +704,48 @@ class DBRequestViewTest(AppTestCase):
 
         self.assertTrue(subrequest.executed)
         self.assertFalse(main_request.executed)
+
+    @create_and_login_user(role_name="Moderator", pass_user=True)
+    @mock.patch("db.models.Record.create_synthetic_records")
+    def test_accept_calls_create_synthetic_records(self, csr_mock, user):
+        csr_mock.return_value = list()
+        company = create_company()
+        rtype = create_rtype(ftype=create_ftype(name="ics"))
+
+        request = DBRequest(
+            model="Record", user=user, action="create", 
+            data=json.dumps({
+                "company_id": company.id, "rtype_id": rtype.id,
+                "value": 900, "timerange": 6, "timestamp": "2016-12-31"
+            })
+        )
+        db.session.add(request)
+        db.session.commit()
+
+        response = self.client.post(
+            url_for("dbrequest.action_view"), 
+            data=dict(action="accept", rowid=request.id)
+        )
+
+        self.assertTrue(csr_mock.called)
+        
+        record = db.session.query(models.Record).one()
+        self.assertEqual(csr_mock.call_args[0], (db.session, [record]))
+
+
+    @create_and_login_user(role_name="Moderator", pass_user=True)
+    @mock.patch("db.models.Record.create_synthetic_records")
+    def test_accept_does_not_call_crs_for_non_records(self, csr_mock, user):
+        request = DBRequest(
+            model="Student", user=user, action="create", 
+            data=json.dumps({"name": "Python", "age": 17})
+        )
+        db.session.add(request)
+        db.session.commit()
+
+        response = self.client.post(
+            url_for("dbrequest.action_view"), 
+            data=dict(action="accept", rowid=request.id)
+        )
+
+        self.assertFalse(csr_mock.called)

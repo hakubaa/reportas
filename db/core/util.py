@@ -8,7 +8,17 @@ def get_or_create(session, model, defaults=None, **kwargs):
         return instance, False
     else:
         return create(session, model, defaults, **kwargs), True
-        
+
+
+def update_or_create(session, model, defaults=None, **kwargs):
+    instance = session.query(model).filter_by(**kwargs).first()
+    if instance:
+        for key, value in defaults.items():
+            setattr(instance, key, value)
+        return instance
+    else:
+        return create(session, model, defaults, **kwargs)      
+
 
 def create_instance(model, **kwargs):
     '''Create instace of the model.'''
