@@ -33,7 +33,7 @@ def represent_records_as_matrix(records, fiscal_year=None):
 
 class Formula:
 
-    TIMERANGES = [
+    TIMERANGES_POT = [ # pot - period of time
         # 3-month length timeranges
         TimeRange(1, 3),
         TimeRange(4, 6),
@@ -46,6 +46,14 @@ class Formula:
         TimeRange(1, 9),
         # 12-month length timeranges
         TimeRange(1, 12)
+    ]
+
+    TIMERANGES_PIT = [ #pit - point in time
+        # the end month of quarter
+        TimeRange(3, 3),
+        TimeRange(6, 6),
+        TimeRange(9, 9),
+        TimeRange(12, 12)
     ]
     
     TIMERANGE_FORMULAS_SPEC = [
@@ -183,9 +191,25 @@ class Formula:
         except KeyError:
             return False
 
+    @classmethod
+    def create_pot_formulas(cls, db_formulas, rtypes=None):
+        return create_formulas_for_csr(
+            db_formulas,
+            timeranges=cls.TIMERANGES_POT,
+            timerange_formulas=cls.TIMERANGE_FORMULAS_SPEC,
+            rtypes=rtypes
+        )
+
+    @classmethod
+    def create_pit_formulas(cls, db_formulas):
+        return create_formulas_for_csr(
+            db_formulas,
+            timeranges=cls.TIMERANGES_PIT
+        )
+
 
 def create_formulas_for_csr(
-    base_formulas, rtypes=None, timeranges=None, timerange_formulas=None
+    base_formulas, timeranges=None, timerange_formulas=None, rtypes=None
 ):
     if not isinstance(base_formulas, collections.Iterable):
         base_formulas = [base_formulas]
@@ -193,7 +217,7 @@ def create_formulas_for_csr(
     formulas.extend(create_db_formulas_transformations(formulas))
     formulas = convert_db_formulas(formulas)
     formulas = extend_formulas_with_timerange(formulas, timeranges)
-    if rtypes:
+    if timerange_formulas and rtypes:
         formulas.extend(create_timerange_formulas(rtypes, timerange_formulas))
     formulas = remove_duplicated_formulas(formulas)
     return formulas

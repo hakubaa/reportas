@@ -8,7 +8,7 @@ from sqlalchemy import (
     Column, Integer, String, Boolean, Float,
     UniqueConstraint, CheckConstraint, Date
 )
-from sqlalchemy import func, bindparam, cast
+from sqlalchemy import func, bindparam, cast, inspect
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.dialects.postgresql import INTERVAL 
@@ -164,10 +164,17 @@ class FinancialStatementType(VersionedModel):
         return "FinancialStatementType({!r})".format(self.name)
 
     def __str__(self):
-        return self.name
+        try:
+            default_repr = next(filter(lambda item: item.default, self.reprs))
+        except StopIteration:
+            if len(self.reprs) > 0:
+                return self.reprs[0].value
+            else:
+                return None
+        return default_repr.value
 
     @staticmethod
-    def insert_defaults(    session):
+    def insert_defaults(session):
         for ftype_spec in FinancialStatementType.DEFAULT_FTYPES:
             ftype = FinancialStatementType(name=ftype_spec["name"])
             for ftype_repr_spec in ftype_spec["reprs"]:
@@ -176,6 +183,20 @@ class FinancialStatementType(VersionedModel):
                 )
             session.add(ftype)
 
+    def get_repr(self, lang=None):
+        session = inspect(self).session
+        ftype_repr = session.query(FinancialStatementTypeRepr).filter(
+            func.lower(FinancialStatementTypeRepr.lang) == func.lower(lang) 
+        ).first()
+        return ftype_repr
+
+    def get_default_repr(self):
+        session = inspect(self).session
+        ftype_repr = session.query(FinancialStatementTypeRepr).filter_by(
+            ftype_id=self.id, default=True
+        ).first()
+        return ftype_repr
+                
 
 class FinancialStatementTypeRepr(VersionedModel):
     id = Column(Integer, primary_key=True)
@@ -203,8 +224,7 @@ class FinancialStatementTypeRepr(VersionedModel):
 class RecordType(VersionedModel):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-
-    # statement = Column(String, nullable=False)
+    timeframe = Column(String, nullable=False, default="pit") 
 
     ftype_id = Column(
         Integer, ForeignKey("financialstatementtype.id"), nullable=False
@@ -213,9 +233,10 @@ class RecordType(VersionedModel):
         "FinancialStatementType",backref=backref("rtypes", lazy="select")
     )
 
-    # __table_args__ = (
-    #     CheckConstraint("statement in ('ics', 'bls', 'cfs')"),  
-    # )
+    __table_args__ = (
+        # pit - point-in-time; pot - period-of-time
+        CheckConstraint("timeframe in ('pit', 'pot')"),  
+    )
 
     def __hash__(self):
         return hash(self.name)
@@ -303,6 +324,9 @@ class Record(VersionedModel):
 
     @hybrid_property
     def timestamp_start(self):
+        if self.timerange == 0:
+            return self.timestamp
+
         year = self.timestamp.year
         month = self.timestamp.month - self.timerange + 1
         if month < 1:
@@ -330,14 +354,29 @@ class Record(VersionedModel):
     def project_onto_fiscal_year(self, fiscal_year = None):
         if not fiscal_year:
             fiscal_year = self.determine_fiscal_year()
+
+        if self.rtype.timeframe == "pit":
+            return self._project_pit_onto_fiscal_year(fiscal_year)
+        else:
+            return self._project_pot_onto_fiscal_year(fiscal_year)
+
+    def _project_pit_onto_fiscal_year(self, fiscal_year):
+        if self.timestamp.month >= fiscal_year.start.month:
+            projection = self.timestamp.month - fiscal_year.start.month + 1
+        else:
+            projection = 12 - fiscal_year.start.month + self.timestamp.month + 1
+        return utils.TimeRange(start=projection, end=projection)
+
+    def _project_pot_onto_fiscal_year(self, fiscal_year):
         if self.timestamp_start.month >= fiscal_year.start.month:
             pstart = self.timestamp_start.month - fiscal_year.start.month + 1
         else:
             pstart = 12 - fiscal_year.start.month + self.timestamp_start.month + 1
         pend = pstart + self.timerange - 1
-        return utils.TimeRange(start=pstart, end=pend)
+        return utils.TimeRange(start=pstart, end=pend)        
 
     def get_formulas(self):
+        '''Return all formulas invovling the record.'''
         return [ item.formula for item in self.rtype.revformulas ]
 
     @staticmethod
@@ -382,40 +421,37 @@ class Record(VersionedModel):
         db_formulas = utils.concatenate_lists(
             record.get_formulas() for record in base_records
         )
-
         data = utils.represent_records_as_matrix(
             Record.get_records_for_company_within_fiscal_year(
                 session, company, fiscal_year
             )
         )
 
-        formulas = utils.create_inverted_mapping(
-            utils.create_formulas_for_csr(
-                db_formulas, rtypes = session.query(RecordType).all(),
-                timeranges = utils.Formula.TIMERANGES,
-                timerange_formulas = utils.Formula.TIMERANGE_FORMULAS_SPEC
-            )
-        )
-        
-        records = list()
-        for record in base_records:
-            record_timerange = record.project_onto_fiscal_year(fiscal_year)
-            new_records = utils.create_synthetic_records(
-                base_record = (record.rtype, record_timerange),
-                data = data, formulas = formulas
-            )
-            records.extend(
-                Record(
-                    company = company, rtype = record["rtype"],
-                    value = record["value"], 
-                    timerange = record["timerange"].end \
-                                - record["timerange"].start + 1,
-                    timestamp = utils.project_timerange_onto_fiscal_year(
-                        record["timerange"], fiscal_year
-                    ).end
+        formulas = {
+            "pot": utils.create_inverted_mapping(
+                utils.Formula.create_pot_formulas(
+                    db_formulas, rtypes = session.query(RecordType).all()
                 )
-                for record in new_records
+            ),
+            "pit": utils.create_inverted_mapping(
+                utils.Formula.create_pit_formulas(db_formulas)
             )
+        }
+
+        records = utils.concatenate_lists(
+            Record._create_records_from_json(
+                utils.create_synthetic_records(
+                    base_record = (
+                        record.rtype, 
+                        record.project_onto_fiscal_year(fiscal_year)
+                    ),
+                    data = data, formulas = formulas[record.rtype.timeframe]
+                ),
+                company, fiscal_year
+            )
+            for record in base_records
+        )
+        session.add_all(records)
         return records
 
     @staticmethod
@@ -434,7 +470,24 @@ class Record(VersionedModel):
         ))
         return records
         
-        
+    @staticmethod
+    def _create_records_from_json(data, company, fiscal_year):
+        return [
+            Record(
+                company = company, rtype = item["rtype"],
+                value = item["value"], 
+                timerange = (
+                    0 if item["rtype"].timeframe == "pit" 
+                    else item["timerange"].end - item["timerange"].start + 1
+                ),
+                timestamp = utils.project_timerange_onto_fiscal_year(
+                    item["timerange"], fiscal_year
+                ).end
+            )
+            for item in data
+        ]
+
+
 class RecordFormula(VersionedModel):
 
     id = Column(Integer, primary_key=True)

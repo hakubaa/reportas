@@ -1,0 +1,914 @@
+Help on module flask_admin.form.fields in flask_admin.form:
+
+NNAAMMEE
+    flask_admin.form.fields
+
+CCLLAASSSSEESS
+    wtforms.fields.core.DateTimeField(wtforms.fields.core.Field)
+        DateTimeField
+    wtforms.fields.core.Field(builtins.object)
+        TimeField
+    wtforms.fields.core.SelectField(wtforms.fields.core.SelectFieldBase)
+        Select2Field
+    wtforms.fields.core.StringField(wtforms.fields.core.Field)
+        Select2TagsField
+    wtforms.fields.simple.TextAreaField(wtforms.fields.core.StringField)
+        JSONField
+    
+    class DDaatteeTTiimmeeFFiieelldd(wtforms.fields.core.DateTimeField)
+     |  Allows modifying the datetime format of a DateTimeField using form_args.
+     |  
+     |  Method resolution order:
+     |      DateTimeField
+     |      wtforms.fields.core.DateTimeField
+     |      wtforms.fields.core.Field
+     |      builtins.object
+     |  
+     |  Methods defined here:
+     |  
+     |  ____iinniitt____(self, label=None, validators=None, format=None, **kwargs)
+     |      Constructor
+     |      
+     |      :param label:
+     |          Label
+     |      :param validators:
+     |          Field validators
+     |      :param format:
+     |          Format for text to date conversion. Defaults to '%Y-%m-%d %H:%M:%S'
+     |      :param kwargs:
+     |          Any additional parameters
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes defined here:
+     |  
+     |  wwiiddggeett = <flask_admin.form.widgets.DateTimePickerWidget object>
+     |      Datetime picker widget.
+     |      
+     |      You must include bootstrap-datepicker.js and form-x.x.x.js for styling to work.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from wtforms.fields.core.DateTimeField:
+     |  
+     |  pprroocceessss__ffoorrmmddaattaa(self, valuelist)
+     |      Process data received over the wire from a form.
+     |      
+     |      This will be called during form construction with data supplied
+     |      through the `formdata` argument.
+     |      
+     |      :param valuelist: A list of strings to process.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ccaallll____(self, **kwargs)
+     |      Render this field as HTML, using keyword args as additional attributes.
+     |      
+     |      This delegates rendering to
+     |      :meth:`meta.render_field <wtforms.meta.DefaultMeta.render_field>`
+     |      whose default behavior is to call the field's widget, passing any
+     |      keyword arguments from this call along to the widget.
+     |      
+     |      In all of the WTForms HTML widgets, keyword arguments are turned to
+     |      HTML attributes, though in theory a widget is free to do anything it
+     |      wants with the supplied keyword arguments, and widgets don't have to
+     |      even do anything related to HTML.
+     |  
+     |  ____hhttmmll____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the :meth:`__call__` method.
+     |  
+     |  ____ssttrr____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ____uunniiccooddee____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ggeetttteexxtt(self, string)
+     |      Get a translation for the given message.
+     |      
+     |      This proxies for the internal translations object.
+     |      
+     |      :param string: A unicode string to be translated.
+     |      :return: A unicode string which is the translated output.
+     |  
+     |  nnggeetttteexxtt(self, singular, plural, n)
+     |      Get a translation for a message which can be pluralized.
+     |      
+     |      :param str singular: The singular form of the message.
+     |      :param str plural: The plural form of the message.
+     |      :param int n: The number of elements this message is referring to
+     |  
+     |  ppooppuullaattee__oobbjj(self, obj, name)
+     |      Populates `obj.<name>` with the field's data.
+     |      
+     |      :note: This is a destructive operation. If `obj.<name>` already exists,
+     |             it will be overridden. Use with caution.
+     |  
+     |  ppoosstt__vvaalliiddaattee(self, form, validation_stopped)
+     |      Override if you need to run any field-level validation tasks after
+     |      normal validation. This shouldn't be needed in most cases.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param validation_stopped:
+     |          `True` if any validator raised StopValidation.
+     |  
+     |  pprree__vvaalliiddaattee(self, form)
+     |      Override if you need field-level validation. Runs before any other
+     |      validators.
+     |      
+     |      :param form: The form the field belongs to.
+     |  
+     |  pprroocceessss(self, formdata, data=<unset value>)
+     |      Process incoming data, calling process_data, process_formdata as needed,
+     |      and run filters.
+     |      
+     |      If `data` is not provided, process_data will be called on the field's
+     |      default.
+     |      
+     |      Field subclasses usually won't override this, instead overriding the
+     |      process_formdata and process_data methods. Only override this for
+     |      special advanced processing, such as when a field encapsulates many
+     |      inputs.
+     |  
+     |  pprroocceessss__ddaattaa(self, value)
+     |      Process the Python data applied to this field and store the result.
+     |      
+     |      This will be called during form construction by the form's `kwargs` or
+     |      `obj` argument.
+     |      
+     |      :param value: The python object containing the value to process.
+     |  
+     |  vvaalliiddaattee(self, form, extra_validators=())
+     |      Validates the field and returns True or False. `self.errors` will
+     |      contain any errors raised during validation. This is usually only
+     |      called by `Form.validate`.
+     |      
+     |      Subfields shouldn't override this, but rather override either
+     |      `pre_validate`, `post_validate` or both, depending on needs.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param extra_validators: A sequence of extra validators to run.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Static methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____nneeww____(cls, *args, **kwargs)
+     |      Create and return a new object.  See help(type) for accurate signature.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ddiicctt____
+     |      dictionary for instance variables (if defined)
+     |  
+     |  ____wweeaakkrreeff____
+     |      list of weak references to the object (if defined)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from wtforms.fields.core.Field:
+     |  
+     |  ddoo__nnoott__ccaallll__iinn__tteemmppllaatteess = True
+     |  
+     |  eerrrroorrss = ()
+     |  
+     |  pprroocceessss__eerrrroorrss = ()
+     |  
+     |  rraaww__ddaattaa = None
+     |  
+     |  vvaalliiddaattoorrss = ()
+    
+    class JJSSOONNFFiieelldd(wtforms.fields.simple.TextAreaField)
+     |  This field represents an HTML ``<textarea>`` and can be used to take
+     |  multi-line input.
+     |  
+     |  Method resolution order:
+     |      JSONField
+     |      wtforms.fields.simple.TextAreaField
+     |      wtforms.fields.core.StringField
+     |      wtforms.fields.core.Field
+     |      builtins.object
+     |  
+     |  Methods defined here:
+     |  
+     |  pprroocceessss__ffoorrmmddaattaa(self, valuelist)
+     |      Process data received over the wire from a form.
+     |      
+     |      This will be called during form construction with data supplied
+     |      through the `formdata` argument.
+     |      
+     |      :param valuelist: A list of strings to process.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from wtforms.fields.simple.TextAreaField:
+     |  
+     |  wwiiddggeett = <wtforms.widgets.core.TextArea object>
+     |      Renders a multi-line text area.
+     |      
+     |      `rows` and `cols` ought to be passed as keyword args when rendering.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ccaallll____(self, **kwargs)
+     |      Render this field as HTML, using keyword args as additional attributes.
+     |      
+     |      This delegates rendering to
+     |      :meth:`meta.render_field <wtforms.meta.DefaultMeta.render_field>`
+     |      whose default behavior is to call the field's widget, passing any
+     |      keyword arguments from this call along to the widget.
+     |      
+     |      In all of the WTForms HTML widgets, keyword arguments are turned to
+     |      HTML attributes, though in theory a widget is free to do anything it
+     |      wants with the supplied keyword arguments, and widgets don't have to
+     |      even do anything related to HTML.
+     |  
+     |  ____hhttmmll____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the :meth:`__call__` method.
+     |  
+     |  ____iinniitt____(self, label=None, validators=None, filters=(), description='', id=None, default=None, widget=None, render_kw=None, _form=None, _name=None, _prefix='', _translations=None, _meta=None)
+     |      Construct a new field.
+     |      
+     |      :param label:
+     |          The label of the field.
+     |      :param validators:
+     |          A sequence of validators to call when `validate` is called.
+     |      :param filters:
+     |          A sequence of filters which are run on input data by `process`.
+     |      :param description:
+     |          A description for the field, typically used for help text.
+     |      :param id:
+     |          An id to use for the field. A reasonable default is set by the form,
+     |          and you shouldn't need to set this manually.
+     |      :param default:
+     |          The default value to assign to the field, if no form or object
+     |          input is provided. May be a callable.
+     |      :param widget:
+     |          If provided, overrides the widget used to render the field.
+     |      :param dict render_kw:
+     |          If provided, a dictionary which provides default keywords that
+     |          will be given to the widget at render time.
+     |      :param _form:
+     |          The form holding this field. It is passed by the form itself during
+     |          construction. You should never pass this value yourself.
+     |      :param _name:
+     |          The name of this field, passed by the enclosing form during its
+     |          construction. You should never pass this value yourself.
+     |      :param _prefix:
+     |          The prefix to prepend to the form name of this field, passed by
+     |          the enclosing form during construction.
+     |      :param _translations:
+     |          A translations object providing message translations. Usually
+     |          passed by the enclosing form during construction. See
+     |          :doc:`I18n docs <i18n>` for information on message translations.
+     |      :param _meta:
+     |          If provided, this is the 'meta' instance from the form. You usually
+     |          don't pass this yourself.
+     |      
+     |      If `_form` and `_name` isn't provided, an :class:`UnboundField` will be
+     |      returned instead. Call its :func:`bind` method with a form instance and
+     |      a name to construct the field.
+     |  
+     |  ____ssttrr____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ____uunniiccooddee____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ggeetttteexxtt(self, string)
+     |      Get a translation for the given message.
+     |      
+     |      This proxies for the internal translations object.
+     |      
+     |      :param string: A unicode string to be translated.
+     |      :return: A unicode string which is the translated output.
+     |  
+     |  nnggeetttteexxtt(self, singular, plural, n)
+     |      Get a translation for a message which can be pluralized.
+     |      
+     |      :param str singular: The singular form of the message.
+     |      :param str plural: The plural form of the message.
+     |      :param int n: The number of elements this message is referring to
+     |  
+     |  ppooppuullaattee__oobbjj(self, obj, name)
+     |      Populates `obj.<name>` with the field's data.
+     |      
+     |      :note: This is a destructive operation. If `obj.<name>` already exists,
+     |             it will be overridden. Use with caution.
+     |  
+     |  ppoosstt__vvaalliiddaattee(self, form, validation_stopped)
+     |      Override if you need to run any field-level validation tasks after
+     |      normal validation. This shouldn't be needed in most cases.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param validation_stopped:
+     |          `True` if any validator raised StopValidation.
+     |  
+     |  pprree__vvaalliiddaattee(self, form)
+     |      Override if you need field-level validation. Runs before any other
+     |      validators.
+     |      
+     |      :param form: The form the field belongs to.
+     |  
+     |  pprroocceessss(self, formdata, data=<unset value>)
+     |      Process incoming data, calling process_data, process_formdata as needed,
+     |      and run filters.
+     |      
+     |      If `data` is not provided, process_data will be called on the field's
+     |      default.
+     |      
+     |      Field subclasses usually won't override this, instead overriding the
+     |      process_formdata and process_data methods. Only override this for
+     |      special advanced processing, such as when a field encapsulates many
+     |      inputs.
+     |  
+     |  pprroocceessss__ddaattaa(self, value)
+     |      Process the Python data applied to this field and store the result.
+     |      
+     |      This will be called during form construction by the form's `kwargs` or
+     |      `obj` argument.
+     |      
+     |      :param value: The python object containing the value to process.
+     |  
+     |  vvaalliiddaattee(self, form, extra_validators=())
+     |      Validates the field and returns True or False. `self.errors` will
+     |      contain any errors raised during validation. This is usually only
+     |      called by `Form.validate`.
+     |      
+     |      Subfields shouldn't override this, but rather override either
+     |      `pre_validate`, `post_validate` or both, depending on needs.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param extra_validators: A sequence of extra validators to run.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Static methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____nneeww____(cls, *args, **kwargs)
+     |      Create and return a new object.  See help(type) for accurate signature.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ddiicctt____
+     |      dictionary for instance variables (if defined)
+     |  
+     |  ____wweeaakkrreeff____
+     |      list of weak references to the object (if defined)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from wtforms.fields.core.Field:
+     |  
+     |  ddoo__nnoott__ccaallll__iinn__tteemmppllaatteess = True
+     |  
+     |  eerrrroorrss = ()
+     |  
+     |  pprroocceessss__eerrrroorrss = ()
+     |  
+     |  rraaww__ddaattaa = None
+     |  
+     |  vvaalliiddaattoorrss = ()
+    
+    class SSeelleecctt22FFiieelldd(wtforms.fields.core.SelectField)
+     |  `Select2 <https://github.com/ivaynberg/select2>`_ styled select widget.
+     |  
+     |  You must include select2.js, form-x.x.x.js and select2 stylesheet for it to
+     |  work.
+     |  
+     |  Method resolution order:
+     |      Select2Field
+     |      wtforms.fields.core.SelectField
+     |      wtforms.fields.core.SelectFieldBase
+     |      wtforms.fields.core.Field
+     |      builtins.object
+     |  
+     |  Methods defined here:
+     |  
+     |  ____iinniitt____(self, label=None, validators=None, coerce=<class 'str'>, choices=None, allow_blank=False, blank_text=None, **kwargs)
+     |      Construct a new field.
+     |      
+     |      :param label:
+     |          The label of the field.
+     |      :param validators:
+     |          A sequence of validators to call when `validate` is called.
+     |      :param filters:
+     |          A sequence of filters which are run on input data by `process`.
+     |      :param description:
+     |          A description for the field, typically used for help text.
+     |      :param id:
+     |          An id to use for the field. A reasonable default is set by the form,
+     |          and you shouldn't need to set this manually.
+     |      :param default:
+     |          The default value to assign to the field, if no form or object
+     |          input is provided. May be a callable.
+     |      :param widget:
+     |          If provided, overrides the widget used to render the field.
+     |      :param dict render_kw:
+     |          If provided, a dictionary which provides default keywords that
+     |          will be given to the widget at render time.
+     |      :param _form:
+     |          The form holding this field. It is passed by the form itself during
+     |          construction. You should never pass this value yourself.
+     |      :param _name:
+     |          The name of this field, passed by the enclosing form during its
+     |          construction. You should never pass this value yourself.
+     |      :param _prefix:
+     |          The prefix to prepend to the form name of this field, passed by
+     |          the enclosing form during construction.
+     |      :param _translations:
+     |          A translations object providing message translations. Usually
+     |          passed by the enclosing form during construction. See
+     |          :doc:`I18n docs <i18n>` for information on message translations.
+     |      :param _meta:
+     |          If provided, this is the 'meta' instance from the form. You usually
+     |          don't pass this yourself.
+     |      
+     |      If `_form` and `_name` isn't provided, an :class:`UnboundField` will be
+     |      returned instead. Call its :func:`bind` method with a form instance and
+     |      a name to construct the field.
+     |  
+     |  iitteerr__cchhooiicceess(self)
+     |      Provides data for choice widget rendering. Must return a sequence or
+     |      iterable of (value, label, selected) tuples.
+     |  
+     |  pprree__vvaalliiddaattee(self, form)
+     |      Override if you need field-level validation. Runs before any other
+     |      validators.
+     |      
+     |      :param form: The form the field belongs to.
+     |  
+     |  pprroocceessss__ddaattaa(self, value)
+     |      Process the Python data applied to this field and store the result.
+     |      
+     |      This will be called during form construction by the form's `kwargs` or
+     |      `obj` argument.
+     |      
+     |      :param value: The python object containing the value to process.
+     |  
+     |  pprroocceessss__ffoorrmmddaattaa(self, valuelist)
+     |      Process data received over the wire from a form.
+     |      
+     |      This will be called during form construction with data supplied
+     |      through the `formdata` argument.
+     |      
+     |      :param valuelist: A list of strings to process.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes defined here:
+     |  
+     |  wwiiddggeett = <flask_admin.form.widgets.Select2Widget object>
+     |      `Select2 <https://github.com/ivaynberg/select2>`_ styled select widget.
+     |      
+     |      You must include select2.js, form-x.x.x.js and select2 stylesheet for it to
+     |      work.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from wtforms.fields.core.SelectFieldBase:
+     |  
+     |  ____iitteerr____(self)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from wtforms.fields.core.SelectFieldBase:
+     |  
+     |  ooppttiioonn__wwiiddggeett = <wtforms.widgets.core.Option object>
+     |      Renders the individual option from a select field.
+     |      
+     |      This is just a convenience for various custom rendering situations, and an
+     |      option by itself does not constitute an entire field.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ccaallll____(self, **kwargs)
+     |      Render this field as HTML, using keyword args as additional attributes.
+     |      
+     |      This delegates rendering to
+     |      :meth:`meta.render_field <wtforms.meta.DefaultMeta.render_field>`
+     |      whose default behavior is to call the field's widget, passing any
+     |      keyword arguments from this call along to the widget.
+     |      
+     |      In all of the WTForms HTML widgets, keyword arguments are turned to
+     |      HTML attributes, though in theory a widget is free to do anything it
+     |      wants with the supplied keyword arguments, and widgets don't have to
+     |      even do anything related to HTML.
+     |  
+     |  ____hhttmmll____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the :meth:`__call__` method.
+     |  
+     |  ____ssttrr____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ____uunniiccooddee____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ggeetttteexxtt(self, string)
+     |      Get a translation for the given message.
+     |      
+     |      This proxies for the internal translations object.
+     |      
+     |      :param string: A unicode string to be translated.
+     |      :return: A unicode string which is the translated output.
+     |  
+     |  nnggeetttteexxtt(self, singular, plural, n)
+     |      Get a translation for a message which can be pluralized.
+     |      
+     |      :param str singular: The singular form of the message.
+     |      :param str plural: The plural form of the message.
+     |      :param int n: The number of elements this message is referring to
+     |  
+     |  ppooppuullaattee__oobbjj(self, obj, name)
+     |      Populates `obj.<name>` with the field's data.
+     |      
+     |      :note: This is a destructive operation. If `obj.<name>` already exists,
+     |             it will be overridden. Use with caution.
+     |  
+     |  ppoosstt__vvaalliiddaattee(self, form, validation_stopped)
+     |      Override if you need to run any field-level validation tasks after
+     |      normal validation. This shouldn't be needed in most cases.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param validation_stopped:
+     |          `True` if any validator raised StopValidation.
+     |  
+     |  pprroocceessss(self, formdata, data=<unset value>)
+     |      Process incoming data, calling process_data, process_formdata as needed,
+     |      and run filters.
+     |      
+     |      If `data` is not provided, process_data will be called on the field's
+     |      default.
+     |      
+     |      Field subclasses usually won't override this, instead overriding the
+     |      process_formdata and process_data methods. Only override this for
+     |      special advanced processing, such as when a field encapsulates many
+     |      inputs.
+     |  
+     |  vvaalliiddaattee(self, form, extra_validators=())
+     |      Validates the field and returns True or False. `self.errors` will
+     |      contain any errors raised during validation. This is usually only
+     |      called by `Form.validate`.
+     |      
+     |      Subfields shouldn't override this, but rather override either
+     |      `pre_validate`, `post_validate` or both, depending on needs.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param extra_validators: A sequence of extra validators to run.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Static methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____nneeww____(cls, *args, **kwargs)
+     |      Create and return a new object.  See help(type) for accurate signature.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ddiicctt____
+     |      dictionary for instance variables (if defined)
+     |  
+     |  ____wweeaakkrreeff____
+     |      list of weak references to the object (if defined)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from wtforms.fields.core.Field:
+     |  
+     |  ddoo__nnoott__ccaallll__iinn__tteemmppllaatteess = True
+     |  
+     |  eerrrroorrss = ()
+     |  
+     |  pprroocceessss__eerrrroorrss = ()
+     |  
+     |  rraaww__ddaattaa = None
+     |  
+     |  vvaalliiddaattoorrss = ()
+    
+    class SSeelleecctt22TTaaggssFFiieelldd(wtforms.fields.core.StringField)
+     |  `Select2 <http://ivaynberg.github.com/select2/#tags>`_ styled text field.
+     |  You must include select2.js, form-x.x.x.js and select2 stylesheet for it to work.
+     |  
+     |  Method resolution order:
+     |      Select2TagsField
+     |      wtforms.fields.core.StringField
+     |      wtforms.fields.core.Field
+     |      builtins.object
+     |  
+     |  Methods defined here:
+     |  
+     |  ____iinniitt____(self, label=None, validators=None, save_as_list=False, coerce=<class 'str'>, **kwargs)
+     |      Initialization
+     |      
+     |      :param save_as_list:
+     |          If `True` then populate ``obj`` using list else string
+     |  
+     |  pprroocceessss__ffoorrmmddaattaa(self, valuelist)
+     |      Process data received over the wire from a form.
+     |      
+     |      This will be called during form construction with data supplied
+     |      through the `formdata` argument.
+     |      
+     |      :param valuelist: A list of strings to process.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes defined here:
+     |  
+     |  wwiiddggeett = <flask_admin.form.widgets.Select2TagsWidget object>
+     |      `Select2 <http://ivaynberg.github.com/select2/#tags>`_ styled text widget.
+     |      You must include select2.js, form-x.x.x.js and select2 stylesheet for it to work.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ccaallll____(self, **kwargs)
+     |      Render this field as HTML, using keyword args as additional attributes.
+     |      
+     |      This delegates rendering to
+     |      :meth:`meta.render_field <wtforms.meta.DefaultMeta.render_field>`
+     |      whose default behavior is to call the field's widget, passing any
+     |      keyword arguments from this call along to the widget.
+     |      
+     |      In all of the WTForms HTML widgets, keyword arguments are turned to
+     |      HTML attributes, though in theory a widget is free to do anything it
+     |      wants with the supplied keyword arguments, and widgets don't have to
+     |      even do anything related to HTML.
+     |  
+     |  ____hhttmmll____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the :meth:`__call__` method.
+     |  
+     |  ____ssttrr____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ____uunniiccooddee____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ggeetttteexxtt(self, string)
+     |      Get a translation for the given message.
+     |      
+     |      This proxies for the internal translations object.
+     |      
+     |      :param string: A unicode string to be translated.
+     |      :return: A unicode string which is the translated output.
+     |  
+     |  nnggeetttteexxtt(self, singular, plural, n)
+     |      Get a translation for a message which can be pluralized.
+     |      
+     |      :param str singular: The singular form of the message.
+     |      :param str plural: The plural form of the message.
+     |      :param int n: The number of elements this message is referring to
+     |  
+     |  ppooppuullaattee__oobbjj(self, obj, name)
+     |      Populates `obj.<name>` with the field's data.
+     |      
+     |      :note: This is a destructive operation. If `obj.<name>` already exists,
+     |             it will be overridden. Use with caution.
+     |  
+     |  ppoosstt__vvaalliiddaattee(self, form, validation_stopped)
+     |      Override if you need to run any field-level validation tasks after
+     |      normal validation. This shouldn't be needed in most cases.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param validation_stopped:
+     |          `True` if any validator raised StopValidation.
+     |  
+     |  pprree__vvaalliiddaattee(self, form)
+     |      Override if you need field-level validation. Runs before any other
+     |      validators.
+     |      
+     |      :param form: The form the field belongs to.
+     |  
+     |  pprroocceessss(self, formdata, data=<unset value>)
+     |      Process incoming data, calling process_data, process_formdata as needed,
+     |      and run filters.
+     |      
+     |      If `data` is not provided, process_data will be called on the field's
+     |      default.
+     |      
+     |      Field subclasses usually won't override this, instead overriding the
+     |      process_formdata and process_data methods. Only override this for
+     |      special advanced processing, such as when a field encapsulates many
+     |      inputs.
+     |  
+     |  pprroocceessss__ddaattaa(self, value)
+     |      Process the Python data applied to this field and store the result.
+     |      
+     |      This will be called during form construction by the form's `kwargs` or
+     |      `obj` argument.
+     |      
+     |      :param value: The python object containing the value to process.
+     |  
+     |  vvaalliiddaattee(self, form, extra_validators=())
+     |      Validates the field and returns True or False. `self.errors` will
+     |      contain any errors raised during validation. This is usually only
+     |      called by `Form.validate`.
+     |      
+     |      Subfields shouldn't override this, but rather override either
+     |      `pre_validate`, `post_validate` or both, depending on needs.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param extra_validators: A sequence of extra validators to run.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Static methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____nneeww____(cls, *args, **kwargs)
+     |      Create and return a new object.  See help(type) for accurate signature.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ddiicctt____
+     |      dictionary for instance variables (if defined)
+     |  
+     |  ____wweeaakkrreeff____
+     |      list of weak references to the object (if defined)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from wtforms.fields.core.Field:
+     |  
+     |  ddoo__nnoott__ccaallll__iinn__tteemmppllaatteess = True
+     |  
+     |  eerrrroorrss = ()
+     |  
+     |  pprroocceessss__eerrrroorrss = ()
+     |  
+     |  rraaww__ddaattaa = None
+     |  
+     |  vvaalliiddaattoorrss = ()
+    
+    class TTiimmeeFFiieelldd(wtforms.fields.core.Field)
+     |  A text field which stores a `datetime.time` object.
+     |  Accepts time string in multiple formats: 20:10, 20:10:00, 10:00 am, 9:30pm, etc.
+     |  
+     |  Method resolution order:
+     |      TimeField
+     |      wtforms.fields.core.Field
+     |      builtins.object
+     |  
+     |  Methods defined here:
+     |  
+     |  ____iinniitt____(self, label=None, validators=None, formats=None, default_format=None, widget_format=None, **kwargs)
+     |      Constructor
+     |      
+     |      :param label:
+     |          Label
+     |      :param validators:
+     |          Field validators
+     |      :param formats:
+     |          Supported time formats, as a enumerable.
+     |      :param default_format:
+     |          Default time format. Defaults to '%H:%M:%S'
+     |      :param kwargs:
+     |          Any additional parameters
+     |  
+     |  pprroocceessss__ffoorrmmddaattaa(self, valuelist)
+     |      Process data received over the wire from a form.
+     |      
+     |      This will be called during form construction with data supplied
+     |      through the `formdata` argument.
+     |      
+     |      :param valuelist: A list of strings to process.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes defined here:
+     |  
+     |  wwiiddggeett = <flask_admin.form.widgets.TimePickerWidget object>
+     |      Date picker widget.
+     |      
+     |      You must include bootstrap-datepicker.js and form-x.x.x.js for styling to work.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ccaallll____(self, **kwargs)
+     |      Render this field as HTML, using keyword args as additional attributes.
+     |      
+     |      This delegates rendering to
+     |      :meth:`meta.render_field <wtforms.meta.DefaultMeta.render_field>`
+     |      whose default behavior is to call the field's widget, passing any
+     |      keyword arguments from this call along to the widget.
+     |      
+     |      In all of the WTForms HTML widgets, keyword arguments are turned to
+     |      HTML attributes, though in theory a widget is free to do anything it
+     |      wants with the supplied keyword arguments, and widgets don't have to
+     |      even do anything related to HTML.
+     |  
+     |  ____hhttmmll____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the :meth:`__call__` method.
+     |  
+     |  ____ssttrr____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ____uunniiccooddee____(self)
+     |      Returns a HTML representation of the field. For more powerful rendering,
+     |      see the `__call__` method.
+     |  
+     |  ggeetttteexxtt(self, string)
+     |      Get a translation for the given message.
+     |      
+     |      This proxies for the internal translations object.
+     |      
+     |      :param string: A unicode string to be translated.
+     |      :return: A unicode string which is the translated output.
+     |  
+     |  nnggeetttteexxtt(self, singular, plural, n)
+     |      Get a translation for a message which can be pluralized.
+     |      
+     |      :param str singular: The singular form of the message.
+     |      :param str plural: The plural form of the message.
+     |      :param int n: The number of elements this message is referring to
+     |  
+     |  ppooppuullaattee__oobbjj(self, obj, name)
+     |      Populates `obj.<name>` with the field's data.
+     |      
+     |      :note: This is a destructive operation. If `obj.<name>` already exists,
+     |             it will be overridden. Use with caution.
+     |  
+     |  ppoosstt__vvaalliiddaattee(self, form, validation_stopped)
+     |      Override if you need to run any field-level validation tasks after
+     |      normal validation. This shouldn't be needed in most cases.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param validation_stopped:
+     |          `True` if any validator raised StopValidation.
+     |  
+     |  pprree__vvaalliiddaattee(self, form)
+     |      Override if you need field-level validation. Runs before any other
+     |      validators.
+     |      
+     |      :param form: The form the field belongs to.
+     |  
+     |  pprroocceessss(self, formdata, data=<unset value>)
+     |      Process incoming data, calling process_data, process_formdata as needed,
+     |      and run filters.
+     |      
+     |      If `data` is not provided, process_data will be called on the field's
+     |      default.
+     |      
+     |      Field subclasses usually won't override this, instead overriding the
+     |      process_formdata and process_data methods. Only override this for
+     |      special advanced processing, such as when a field encapsulates many
+     |      inputs.
+     |  
+     |  pprroocceessss__ddaattaa(self, value)
+     |      Process the Python data applied to this field and store the result.
+     |      
+     |      This will be called during form construction by the form's `kwargs` or
+     |      `obj` argument.
+     |      
+     |      :param value: The python object containing the value to process.
+     |  
+     |  vvaalliiddaattee(self, form, extra_validators=())
+     |      Validates the field and returns True or False. `self.errors` will
+     |      contain any errors raised during validation. This is usually only
+     |      called by `Form.validate`.
+     |      
+     |      Subfields shouldn't override this, but rather override either
+     |      `pre_validate`, `post_validate` or both, depending on needs.
+     |      
+     |      :param form: The form the field belongs to.
+     |      :param extra_validators: A sequence of extra validators to run.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Static methods inherited from wtforms.fields.core.Field:
+     |  
+     |  ____nneeww____(cls, *args, **kwargs)
+     |      Create and return a new object.  See help(type) for accurate signature.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from wtforms.fields.core.Field:
+     |  
+     |  ____ddiicctt____
+     |      dictionary for instance variables (if defined)
+     |  
+     |  ____wweeaakkrreeff____
+     |      list of weak references to the object (if defined)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from wtforms.fields.core.Field:
+     |  
+     |  ddoo__nnoott__ccaallll__iinn__tteemmppllaatteess = True
+     |  
+     |  eerrrroorrss = ()
+     |  
+     |  pprroocceessss__eerrrroorrss = ()
+     |  
+     |  rraaww__ddaattaa = None
+     |  
+     |  vvaalliiddaattoorrss = ()
+
+DDAATTAA
+    ____aallll____ = ['DateTimeField', 'TimeField', 'Select2Field', 'Select2TagsF...
+
+FFIILLEE
+    /media/kuba/Data/Projects/reportas/venv/lib/python3.5/site-packages/flask_admin/form/fields.py
+

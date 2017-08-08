@@ -30,17 +30,24 @@ class FinancialReportDB(FinancialReport):
         self.session = session
             
     def get_bls_spec(self):
-        return get_records_reprs(self.session, "bls")
+        return self._get_records_reprs("bls")
     
     def get_ics_spec(self):
-        return get_records_reprs(self.session, "ics")
+        return self._get_records_reprs("ics")
     
     def get_cfs_spec(self):
-        return get_records_reprs(self.session, "cfs")
+        return self._get_records_reprs("cfs")
         
     def get_companies_spec(self):
         return get_companies_reprs(self.session)
 
+    def _get_records_reprs(self, name):
+        return get_records_reprs(self.session, ftype=self._get_ftype(name))
+
+    def _get_ftype(self, name):
+        ftype = self.session.query(models.FinancialStatementType).\
+                    filter_by(name=name).one()        
+        return ftype
 
 #-------------------------------------------------------------------------------
 # HELPER FUNCTIONS
@@ -71,6 +78,8 @@ def render_pdf_file_miner(form, session):
 
     rtypes = get_record_types(session)
     companies = session.query(models.Company.id, models.Company.name).all()
+
+    import pdb; pdb.set_trace()
 
     return render_template(
         "admin/tools/pdf_file_miner.html", report=report, 

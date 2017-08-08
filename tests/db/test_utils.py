@@ -26,8 +26,8 @@ def create_ftype(name="bls"):
     return fst
 
 
-def create_rtype(name, ftype):
-    total_assets = RecordType(name=name, ftype=ftype)
+def create_rtype(name, ftype, timeframe="pot"):
+    total_assets = RecordType(name=name, ftype=ftype, timeframe=timeframe)
     db.session.add(total_assets)
     db.session.commit()    
     return total_assets
@@ -60,8 +60,9 @@ def create_record(**kwargs):
     return record
 
 
-def create_rtypes():
-    ftype = create_ftype()
+def create_rtypes(ftype=None):
+    if not ftype:
+        ftype = create_ftype()
     total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
     current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
     fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
@@ -153,8 +154,8 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
     def test_represent_records_as_matrix(self):
         company = create_company()
         ftype = create_ftype("bls")
-        rtype1 = create_rtype(name="NET_PROFIT", ftype=ftype)
-        rtype2 = create_rtype(name="REVENUE", ftype=ftype)
+        rtype1 = create_rtype(name="NET_PROFIT", ftype=ftype, timeframe="pot")
+        rtype2 = create_rtype(name="REVENUE", ftype=ftype, timeframe="pot")
         records = self.create_records([
             (company, rtype1, 3, date(2015, 3, 31), 1),
             (company, rtype1, 6, date(2015, 6, 30), 2),

@@ -1,7 +1,7 @@
 ﻿TO_DO:
 - create synthetic records for financial recordfs of nls/cfs and bls
 - Record.project_onto_fiscal_year will decide how to project bls and ics/cfs
-- create separate model for type of financial statement
+- add warnings and errors when uploading data with tools
 
 
 TO DO:

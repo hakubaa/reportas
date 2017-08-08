@@ -3,12 +3,12 @@ from datetime import date
 from flask import flash, url_for
 from flask_admin import base as admin_base
 from flask_admin.contrib import sqla
-from flask_admin.contrib.sqla.filters import FilterInList
+from flask_admin.contrib.sqla.filters import FilterInList, FilterEqual
 from flask_admin.actions import action
 from flask_login import current_user
 from flask_admin.model import typefmt
 from flask_admin.form.upload import FileUploadField
-from wtforms.fields import TextAreaField, StringField
+from wtforms.fields import TextAreaField, StringField, SelectField
 from flask_admin.contrib.sqla.view import func
 
 from flask_admin.model.form import InlineFormAdmin
@@ -215,15 +215,37 @@ class RecordTypeView(DBRequestBasedView):
     can_view_details = False
 
     column_searchable_list = ["name"]
-    column_filters = ("ftype.name",)
-    column_list = ("name", "ftype", "default_repr")
+    column_filters = (
+        "ftype.name",
+        FilterEqual(
+            models.RecordType.timeframe, "Time Frame", 
+            options=(("pit", "Point-in-time"), ("pot", "Period-of-time"))
+        )
+    )
+    column_list = ("name", "timeframe", "ftype", "default_repr")
     column_labels = {
         "ftype": "Financial Statement", 
         "ftype.name": "Financial Statement",
-        "default_repr": "Default Repr."
+        "default_repr": "Default Repr.",
+        "timeframe": "Time Frame"
     }
-    column_formatters=dict(default_repr=get_default_repr)
+    column_formatters = {
+        "default_repr": get_default_repr,
+        "timeframe": lambda v, c, m, n: dict(
+                            pit= "Point-in-time", pot="Period-of-time"
+                        )[m.timeframe]
+    }
+
     form_excluded_columns = ("version", "records", "formulas", "revformulas")
+    form_overrides = dict(timeframe=SelectField)
+    form_args = dict(
+        timeframe=dict(
+            choices=[
+                ("pit", "Point-in-time"),
+                ("pot", "Period-of-time")
+            ]
+        )
+    )
 
     def modify_data(self, data):
         if "ftype" in data:

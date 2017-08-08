@@ -892,6 +892,9 @@ class FinancialReport(Document):
         self.companies_spec = companies_spec or dict()
         self.voc = voc or set()
 
+    def __repr__(self):
+        return "FinancialReport({})".format(reprlib.repr(str(self))) 
+        
     def get_bls_spec(self):
         return self.records_spec.get("bls", None)
     

@@ -25,8 +25,8 @@ def create_ftype(name="bls"):
     return ftype
 
 
-def create_rtype(ftype, name="TOTAL_ASSETS"):
-    total_assets = RecordType(name=name, ftype=ftype)
+def create_rtype(ftype, name="TOTAL_ASSETS", timeframe="pot"):
+    total_assets = RecordType(name=name, ftype=ftype, timeframe=timeframe)
     db.session.add(total_assets)
     db.session.commit()    
     return total_assets
@@ -59,12 +59,18 @@ def create_record(**kwargs):
     return record
 
 
-def create_rtypes(ftype):
+def create_rtypes(ftype, timeframe="pot"):
     if not ftype:
         ftype = create_ftype(name="bls")
-    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
-    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
-    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
+    total_assets = RecordType(
+        name="TOTAL_ASSETS", ftype=ftype, timeframe=timeframe
+    )
+    current_assets = RecordType(
+        name="CURRENT_ASSETS", ftype=ftype, timeframe=timeframe
+    )
+    fixed_assets = RecordType(
+        name="FIXED_ASSETS", ftype=ftype, timeframe=timeframe
+    )
     db.session.add_all((total_assets, current_assets, fixed_assets))
     db.session.commit()    
     return total_assets, current_assets, fixed_assets
@@ -237,8 +243,8 @@ class RecordTest(AppTestCase):
 
     def setUp(self):
         super().setUp()
-        self.ftype_bls = create_ftype(name="bls")
-        self.rtype = create_rtype(ftype=self.ftype_bls)
+        self.ftype_bls = create_ftype(name="ics")
+        self.rtype = create_rtype(ftype=self.ftype_bls, name="RECORD_RTYPE")
         self.company = create_company(name="RecordTest", isin="#RecordTest")
 
     def create_record(
@@ -371,13 +377,14 @@ class RecordTest(AppTestCase):
         self.assertEqual(len(records), 1)
 
     def create_record_for_projection_test(
-        self, fiscal_year_start_month, timerange, timestamp
+        self, fiscal_year_start_month, timerange, timestamp,
+        rtype=None
     ):
         company = create_company(
              fiscal_year_start_month=fiscal_year_start_month
         )
         record = create_record(
-            company=company, rtype=self.rtype, value=0,
+            company=company, rtype=rtype or self.rtype, value=0,
             timerange=timerange, timestamp=timestamp
         )     
         return record  
@@ -425,7 +432,37 @@ class RecordTest(AppTestCase):
 
         self.assert_projection(record, 5, 7)
 
+    def test_project_pit_record_timestamp_on_fiscal_year_test01(self):
+        ftype = create_ftype(name="bls")
+        rtype = create_rtype(ftype, timeframe="pit")
+        record = self.create_record_for_projection_test(
+            fiscal_year_start_month=1, rtype=rtype,
+            timerange=0,
+            timestamp = date(2015, 6, 30)
+        )
+        self.assert_projection(record, 6, 6)
 
+    def test_project_pit_record_timestamp_on_fiscal_year_test02(self):
+        ftype = create_ftype(name="bls")
+        rtype = create_rtype(ftype, timeframe="pit")
+        record = self.create_record_for_projection_test(
+            fiscal_year_start_month=7, rtype=rtype,
+            timerange=0,
+            timestamp = date(2015, 6, 30)
+        )
+        self.assert_projection(record, 12, 12)
+
+    def test_project_pit_record_timestamp_on_fiscal_year_test03(self):
+        ftype = create_ftype(name="bls")
+        rtype = create_rtype(ftype, timeframe="pit")
+        record = self.create_record_for_projection_test(
+            fiscal_year_start_month=7, rtype=rtype,
+            timerange=9,
+            timestamp = date(2015, 7, 31)
+        )
+        self.assert_projection(record, 1, 1)
+
+        
 class SyntheticReccordsTest(AppTestCase):
     
     def create_records(self, data):
@@ -499,7 +536,7 @@ class SyntheticReccordsTest(AppTestCase):
     def test_get_records_for_company_within_fiscal_year(self):
         company1 = create_company()
         company2 = create_company()
-        ftype = create_ftype(name="bls")
+        ftype = create_ftype(name="ics")
         rtype = create_rtype(ftype)
         records = self.create_records([
             (company1, rtype, 12, date(2015, 12, 31), 0),
@@ -518,7 +555,7 @@ class SyntheticReccordsTest(AppTestCase):
         self.assertEqual(len(records_), 2)
         self.assertCountEqual(records_, (records[0], records[1]))
         
-    def test_csr_creates_new_records(self):
+    def test_csr_creates_new_records_pot(self):
         company = create_company()
         ftype = create_ftype(name="bls")
         ta, ca, fa = create_rtypes(ftype)
@@ -540,7 +577,76 @@ class SyntheticReccordsTest(AppTestCase):
         self.assertEqual(new_records[0].value, 100)
         self.assertEqual(new_records[0].timerange, 12)
         self.assertEqual(new_records[0].timestamp, date(2015, 12, 31))
+
+    def test_csr_creates_new_records_pit_and_pot_mixed(self):
+        company = create_company()
+        ftype_bls = create_ftype(name="bls")
+        ftype_ics = create_ftype(name="ics")
+
+        ta = RecordType(name="TOTAL", ftype=ftype_ics, timeframe="pit")
+        ca = RecordType(name="CURRENT", ftype=ftype_ics, timeframe="pit")
+        fa = RecordType(name="FIXED", ftype=ftype_ics, timeframe="pit")       
+
+        revenues = RecordType(name="REVENUES", ftype=ftype_ics, timeframe="pot")
+        costs = RecordType(name="COSTS", ftype=ftype_ics, timeframe="pot")
+        profit = RecordType(name="PROFIT", ftype=ftype_ics, timeframe="pot")
+
+        db.session.add_all((ta, ca, fa, revenues, costs, profit))
+        db.session.commit()    
+
+        formula_ta = create_db_formula(ta, ((1, ca), (1, fa)))
+        formula_profit = create_db_formula(profit, ((1, revenues), (-1, costs)))
+
+        records = self.create_records([
+            (company, ca, 0, date(2015, 12, 31), 40),
+            (company, fa, 0, date(2015, 12, 31), 60),
+            (company, revenues, 12, date(2015, 12, 31), 100),
+            (company, costs, 12, date(2015, 12, 31), 80),
+        ]) 
+
+        new_records = Record.create_synthetic_records_for_company_within_fiscal_year(
+            db.session, company=company,
+            fiscal_year=utils.FiscalYear(date(2015, 1, 1), date(2015, 12, 31)),
+            base_records = records
+        )
+
+        self.assertEqual(len(new_records), 2)
+
+        record_total = next(filter(lambda x: x.rtype == ta, new_records))
+        record_profit = next(filter(lambda x: x.rtype == profit, new_records))
+
+        self.assertEqual(record_total.value, 100)
+        self.assertEqual(record_total.timerange, 0)
+        self.assertEqual(record_total.timestamp, date(2015, 12, 31))
+
+        self.assertEqual(record_profit.value, 20)
+        self.assertEqual(record_profit.timerange, 12)
+        self.assertEqual(record_profit.timestamp, date(2015, 12, 31))
+
+
+    def test_csr_creates_new_records_pit(self):
+        company = create_company()
+        ftype = create_ftype(name="bls")
+        ta, ca, fa = create_rtypes(ftype, timeframe="pit")
+        formula = create_db_formula(ta, ((1, ca), (1, fa)))
         
+        records = self.create_records([
+            (company, ca, 12, date(2015, 12, 31), 40),
+            (company, fa, 12, date(2015, 12, 31), 60),
+        ]) 
+        
+        new_records = Record.create_synthetic_records_for_company_within_fiscal_year(
+            db.session, company=company,
+            fiscal_year=utils.FiscalYear(date(2015, 1, 1), date(2015, 12, 31)),
+            base_records = [records[0]]
+        )
+
+        self.assertEqual(len(new_records), 1)
+        self.assertEqual(new_records[0].rtype, ta)
+        self.assertEqual(new_records[0].value, 100)
+        self.assertEqual(new_records[0].timerange, 0)
+        self.assertEqual(new_records[0].timestamp, date(2015, 12, 31))
+
     def test_csr_creates_new_records_with_timerange(self):
         company = create_company()
         ftype = create_ftype(name="test")

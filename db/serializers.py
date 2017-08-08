@@ -241,7 +241,7 @@ class RecordTypeSchema(ModelSchema):
 class RecordTypeSimpleSchema(ModelSchema):
     class Meta:
         model = models.RecordType
-        fields = ("id", "name", "uri", "ftype_id")
+        fields = ("id", "name", "timeframe", "uri", "ftype_id")
 
     id = MyInteger()
 
