@@ -511,6 +511,31 @@ class DBRequestTest(AppTestCase):
         self.assertEqual(account.student, student)
         self.assertEqual(len(student.accounts), 1)
         
+    def test_wrapping_requests_do_not_need_to_have_data_and_model(self):
+        user = self.create_user()
+        main_request = DBRequest(
+            user=user, action="create", wrapping_request=True
+        )
+
+        result = main_request.execute(user, records_factory)
+
+        self.assertFalse(result["errors"])
+        self.assertIsNone(result["instance"])
+
+    def test_execute_subrequest_of_wrapping_request(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(db.session, user)
+        wrapping_request = DBRequest(
+            user=user, action="create", wrapping_request=True,
+            model="Wrapping Request"
+        )
+        wrapping_request.add_subrequest(main_request)
+
+        result = wrapping_request.execute(user, records_factory)
+       
+        self.assertEqual(db.session.query(Student).count(), 1)
+        self.assertEqual(db.session.query(Account).count(), 1)
+
 
 class UserModelTest(unittest.TestCase):
 

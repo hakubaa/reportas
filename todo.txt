@@ -1,13 +1,14 @@
 ﻿TO_DO:
-- add warnings and errors when uploading data with tools
 - synthetic records should be overriden manually
-- show timestamp up, and only years and months
 
 DONE:
 - create synthetic records for financial recordfs of ics/cfs and bls
 - Record.project_onto_fiscal_year will decide how to project bls and ics/cfs
 - update synthetic records (when updating new field)
 - delete syntehtic records ? - no, only manually
+- timestamp, only years and months in tools
+- add warnings and errors when uploading data with tools
+- units of measure
 
 ################################################################################
 

@@ -1,7 +1,7 @@
 __all__ = [ 
     "FinancialReportDB", "render_miner_index", "get_request_data", 
-    "create_report_dbrequest", "render_pdf_file_miner",
-    "render_direct_input_miner"
+    "create_dbrequest", "render_pdf_file_miner",
+    "render_direct_input_miner", "convert_empty_strings_to_none"
 ]
 
 import io
@@ -10,6 +10,8 @@ import json
 from datetime import datetime
 
 from flask import render_template, request, current_app
+import sqlalchemy
+from dateutil.parser import parse
 
 from app import db
 from app.models import DBRequest
@@ -79,8 +81,6 @@ def render_pdf_file_miner(form, session):
     rtypes = get_record_types(session)
     companies = session.query(models.Company.id, models.Company.name).all()
 
-    import pdb; pdb.set_trace()
-
     return render_template(
         "admin/tools/pdf_file_miner.html", report=report, 
         company=company, rtypes=rtypes, companies=companies
@@ -114,12 +114,16 @@ def render_direct_input_miner(form, session):
 
 def get_records_spec(session, spec_name=None):
     spec = list()
+    ftype_query = session.query(models.FinancialStatementType)
     if spec_name in ("bls", None):
-        spec.extend(get_records_reprs(session, "bls"))
+        ftype = ftype_query.filter_by(name="bls").one()    
+        spec.extend(get_records_reprs(session, ftype))
     if spec_name in ("ics", None):
-        spec.extend(get_records_reprs(session, "ics"))
+        ftype = ftype_query.filter_by(name="ics").one() 
+        spec.extend(get_records_reprs(session, ftype))
     if spec_name in ("cfs", None):
-        spec.extend(get_records_reprs(session, "cfs"))
+        ftype = ftype_query.filter_by(name="cfs").one()  
+        spec.extend(get_records_reprs(session, ftype))
     return spec
 
 
@@ -146,17 +150,33 @@ def get_request_data(default=None):
     return default
 
 
-def create_report_dbrequest(data, user):
+def convert_empty_strings_to_none(data):
+    data = dict(data)
+    for key, item in data.items():
+        if isinstance(item, str) and (item.isspace() or item == ""):
+            data[key] = None
+    return data
+
+
+def create_dbrequest(data, user):
     records = None
     if "records" in data:
         records = data["records"]
         del data["records"]
 
-    main_request = create_report_main_request(data, user)
+    request = create_main_request(data, user)
     subrequests = create_record_subrequests(records, user)
     for subrequest in subrequests:
-        main_request.add_subrequest(subrequest)
+        request.add_subrequest(subrequest)
 
+    return request
+
+
+def create_main_request(data, user):
+    if validate_data_for_report(data):
+        main_request = create_report_main_request(data, user)
+    else:
+        main_request = create_wrapping_request(user)
     return main_request
 
 
@@ -179,6 +199,44 @@ def create_report_main_request(data, user):
     return dbrequest
 
 
+def validate_data_for_report(data):
+    required_fields = ("timerange", "timestamp", "company_id")
+    if not set(required_fields) <= set(data.keys()):
+        return False
+
+    validators = [
+        validate_date(data["timestamp"]),
+        validate_integer(data["timerange"]),
+        validate_integer(data["company_id"])
+    ]
+
+    if not all(validators):
+        return False
+
+    return True
+
+
+def validate_date(timestamp):
+    try:
+        parse(timestamp)
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
+def validate_integer(num):
+    try:
+        int(num)
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
+def create_wrapping_request(user):
+    dbrequest = DBRequest(action="create", user = user, wrapping_request=True)    
+    return dbrequest   
+
+
 def create_record_subrequests(data, user):
     if not data:
         return list()
@@ -194,9 +252,12 @@ def create_record_subrequests(data, user):
 
 
 def get_report(timestamp=None, timerange=None, company_id=None, **kwargs):
-    report = db.session.query(models.Report).filter(
-        models.Report.timerange == timerange,
-        models.Report.timestamp == timestamp,
-        models.Report.company_id == company_id
-    ).first()
+    try:
+        report = db.session.query(models.Report).filter(
+            models.Report.timerange == timerange,
+            models.Report.timestamp == timestamp,
+            models.Report.company_id == company_id
+        ).first()
+    except sqlalchemy.exc.DataError:
+        return None
     return report

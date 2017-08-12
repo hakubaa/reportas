@@ -166,9 +166,10 @@ def load_user(user_id):
 
 class DBRequest(Model):
     id = Column(Integer, primary_key=True)
-    data = Column(String, nullable=False) # data in json format
+    data = Column(String) # data in json format
 
     # meta data
+    wrapping_request = Column(Boolean, default=False)
     model = Column(String) # model affected by data
     action = Column(String, nullable=False) # create, update, delete
     comment = Column(String) 
@@ -243,12 +244,22 @@ class DBRequest(Model):
 
     def execute(self, moderator, factory, comment=None):
         if self.executed:
-            instance, errors = self.get_instance(
-                factory.session, factory.get_model(self.model)
-            )
+            if self.wrapping_request:
+                instance = None
+                errors = dict()
+            else:
+                instance, errors = self.get_instance(
+                    factory.session, factory.get_model(self.model)
+                )
         else:
-            instance, errors = self.execute_request(factory, moderator, comment)
-        
+            instance, errors = self.execute_request(
+                factory, moderator, comment
+            )
+            self.update_moderation_info(
+                moderator, action="accept", comment=comment, 
+                errors=errors, instance=instance
+            )  
+
         results = []
         if not errors:
             results = self.execute_subrequests(moderator, factory, instance)
@@ -265,11 +276,14 @@ class DBRequest(Model):
             for request in self.subrequests
         ]
         for result in results:
-            if not result["errors"]:
+            if not result["errors"] and parent_instance:
                 self.append_to_collection(parent_instance, result["instance"])   
         return results
         
     def execute_request(self, factory, moderator, comment):
+        if self.wrapping_request:
+            return None, dict()
+            
         action_method = dict(
             create=self.execute_create,
             update=self.execute_update,
@@ -293,11 +307,6 @@ class DBRequest(Model):
                 "system": "Internal system error.  If the problem persists, "
                 "contact the administrator."
             }
-
-        self.update_moderation_info(
-            moderator, action="accept", comment=comment, 
-            errors=errors, instance=instance
-        )  
 
         return instance, errors
 

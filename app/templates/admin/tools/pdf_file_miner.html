@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'admin/tools/utils.html' as utils %}
 
 {% block responsivnes %}{% endblock %}
 {% block title %} Parser {% endblock %}
@@ -6,6 +7,8 @@
 {% block head_css %}
     <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/miner.css') }}" rel="stylesheet">
     <style>
@@ -23,7 +26,7 @@
 {{ super() }}
     <div class="container container-full">
         <h3>Financial Data Miner - Summary</h3>
-        <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report.timerange %}{{report.timerange}}{% else %}(not identified){% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report.timestamp %}{{report.timestamp.strftime('%Y-%m-%d')}} {% else %}(not identified){% endif %}</span></strong> 
+        <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report.timerange %}{{report.timerange}}{% else %}(not identified){% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report.timestamp %}{{report.timestamp.strftime('%Y-%m')}} {% else %}(not identified){% endif %}</span></strong> 
         (<a href="#column-editor" data-toggle="modal" data-target="#column-editor">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
         <p>
             <label>Company </label>
@@ -71,17 +74,6 @@
                     </button>
                 </div> 
                 <div class="btn-group btn-group-sm">
-                    <div class="btn-group btn-group-sm" id="stm-dropdown">
-                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                            Statement <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu" role="menu">
-                            <li><a href="#">NONE</a></li>
-                            <li><a href="#">BLS</a></li>
-                            <li><a href="#">ICS</a></li>
-                            <li><a href="#">CFS</a></li>
-                        </ul>
-                    </div>
                      <button type="button" class="btn btn-danger" id="row-remove-btn" title="Trash">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                     </button>
@@ -159,16 +151,17 @@
                                 <th></th>
                                 <th></th>
                                 <th>Record Type</th>
+                                <th>Units</th>
                                 {% for i in range(report.bls.ncols) %}
                                     {% if report.bls.names|length > i %}
                                         {% set timerange = report.bls.names[i][0] %}
-                                        {% set timestamp = report.bls.names[i][1]|join('-') %}
+                                        {% set timestamp = report.bls.names[i][1][:2]|join('-') %}
                                     {% else %}
                                         {% set timerange = '(not identified)' %}
                                         {% set timestamp = timerange %}
                                     {% endif %}
                                     <th data-column-id="{{loop.index}}">
-                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp}}</span>
+                                        <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
                                         <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
                                         <a href="javascript:void(0);" onclick="removeColumn('#bls-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
@@ -195,19 +188,10 @@
                                             <span class="glyphicon glyphicon-arrow-up"></span>
                                         </button>   
                                     </td>
-                                    <td>
-                                        <select class="rtype-selection">
-                                            {% for rtype in rtypes %}
-                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
+                                    <td><select class="rtype-selection" data-init-text="{{record_name}}"></select></td>
+                                    <td><select class="units-selection" data-init-val="{{report.bls.uom}}"></select></td>
                                     {% for value in values %}
-                                        <td>
-                                            <div class="form-group">
-                                                <input type="text" class="form-control input-sm" value="{{value}}">
-                                            </div>
-                                        </td>
+                                        <td><input type="text" class="form-control input-sm" value="{{value}}"></td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
@@ -228,16 +212,17 @@
                                 <th></th>
                                 <th></th>
                                 <th>Record Type</th>
+                                <th>Units</th>
                                 {% for i in range(report.ics.ncols) %}
                                     {% if report.ics.names|length > i %}
                                         {% set timerange = report.ics.names[i][0] %}
-                                        {% set timestamp = report.ics.names[i][1]|join('-') %}
+                                        {% set timestamp = report.ics.names[i][1][:2]|join('-') %}
                                     {% else %}
                                         {% set timerange = '(not identified)' %}
                                         {% set timestamp = timerange %}
                                     {% endif %}
                                     <th data-column-id="{{loop.index}}">
-                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp}}</span>
+                                        <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
                                         <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
                                         <a href="javascript:void(0);" onclick="removeColumn('#ics-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
@@ -264,19 +249,10 @@
                                             <span class="glyphicon glyphicon-arrow-up"></span>
                                         </button>   
                                     </td>
-                                    <td>
-                                        <select class="rtype-selection">
-                                            {% for rtype in rtypes %}
-                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
+                                    <td><select class="rtype-selection" data-init-text="{{record_name}}"></select></td>
+                                    <td><select class="units-selection" data-init-val="{{report.ics.uom}}"></select></td>
                                     {% for value in values %}
-                                        <td>
-                                            <div class="form-group">
-                                                <input type="text" class="form-control input-sm" value="{{value}}">
-                                            </div>
-                                        </td>
+                                        <td><input type="text" class="form-control input-sm" value="{{value}}"></td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
@@ -296,16 +272,17 @@
                                 <th></th>
                                 <th></th>
                                 <th>Record Type</th>
+                                <th>Units</th>
                                 {% for i in range(report.cfs.ncols) %}
                                     {% if report.cfs.names|length > i %}
                                         {% set timerange = report.cfs.names[i][0] %}
-                                        {% set timestamp = report.cfs.names[i][1]|join('-') %}
+                                        {% set timestamp = report.cfs.names[i][1][:2]|join('-') %}
                                     {% else %}
                                         {% set timerange = '(not identified)' %}
                                         {% set timestamp = timerange %}
                                     {% endif %}
                                     <th data-column-id="{{loop.index}}">
-                                        <span class="column-timerange">{{timerange}}</span> months ended on <span class="column-timestamp">{{timestamp}}</span>
+                                        <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
                                         <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
                                         <a href="javascript:void(0);" onclick="removeColumn('#cfs-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
@@ -332,19 +309,10 @@
                                             <span class="glyphicon glyphicon-arrow-up"></span>
                                         </button>   
                                     </td>
-                                    <td>
-                                        <select class="rtype-selection">
-                                            {% for rtype in rtypes %}
-                                                <option value="{{rtype['id']}}" {% if record_name == rtype['name'] %}selected="selected"{% endif %}>{{rtype['name']}}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
+                                    <td><select class="rtype-selection" data-init-text="{{record_name}}"></select></td>
+                                    <td><select class="units-selection" data-init-val="{{report.cfs.uom}}"></select></td>
                                     {% for value in values %}
-                                        <td>
-                                            <div class="form-group">
-                                                <input type="text" class="form-control input-sm" value="{{value}}">
-                                            </div>
-                                        </td>
+                                        <td><input type="text" class="form-control input-sm" value="{{value}}"></td>
                                     {% endfor %}
                                 </tr>
                             {% endfor %}
@@ -355,72 +323,29 @@
                 </div>
             </div>
         </div>
-        <div style="margin-top:30px"></div>
-        <div>
-            <form method="POST" action="{{ url_for('dbmd_tools.upload_data') }}" id="export-data-form">
-                <input type="hidden" name="data" value="" id="data-to-export">
-                <input class="btn btn-success" name="submit" type="submit" value="Export Data">
-            </form>
-            <div>
-                <label class="checkbox-inline">
-                    <input type="checkbox" name="statement-export" value="bls" checked>BLS
-                </label>
-                <label class="checkbox-inline">
-                    <input type="checkbox" name="statement-export" value="ics" checked>ICS
-                </label>
-                <label class="checkbox-inline">
-                    <input type="checkbox" name="statement-export" value="cfs" checked>CFS
-                </label>
-            </div>
-        </div>
     </div>
 
-    <div class="modal fade" id="column-editor" tabindex="-1" role="dialog" aria-labelledby="modal-label">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <h4 class="modal-title" id="modal-label">Timestamp & Timerange Editor</h4>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="form-group">
-                            <label for="timestamp-input" class="control-label">Timestamp:</label>
-                            <input type="text" class="form-control input-sm" id="timestamp-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="timerange-input" class="control-label">Timerange:</label>
-                            <div>
-                                <select class="form-control" id="timerange-input" style="width: 100%;">
-                                    <option value="3">3</option>
-                                    <option value="6">6</option>
-                                    <option value="9">9</option>
-                                    <option value="12">12</option>
-                                </select>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Abort</button>
-                    <button type="button" class="btn btn-primary" id="modal-ok-btn">Ok</button>
-                </div>
-            </div>
-        </div>
+    <div class="container container-full">
+        <div style="margin-top:30px"></div>
+        {{ utils.render_export_form(url_for('dbmd_tools.upload_data')) }}
     </div>
+
+    {{ utils.modal_column_editor() }}
 {% endblock %}
 
 {% block body_scripts %}
 <script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/miner.js') }}"></script>
 <script>
     var rtypes = {{ rtypes|tojson }};
 
-    $("select.rtype-selection").applySelect2(rtypes, text="name");
+    $("select.rtype-selection").applySelect2({data: rtypes, text: "name"});
+    $("select.units-selection").bindUnitsOfMeasure();
     $("#company-select").applySelect2();
+    
     $(".record-row").makeDraggable().makeDroppable();
 
     $(document).on("click", ".record-remove-btn", function() {
@@ -452,9 +377,9 @@
         var $timestampInput = modal.find("#timestamp-input");
 
         // update inputs with current values
-        var timestamp = moment($timestampSpan.text(), "YYYY-MM-DD");
+        var timestamp = moment($timestampSpan.text(), "YYYY-MM");
         if (timestamp != null && timestamp.isValid()) {
-            $timestampInput.val(timestamp.format("YYYY-MM-DD"));
+            $timestampInput.val(timestamp.format("YYYY-MM"));
         } else {
             $timestampInput.val("");    
         }
@@ -471,7 +396,8 @@
             okButton.unbind("click");
         });
     });
-    $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
+    // $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
+    $("#timestamp-input").bindDatePicker({orientation: "bottom"});
 
     $(document).on("change", ".record-row select", function() {
         var recordType = $(this).find("option:selected").text();
@@ -568,49 +494,39 @@
         }
     );
 
-    function refreshReportUI() {
-        var counter = $(".selector > input:checkbox:checked").length;
-        if (counter > 0) {
-            $("#stm-dropdown").css("display","inline-block");
-            $("#row-remove-btn").css("display","inline-block");
-
-            $("#stm-filter-btn").text("NONE");
-            $("#stm-filter-btn").data("select-type", "NONE");
-        } else {
-            $("#stm-dropdown").css("display","none"); 
-            $("#row-remove-btn").css("display","none"); 
-
-            $("#stm-filter-btn").text("ALL");
-            $("#stm-filter-btn").data("select-type", "ALL");
-        }  
-    }
-
-    $("#export-data-form").submit(function() {
-        var data = createDataForExport();
-        $("#data-to-export").val(data);
+    $("#export-data-form").submit(function(event) {
+        var data = createDataForExport(["#identified-records"]);
+        if (!submitExportForm(data, validateData)) {
+            event.preventDefault();
+            return false;
+        }
         return true;
     });
-
-    function createDataForExport() {
-        var timerange = $("#report-timerange").text();
-        var timestamp = $("#report-timestamp").text();
-        var companyId = $("#company-id").data("company-id");
-
-        var blsRecords = readRecordsFromTable("#bls-table", companyId);
-        var icsRecords = readRecordsFromTable("#ics-table", companyId);
-        var cfsRecords = readRecordsFromTable("#cfs-table", companyId);
-
-        var data = JSON.stringify({
-            "timerange": timerange,
-            "timestamp": timestamp,
-            "company_id": companyId,
-            "records": blsRecords.concat(icsRecords, cfsRecords)
-        });
-        return data;
-    }
 
     function activateTab(tab){
         $('.nav-tabs a[href="#' + tab + '"]').tab('show');
     };
+
+    function validateData() {
+        var val_bls = validateDataInTable($("#bls-table"), "Balance Sheet");
+        var val_ics = validateDataInTable($("#ics-table"), "Income Statement");
+        var val_cfs = validateDataInTable($("#cfs-table"), "Cash Flow Statement");
+        var val_company = validateCompany();
+        var val_report = validateReport();
+
+        var result = [ val_bls, val_ics, val_cfs, val_company ].every(
+            function(val) { return val.result; }
+        );
+        
+        var alerts = [].concat(val_bls.alerts).concat(val_ics.alerts).concat(val_cfs.alerts);
+        alerts.push(createAlertForCompanyValidation(val_company.details));
+        alerts.push(createAlertForReportValidation(val_report.details));
+        return {
+            "result": result, 
+            "alerts": alerts.filter(function(item) { 
+                return item !== null && item !== undefined 
+            })
+        };
+    }
 </script>
 {% endblock %}

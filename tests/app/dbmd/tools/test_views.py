@@ -281,7 +281,6 @@ class ParserPostViewTest(AppTestCase):
     @create_and_login_user()
     def test_create_request_to_create_report(self):
         data = self.create_data_for_request(records=False)
-
         response = self.send_post_request(data)
 
         self.assertEqual(db.session.query(DBRequest).count(), 1)
@@ -349,3 +348,31 @@ class ParserPostViewTest(AppTestCase):
             urlparse(response.location).path, 
             url_for("admin.index")
         )
+
+    @create_and_login_user()
+    def test_report_timerange_and_timestamp_are_not_required(self):
+        data = self.create_data_for_request(records=False)
+        data["timerange"] = ""
+        data["timestamp"] = ""
+
+        response = self.send_post_request(data,)
+
+        self.assertEqual(db.session.query(DBRequest).count(), 1)
+        
+        dbrequest = db.session.query(DBRequest).one()
+        self.assertIsNone(dbrequest.model)
+        self.assertTrue(dbrequest.wrapping_request)
+
+    @create_and_login_user()
+    def test_report_timerange_and_timestamp_contains_corrupted_data(self):
+        data = self.create_data_for_request(records=False)
+        data["timerange"] = "(not identified)"
+        data["timestamp"] = "-"
+
+        response = self.send_post_request(data,)
+
+        self.assertEqual(db.session.query(DBRequest).count(), 1)
+        
+        dbrequest = db.session.query(DBRequest).one()
+        self.assertIsNone(dbrequest.model)
+        self.assertTrue(dbrequest.wrapping_request)

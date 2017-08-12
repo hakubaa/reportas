@@ -447,7 +447,7 @@ class Record(VersionedModel):
         #     Record.timestamp <= fiscal_year.end
         # ).all()
         records = session.query(Record).filter(
-            Record.company == company, Record.synthetic == False
+            Record.company == company
         ).all()
         records = list(filter(
             lambda record: record.timestamp_start >= fiscal_year.start \

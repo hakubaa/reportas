@@ -750,8 +750,8 @@ class FinancialStatement(RecordsCollector):
             flags = re.IGNORECASE
         )
         th_matches = re.findall(re_thousands, text)
-        
-        re_thousands000 = re.compile(r"\bPLN ?'?000\b", flags = re.IGNORECASE)
+
+        re_thousands000 = re.compile(r"\bPLN ?['`]?000\b", flags = re.IGNORECASE)
         th_matches.extend(re.findall(re_thousands000, text))
         
         re_millions = re.compile(
@@ -759,7 +759,7 @@ class FinancialStatement(RecordsCollector):
             flags = re.IGNORECASE
         )
         mln_matches = re.findall(re_millions, text)
-        
+
         if th_matches and mln_matches: # return the most often unit
             if len(mln_matches) > len(th_matches):
                 return 1000000
@@ -991,7 +991,8 @@ class FinancialReport(Document):
 
         # Make decision on the base of the first three pages
         tokens = set(map(operator.itemgetter(0), nlp.find_ngrams(
-            '\n'.join(self[0:max_page]), n=1, remove_non_alphabetic=True,
+            util.remove_non_ascii('\n'.join(self[0:max_page])), n=1, 
+            remove_non_alphabetic=True,
             min_len=min(map(len, itertools.chain(qr_tokens, sa_tokens))),
             return_tuples=True
         )))

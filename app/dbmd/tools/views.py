@@ -40,8 +40,8 @@ def direct_input_miner():
 @login_required
 @permission_required(Permission.CREATE_REQUESTS)
 def upload_data():
-    data = get_request_data(dict())
-    dbrequest = create_report_dbrequest(data, current_user)
+    data = convert_empty_strings_to_none(get_request_data(dict()))
+    dbrequest = create_dbrequest(data, current_user)
     db.session.add(dbrequest)
     db.session.commit()
     flash("Request for uploading data has been registered. "

@@ -35,7 +35,7 @@ class ReportUploaderForm(LanguageMixin, FlaskForm):
         ],
     )
     report_timestamp = fields.DateField(
-        "Timestamp", format="%Y-%m-%d", validators=[validators.optional()]
+        "Timestamp", format="%Y-%m", validators=[validators.optional()]
     )
 
     def get_file(self):
@@ -56,5 +56,5 @@ class DirectInputForm(LanguageMixin, FlaskForm):
         choices=[("3", "3"), ("6", "6"), ("9", "9"), ("12", "12")],
     )
     report_timestamp = fields.DateField(
-        "Timestamp", format="%Y-%m-%d", validators=[validators.optional()]
+        "Timestamp", format="%Y-%m", validators=[validators.optional()]
     )

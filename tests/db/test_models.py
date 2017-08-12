@@ -595,29 +595,6 @@ class SyntheticReccordsTest(AppTestCase):
 
         self.assertEqual(len(records_), 2)
         self.assertCountEqual(records_, (records[0], records[1]))
-
-    def test_get_records_for_company_within_fiscal_year_returns_only_genuine_records(self):
-        company = create_company()
-        rtype = create_rtype(create_ftype(name="ics"))
-        record1 = Record(
-            company=company, rtype=rtype, timerange=12, synthetic=False,
-            timestamp=date(2015, 12, 31), value=10
-        )
-        record2 = Record(
-            company=company, rtype=rtype, timerange=3, synthetic=True,
-            timestamp=date(2015, 3, 31), value=20
-        )
-        db.session.add_all([record1, record2])
-        db.session.commit()
-
-        timerange = utils.TimeRange(
-            start=date(2015, 1, 1), end=date(2015, 12, 31)
-        )
-        records = Record.get_records_for_company_within_fiscal_year(
-            db.session, company, timerange
-        )
-        self.assertEqual(len(records), 1)
-        self.assertCountEqual(records, (record1,))
         
     def test_csr_creates_new_records_pot(self):
         company = create_company()
@@ -755,6 +732,39 @@ class SyntheticReccordsTest(AppTestCase):
         self.assertEqual(len(new_records), 1)
         self.assertEqual(new_records[0], records[2])
         self.assertEqual(new_records[0].value, 180)
+
+    def test_csr_creates_synthetic_records_from_synthetic_records(self):
+        company = create_company()
+        ftype_ics = create_ftype(name="ics")
+
+        revenues = RecordType(name="REVENUES", ftype=ftype_ics, timeframe="pot")
+        costs = RecordType(name="COSTS", ftype=ftype_ics, timeframe="pot")
+        profit = RecordType(name="PROFIT", ftype=ftype_ics, timeframe="pot")
+
+        formula_profit = create_db_formula(profit, ((1, revenues), (-1, costs)))
+
+        records = self.create_records([
+            (company, revenues, 6, date(2015, 6, 30), 120),
+            (company, revenues, 6, date(2015, 12, 31), 80),
+            (company, revenues, 12, date(2015, 12, 31), 200)
+        ]) 
+        records[2].synthetic = True
+        db.session.commit()
+
+        record = create_record(
+            company=company, rtype=costs, timerange=12,
+            timestamp=date(2015, 12, 31), value=100
+        )
+
+        new_records = Record.create_synthetic_records_for_company_within_fiscal_year(
+            db.session, company=company,
+            fiscal_year=utils.FiscalYear(date(2015, 1, 1), date(2015, 12, 31)),
+            base_records = [record]
+        )   
+
+        self.assertEqual(len(new_records), 1)
+        self.assertEqual(new_records[0].rtype, profit)
+        self.assertEqual(new_records[0].value, 100)
 
 
 class FinancialStatementTypeTest(AppTestCase):

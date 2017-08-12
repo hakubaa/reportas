@@ -1,0 +1,51 @@
+{% macro render_export_form(action) %}
+<div>
+    <form method="POST" action="{{action}}" id="export-data-form">
+        <input type="hidden" name="data" value="" id="data-to-export">
+        <input class="btn btn-success" name="submit" type="submit" value="Export Data">
+    </form>
+    <div class="data-validation">
+        <h4>Warnings & Errors</h4>
+        <div class="data-validation-alerts"></div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro modal_column_editor() %}
+<div class="modal fade" id="column-editor" tabindex="-1" role="dialog" aria-labelledby="modal-label">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="modal-label">Timestamp & Timerange Editor</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="timestamp-input" class="control-label">Timestamp:</label>
+                        <input type="text" class="form-control input-sm" id="timestamp-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="timerange-input" class="control-label">Timerange:</label>
+                        <div>
+                            <select class="form-control" id="timerange-input" style="width: 100%;">
+                                <option value="0">0</option>
+                                <option value="3">3</option>
+                                <option value="6">6</option>
+                                <option value="9">9</option>
+                                <option value="12">12</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Abort</button>
+                <button type="button" class="btn btn-primary" id="modal-ok-btn">Ok</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}

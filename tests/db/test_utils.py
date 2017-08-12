@@ -167,10 +167,10 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
 
         self.assertEqual(len(recmat), 2)
         self.assertCountEqual(recmat.keys(), (rtype1, rtype2))
-        self.assertEqual(recmat[rtype1][utils.TimeRange(1, 3)], 1)
-        self.assertEqual(recmat[rtype1][utils.TimeRange(1, 6)], 2)
-        self.assertEqual(recmat[rtype2][utils.TimeRange(1, 9)], 3)
-        self.assertEqual(recmat[rtype2][utils.TimeRange(1, 12)], 4)
+        self.assertEqual(recmat[rtype1][utils.TimeRange(1, 3)]["value"], 1)
+        self.assertEqual(recmat[rtype1][utils.TimeRange(1, 6)]["value"], 2)
+        self.assertEqual(recmat[rtype2][utils.TimeRange(1, 9)]["value"], 3)
+        self.assertEqual(recmat[rtype2][utils.TimeRange(1, 12)]["value"], 4)
 
 
 class UtilsFormulaTest(AppTestCase):
@@ -203,9 +203,9 @@ class UtilsFormulaTest(AppTestCase):
         db_formula = create_db_formula(ta, ((1, ca), (1, fa)))
 
         data = {
-            ta: { utils.TimeRange(1, 3): 10 },
-            ca: { utils.TimeRange(1, 3): 5 },
-            fa: { utils.TimeRange(1, 3): 5 }
+            ta: { utils.TimeRange(1, 3): dict(value=10) },
+            ca: { utils.TimeRange(1, 3): dict(value=5) },
+            fa: { utils.TimeRange(1, 3): dict(value=5) }
         }
 
         formula = utils.convert_db_formula(db_formula)
@@ -218,9 +218,9 @@ class UtilsFormulaTest(AppTestCase):
         db_formula = create_db_formula(ta, ((1, ca), (1, fa)))
 
         data = {
-            ta: { utils.TimeRange(1, 3): 10 },
-            ca: { utils.TimeRange(1, 3): 5 },
-            fa: { utils.TimeRange(1, 3): 5 }
+            ta: { utils.TimeRange(1, 3): dict(value=10) },
+            ca: { utils.TimeRange(1, 3): dict(value=5) },
+            fa: { utils.TimeRange(1, 3): dict(value=5) }
         }
 
         formula = utils.convert_db_formula(db_formula)
@@ -247,9 +247,9 @@ class UtilsFormulaTest(AppTestCase):
 
         data = {
             ta: { 
-                utils.TimeRange(1, 6): 10, 
-                utils.TimeRange(1, 3): 5,
-                utils.TimeRange(4, 6): 5
+                utils.TimeRange(1, 6): dict(value=10), 
+                utils.TimeRange(1, 3): dict(value=5),
+                utils.TimeRange(4, 6): dict(value=5)
             }
         }
 
@@ -379,8 +379,8 @@ class UtilsFormulaTest(AppTestCase):
                          .extend_with_timerange(utils.TimeRange(1, 3))
         fiscal_year = utils.FiscalYear(date(2015, 1, 1), date(2015, 12, 31))
         data = {
-            ca: { utils.TimeRange(1, 3): 10 },
-            fa: { utils.TimeRange(1, 3): 15 },
+            ca: { utils.TimeRange(1, 3): dict(value=10) },
+            fa: { utils.TimeRange(1, 3): dict(value=15) },
             ta: { }
         }
         
@@ -400,8 +400,8 @@ class UtilsFormulaTest(AppTestCase):
         formula_ta = create_formula(ta, [(ca, 1), (fa, 1)])\
                          .extend_with_timerange(utils.TimeRange(1, 3))
         data = {
-            ca: { utils.TimeRange(1, 3): 10 },
-            fa: { utils.TimeRange(1, 3): 15 }
+            ca: { utils.TimeRange(1, 3): dict(value=10) },
+            fa: { utils.TimeRange(1, 3): dict(value=15) }
         }
         
         formulas = utils.create_inverted_mapping([formula_ta])
@@ -413,10 +413,67 @@ class UtilsFormulaTest(AppTestCase):
         self.assertIn(ta, data)
         self.assertIn(utils.TimeRange(1, 3), data[ta])
         self.assertEqual(
-            data[ta][utils.TimeRange(1, 3)], 
+            data[ta][utils.TimeRange(1, 3)]["value"], 
             syn_records[0]["value"]
-        )        
-    
+        )
+
+    def test_csr_updates_synthetic_records(self):
+        ta, ca, fa = create_rtypes()
+        formula_ta = create_formula(ta, [(ca, 1), (fa, 1)])\
+                         .extend_with_timerange(utils.TimeRange(1, 3))
+        data = {
+            ca: { utils.TimeRange(1, 3): dict(value=10, synthetic=False) },
+            fa: { utils.TimeRange(1, 3): dict(value=15, synthetic=False) },
+            ta: { utils.TimeRange(1, 3): dict(value=20, synthetic=True) }
+        }
+        
+        formulas = utils.create_inverted_mapping([formula_ta])
+
+        syn_records = utils.create_synthetic_records(
+            (ca, utils.TimeRange(1, 3)), data, formulas
+        )       
+
+        self.assertEqual(len(syn_records), 1)
+        self.assertEqual(data[ta][utils.TimeRange(1, 3)]["value"], 25)
+
+    def test_csr_does_not_update_genuine_records(self):
+        ta, ca, fa = create_rtypes()
+        formula_ta = create_formula(ta, [(ca, 1), (fa, 1)])\
+                         .extend_with_timerange(utils.TimeRange(1, 3))
+        data = {
+            ca: { utils.TimeRange(1, 3): dict(value=10, synthetic=False) },
+            fa: { utils.TimeRange(1, 3): dict(value=15, synthetic=False) },
+            ta: { utils.TimeRange(1, 3): dict(value=20, synthetic=False) }
+        }
+        
+        formulas = utils.create_inverted_mapping([formula_ta])
+
+        syn_records = utils.create_synthetic_records(
+            (ca, utils.TimeRange(1, 3)), data, formulas
+        )       
+
+        self.assertEqual(len(syn_records), 0)
+        self.assertEqual(data[ta][utils.TimeRange(1, 3)]["value"], 20)    
+
+    def test_csr_creates_synthetic_records_from_synthetic_records(self):
+        ta, ca, fa = create_rtypes()
+        formula_ta = create_formula(ta, [(ca, 1), (fa, 1)])\
+                         .extend_with_timerange(utils.TimeRange(1, 3))
+        data = {
+            ca: { utils.TimeRange(1, 3): dict(value=10, synthetic=True) },
+            fa: { utils.TimeRange(1, 3): dict(value=15, synthetic=True) },
+        }
+        formulas = utils.create_inverted_mapping([formula_ta])
+
+        syn_records = utils.create_synthetic_records(
+            (ca, utils.TimeRange(1, 3)), data, formulas
+        )       
+
+        self.assertEqual(len(syn_records), 1)
+        self.assertEqual(syn_records[0]["value"], 25)
+        self.assertEqual(syn_records[0]["rtype"], ta)
+        self.assertEqual(syn_records[0]["timerange"], utils.TimeRange(1, 3))
+        
     def test_csr_creates_new_records_recurrently(self):
         ta, ca, fa = create_rtypes()
         ftype = db.session.query(FinancialStatementType).one()
@@ -429,8 +486,8 @@ class UtilsFormulaTest(AppTestCase):
         formulas = utils.create_inverted_mapping([formula_ta, formula_lb])
         
         data = {
-            ca: { utils.TimeRange(1, 3): 10 },
-            fa: { utils.TimeRange(1, 3): 15 }
+            ca: { utils.TimeRange(1, 3): dict(value=10) },
+            fa: { utils.TimeRange(1, 3): dict(value=15) }
         }
         
         syn_records = utils.create_synthetic_records(
@@ -442,7 +499,7 @@ class UtilsFormulaTest(AppTestCase):
         self.assertEqual(lb_record["value"], 25)
         self.assertEqual(lb_record["timerange"], utils.TimeRange(1, 3))
         self.assertIn(lb, data)
-        self.assertEqual(data[lb][utils.TimeRange(1, 3)], 25)
+        self.assertEqual(data[lb][utils.TimeRange(1, 3)]["value"], 25)
         
     def test_project_timerange_onto_fiscal_year_test01(self):
         timestamp_range = utils.project_timerange_onto_fiscal_year(

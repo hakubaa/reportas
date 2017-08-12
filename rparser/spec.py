@@ -1738,6 +1738,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Kapitał własny przypadający akcjonariuszom jednostki dominującej"
+            },
+            {
+                "lang": "PL",
+                "value": "Kapitały przypadające akcjonariuszom jednostki dominującej"
             }
         ]
     },

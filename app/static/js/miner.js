@@ -1,4 +1,5 @@
-var FIXED_COLUMNS = 3;
+var FIXED_COLUMNS = 4;
+var UNITS_OF_MEASURE_COLUMN = 3;
 var RECORD_TYPE_COLUMN = 2;
 
 //------------------------------------------------------------------------------
@@ -107,31 +108,41 @@ function hasCommonTableAncestor(item1, item2) {
     return ($(item1).closest("table").attr("id") === $(item2).closest("table").attr("id"));
 }
 
-jQuery.fn.applySelect2 = function(data, text) {
-    var attributes = {
+jQuery.fn.applySelect2 = function(attributes) {
+    var attrs = {
         dropdownAutoWidth: true,
             placeholder: {
                 id: "-1",
                 text: "Select an option",
             }
     };
+    for(var property in attributes) {
+        attrs[property] = attributes[property];
+    }
+    var data = attrs.data;
+    var text = attrs.text;
     if (data !== undefined) {
-        attributes.data = data;
+        attrs.data = data;
         if (text !== undefined) {
             data = $.map(rtypes, function (obj) {
                 obj.text = obj.text || obj[text]; 
                 return obj;
             });
-            attributes.data = data;
+            attrs.data = data;
         }
     }
     for(var i = 0; i < this.length; i++) {
-        $(this[i]).select2(attributes);
+        $(this[i]).select2(attrs);
         if (data !== undefined) {
-            var initSelected = $(this[i]).data("init-selected");
-            if (initSelected) {
+            var initVal = $(this[i]).data("init-val");
+            if (initVal) {
+                $(this[i]).val(initVal).trigger("change");
+                continue;
+            }
+            var initText = $(this[i]).data("init-text");
+            if (initText) {
                 var items = $.grep(data, function(obj) { 
-                    return (obj.text == initSelected); 
+                    return (obj.text == initText); 
                 });
                 if (items.length > 0) {
                     $(this[i]).val(String(items[0].id)).trigger("change");
@@ -139,6 +150,19 @@ jQuery.fn.applySelect2 = function(data, text) {
             }
         }
     }
+}
+
+jQuery.fn.bindUnitsOfMeasure = function() {
+    var data = [
+        {id: 1, text: "PLN"},
+        {id: 1000, text: "k'PLN"},
+        {id: 1000000, text: "m'PLN"}
+    ];
+    $(this).applySelect2({
+        data: data,
+        minimumResultsForSearch: Infinity,
+        placeholder: "Select units"
+    });
 }
 
 $.fn.singleDatePicker = function(attributes) {
@@ -157,6 +181,25 @@ $.fn.singleDatePicker = function(attributes) {
         defaultAttributes[property] = attributes[property];
     }
     return $(this).daterangepicker(defaultAttributes);
+};
+
+$.fn.bindDatePicker = function(attributes) {
+    if (attributes === undefined) attributes = {};
+
+    var defaultAttributes = {
+        autoclose: true,
+        format: "yyyy-mm",
+          minViewMode: "months",
+          orientation: "top",
+          startView: "months"
+    };
+    for(var property in attributes) {
+        defaultAttributes[property] = attributes[property];
+    }
+
+    for(var i = 0; i < this.length; i++) {
+        $(this[i]).datepicker(defaultAttributes);
+    }
 };
 
 //------------------------------------------------------------------------------
@@ -197,7 +240,10 @@ function addEmptyRow(selector, rtypes) {
     if (selector === undefined) throw "Undefined selector.";
     var numberOfColumns = getNumberOfColumns(selector);
     var $newRow = createNewRecordRow(numberOfColumns);
-    $newRow.find(".rtype-selection").applySelect2(rtypes, text="name");
+    $newRow.find(".rtype-selection").applySelect2({
+        data: rtypes, text: "name"
+    });
+    $newRow.find(".units-selection").bindUnitsOfMeasure();
     addRowToTable($(""+selector), $newRow);
 }
 
@@ -229,17 +275,6 @@ function removeColumn(selector, columnId) {
         }    
     }           
 }
-
-// function refreshSelects(selector) {
-//     if (selector === undefined) selector = "*";
-//     $(selector).find(".rtype-selection").select2({
-//         dropdownAutoWidth: true,
-//         placeholder: {
-//             id: "-1",
-//             text: "Select an option"
-//         }
-//     });
-// }
 
 function createHeaderElement(selector) {
     if (selector === undefined) throw "Undefined selector.";
@@ -305,11 +340,15 @@ function createNewRecordRow(numberOfValueInputs, attributes) {
     $row.append(wrapWith(
         "td", $("<select></select>", {"class": "rtype-selection"})
     ));
+    $row.append(wrapWith(
+        "td", $("<select></select>", {"class": "units-selection"})
+    ));
     for (var i = 0; i < numberOfValueInputs; i++) {
         $row.append(wrapWith("td", createRecordInputValue()));
     }
 
-    $row.makeDraggable().makeDroppable();
+    // Remove comment if you want to make rows draggable.
+    // $row.makeDraggable().makeDroppable();
 
     return $row;
 }
@@ -326,7 +365,9 @@ function populateRowWithData(row, rtypes, data) {
         $(valueInputs[i]).val(value);
     }
 
-    row.find(".rtype-selection").applySelect2(rtypes, text="name");
+    row.find(".rtype-selection").applySelect2({
+        data: rtypes, text: "name"
+    });
     if (data.type !== undefined) {
         row.find(".rtype-selection").val(String(data.type)).trigger("change");
     }
@@ -439,31 +480,43 @@ function getNumberOfColumns(selector) {
 }
 
 function createRecordInputValue(value) {
-    if (value === undefined) value = 0;
-    var $div = $("<div></div>", {"class": "form-group"});
-    $("<input></input>", {
-        "type": "text",
-        "class": "form-control input-sm record-value",
-        "val": value
-    }).appendTo($div);
-    return $div;
+    return wrapWith("div",
+        $("<input></input>", {
+            "type": "text",
+            "class": "form-control input-sm record-value",
+            "val": (value ? value !== undefined : 0)
+        })    
+    );
 }
 
-function createDataForExport() {
-    var timerange = $("#report-timerange").text();
-    var timestamp = $("#report-timestamp").text();
-    var companyId = $("#company-id").data("company-id");
+function appendLastDayOfMonth(string) {
+    var date = moment(string, "YYYY-MM");
+    if (date.isValid()) {
+        return date.endOf("month").format("YYYY-MM-DD");
+    } else {
+        return string;
+    }
+}
 
-    var blsRecords = readRecordsFromTable("#bls-table", companyId);
-    var icsRecords = readRecordsFromTable("#ics-table", companyId);
-    var cfsRecords = readRecordsFromTable("#cfs-table", companyId);
+function createDataForExport(tables) {
+    var timerange = $("#report-timerange").text();
+    var timestamp = appendLastDayOfMonth($("#report-timestamp").text());
+    var companyId = $("#company-select").val();
+
+    var records = tables.map(function(tname) {
+        return readRecordsFromTable(tname, companyId);
+    }).reduce(function(r1, r2) {
+        return r1.concat(r2);
+    });
 
     var data = JSON.stringify({
         "timerange": timerange,
         "timestamp": timestamp,
         "company_id": companyId,
-        "records": blsRecords.concat(icsRecords, cfsRecords)
+        "records": records
     });
+
+
     return data;
 }
 
@@ -471,20 +524,16 @@ function readRecordsFromTable(selector, companyId) {
     if (companyId === undefined) companyId = null;
 
     var table = $(selector);
-    var headers = table.find("thead tr th").slice(FIXED_COLUMNS).map(function() {
-        return {
-            "timerange": $(this).find(".column-timerange").text(),
-            "timestamp": $(this).find(".column-timestamp").text()       
-        };
-    }).get();
+    var headers = getRecordsHeaders(table);
 
-    var records = table.find("tbody tr").map(function(rowIndex) {
+    var records = table.find("tbody tr:not(:first-child)").map(function(rowIndex) {
         var tds = $(this).find("td");
-        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").val();
+        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").val();
+        var uom = parseInt($(tds[UNITS_OF_MEASURE_COLUMN]).find("select").val());
         return $(this).find("td").slice(FIXED_COLUMNS).map(function(columnIndex) {
             return {
                 "company_id": companyId,
-                "value": parseFloat($(this).find("input").val()),
+                "value": parseFloat($(this).find("input").val()) * uom,
                 "rtype_id": recordType,
                 "timerange": parseInt(headers[columnIndex].timerange),
                 "timestamp": headers[columnIndex].timestamp
@@ -615,8 +664,9 @@ function createRecordForm(config) {
         {"class": "form-group"}
     ));
 
-    $form.find("select.new-record-name").applySelect2(config.rtypes, text="name");
-    // $form.find("select.new-record-statement").applySelect2();
+    $form.find("select.new-record-name").applySelect2({
+        data: config.rtypes, text: "name"
+    });
 
     return $form;
 }
@@ -673,30 +723,276 @@ function readDataFromRecordForm(form) {
     return recordsData;
 }
 
-function readRecordsFromTable(selector, companyId) {
-    if (companyId === undefined) companyId = null;
-
-    var table = $(selector);
-    var headers = table.find("thead tr th").slice(FIXED_COLUMNS).map(function() {
-        return {
-            "timerange": $(this).find(".column-timerange").text(),
-            "timestamp": $(this).find(".column-timestamp").text()       
-        };
-    }).get();
-
+function findDuplicateRecords(table) {
     var records = table.find("tbody tr").map(function(rowIndex) {
         var tds = $(this).find("td");
-        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").val();
-        return $(this).find("td").slice(FIXED_COLUMNS).map(function(columnIndex) {
-            return {
-                "company_id": companyId,
-                "value": parseFloat($(this).find("input").val()),
-                "rtype_id": recordType,
-                "timerange": parseInt(headers[columnIndex].timerange),
-                "timestamp": headers[columnIndex].timestamp
-            }       
-        }).get();
+        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").text();
+        return recordType;
     }).get();
 
-    return records;
+    var recordsCounter = {};
+    for (var i = 0; i < records.length; i++) {
+        if (!(records[i] in recordsCounter)) {
+            recordsCounter[records[i]] = 0;
+        }
+        recordsCounter[records[i]] += 1;
+    }
+
+    var duplicatedRecords = [];
+    for (var property in recordsCounter) {
+        if (recordsCounter.hasOwnProperty(property)) {
+            if (recordsCounter[property] > 1) {
+                duplicatedRecords.push(property);
+            }
+        }
+    }
+    return duplicatedRecords;
+}
+
+function validateDuplicateRecords(table) {
+    var records = findDuplicateRecords(table);
+    return {"result": records.length === 0, "details": records};
+}
+
+function validateRecordsColumns(table) {
+    var headers = getRecordsHeaders(table);
+    var result = true;
+    var details = headers.map(function(header, index) {
+        result = result && !isNaN(header.timerange) && moment(header.timestamp).isValid();
+        return {
+            "timerange": !isNaN(header.timerange),
+            "timestamp": moment(header.timestamp).isValid(),
+            "index": index
+        };
+    });
+    return {"result": result, "details": details};
+}
+
+function validateRecords(table) {
+    var result = true;
+    var columnNumbers = table.find("thead th").length;
+    var details = table.find("tbody tr:not(:first-child)").map(function(index) {
+        var numberOfCells = $(this).find("td").length;
+        var cells = $(this).find("td:nth-child(n+" + (FIXED_COLUMNS+1) + ")").map(function(index) {
+            result = result && !isNaN($(this).find("input").val());
+            return {
+                "value": !isNaN($(this).find("input").val()),
+                "index": index
+            };
+        }).get();
+        return {
+            "rows": numberOfCells == columnNumbers,
+            "cells": cells,
+            "index": index,
+            "rtype": $(this).find(".rtype-selection option:selected").text()
+        };
+    }).get();
+    return {"result": result, "details": details};
+}
+
+function validateCompany() {
+    var result = true;
+    var companyId = $("#company-select").val();
+    if (companyId === undefined || companyId === null) {
+        result = false;
+    }
+    return {"result": result, "details": result}
+}
+
+function validateReport() {
+    var timerange = $("#report-timerange").text();
+    var timestamp = appendLastDayOfMonth($("#report-timestamp").text());   
+    return {
+        "result": !isNaN(timerange) && moment(timestamp).isValid(),
+        "details": {
+            "timerange": !isNaN(timerange),
+            "timestamp": moment(timestamp).isValid()
+        }
+    }
+}
+
+function validateDataInTable(table, prefix) {
+    var vals = [
+        validateDuplicateRecords(table),
+        validateRecordsColumns(table),
+        validateRecords(table),
+    ];
+    var result = vals.every(function(val) { return val.result; });
+    var alerts = [].concat(
+        createAlertsForDuplicatedRecords(vals[0].details, prefix)
+    ).concat(
+        createAlertsForRecordsColumnsValidation(vals[1].details, prefix)
+    ).concat(
+        createAlertsForRecordsValidation(vals[2].details, prefix)
+    );
+    return {"result": result, "alerts": alerts};
+}
+
+function createAlertsForDuplicatedRecords(duprecords, prefix) {
+    prefix = adjust_prefix(prefix);
+    var alerts = [];
+    var msg;
+    for (var i = 0; i < duprecords.length; i++) {
+        msg = prefix + duprecords[i] + " is duplicated";
+        alerts.push(createAlert(msg, "danger"));
+    }
+    return alerts;
+}
+
+function createAlertsForRecordsColumnsValidation(validation, prefix) {
+    prefix = adjust_prefix(prefix);
+    var alerts = [];
+    for(var i = 0; i < validation.length; i++) {
+        if (!validation[i].timerange || !validation[i].timestamp) {
+            var msg = prefix + "Column #" + (validation[i].index + 1) + ":";
+            if (!validation[i].timerange) {
+                msg += " timerange corrupted;";
+            }
+            if (!validation[i].timestamp) {
+                msg += " timestamp corrupted;";
+            }
+            alerts.push(createAlert(msg, "danger"));
+        }
+    }
+    return alerts;
+}
+
+function createAlertsForRecordsValidation(validation, prefix) {
+    prefix = adjust_prefix(prefix);
+    var alerts = [];
+    var msg;
+    for(var i = 0; i < validation.length; i++) {
+        if (!validation[i].rows) {
+            msg = prefix + "Row #" + (validation[i].index + 1) + ": " +
+                  "different number of records";
+            alerts.push(createAlert(msg, "warning"));
+        }
+        for(var j = 0; j < validation[i].cells.length; j++) {
+            if (!validation[i].cells[j].value) {
+                msg = prefix + "Row #" + (validation[i].index + 1) + " with " + validation[i].rtype + ": " +
+                      "not a number in column #" + (validation[i].cells[j].index + 1);
+                alerts.push(createAlert(msg, "danger"));
+            }
+        }
+    }
+    return alerts;
+}
+
+function createAlertForCompanyValidation(validation, prefix) {
+    prefix = adjust_prefix(prefix);
+    if (!validation) {
+        var msg = prefix + "Company not identified";
+        return createAlert(msg, "danger");
+    }
+    return null;
+}
+
+function createAlertForReportValidation(validation, prefix) {
+    prefix = adjust_prefix(prefix);
+    if (validation.timerange && validation.timestamp) {
+        return null;
+    }
+    var msg = prefix + "Financial report identification:"
+    if (!validation.timerange) {
+        msg += " timerange corrupted;";
+    }
+    if (!validation.timestamp) {
+        msg += " timestamp corrupted;";
+    }
+    return createAlert(msg, "warning");
+}
+
+function adjust_prefix(prefix) {
+    if (prefix === undefined) {
+        prefix = "";
+    } else {
+        prefix = prefix + ": ";
+    }
+    return prefix; 
+}
+
+function getRecordsHeaders(table) {
+    var headers = table.find("thead tr th").slice(FIXED_COLUMNS).map(function() {
+        return {
+            "timerange": $(this).find(".timerange").text(),
+            "timestamp": $(this).find(".timestamp").text()
+        };
+    }).get();
+    return headers;
+}
+
+function createAlert(text, context) {
+    if (context === undefined) context = "info";
+    var alert = wrapWith("div", [
+            $("<p></p>", {"text": text})
+        ],
+        {
+            "class": "alert alert-" + context,
+            "role": "alert"
+        }
+    );
+    return alert;
+}
+
+function submitExportForm(data, validator) {
+    var validation = validator();
+    clearAlerts();
+    if (!validation.result) {
+        BootstrapDialog.alert({
+            title: "Validation Data - Errors",
+            message: "Validation procedure has detected serious erros. They will make impossible to upload all or part of your data into openstock database. Please correct them before uploading.",
+            type: BootstrapDialog.TYPE_DANGER
+        });
+        showDataValidation();
+        appendAlerts(validation.alerts);
+        return false;
+    } else {
+        if (validation.alerts.length > 0) {
+            if (BootstrapDialog.confirm({
+                title: "Validation Data - Warnings",
+                type: BootstrapDialog.TYPE_WARNING,
+                message: "Validation procedure has detected some warnings. They are not danger but may point out to some inconsistency in your data which will in the end influence quality if data in openstock database.  Do you want to continue?",
+                btnCancelLabel: "No, I want to inspect the warnings.",
+                btnOKLabel: "Yes, export data."
+            })) {
+                showDataValidation();
+                appendAlerts(validation.alerts);
+                return false;
+            }
+        }
+        $("#data-to-export").val(data);
+        return false;
+    }
+}
+
+function appendAlerts(alerts) {
+    var $container = $(".data-validation-alerts");
+    if (!$.isArray(alerts)) {
+        $container.append(alerts);
+    } else {
+        for (var i = 0; i < alerts.length; i++) {
+            $container.append(alerts[i]);
+        }
+    }
+}
+
+function clearAlerts() {
+    $(".data-validation-alerts").empty();
+}
+
+function showDataValidation() {
+    $(".data-validation").show();
+}
+
+function refreshReportUI() {
+    var counter = $(".selector > input:checkbox:checked").length;
+    if (counter > 0) {
+        $("#row-remove-btn").css("display","inline-block");
+        $("#stm-filter-btn").text("NONE");
+        $("#stm-filter-btn").data("select-type", "NONE");
+    } else {
+        $("#row-remove-btn").css("display","none"); 
+        $("#stm-filter-btn").text("ALL");
+        $("#stm-filter-btn").data("select-type", "ALL");
+    }  
 }

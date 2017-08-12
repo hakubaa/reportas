@@ -24,12 +24,11 @@ def represent_records_as_matrix(records, fiscal_year=None):
     matrix = dict()
     for record in records:
         timerange = record.project_onto_fiscal_year(fiscal_year)
-        matrix.setdefault(record.rtype, dict()).update({timerange: record.value})
+        matrix.setdefault(record.rtype, dict()).update({
+            timerange: dict(value=record.value, synthetic=record.synthetic)
+        })
     return matrix
     
-#-------------------------------------------------------------------------------
-# Utils for formulas
-#-------------------------------------------------------------------------------
 
 class Formula:
 
@@ -102,6 +101,10 @@ class Formula:
             self.rtype = rtype
             self.sign = sign
 
+        def __repr__(self):
+            cls_name = self.__class__.__name__
+            return "{}({!r})".format(cls_name, self.rtype)
+
         def __hash__(self):
             return hash(self.rtype) ^ hash(self.sign)
 
@@ -121,7 +124,14 @@ class Formula:
                 return False
         
         def get_value(self, data):
-            return data[self.rtype]
+            return data[self.rtype]["value"]
+
+        def override_genuine_record(self, data):
+            item = data.get(self.rtype, None)
+            if not item:
+                return False
+            else:
+                return not item.get("synthetic", False)
     
     class TimeRangeComponent(Component):
         
@@ -129,8 +139,12 @@ class Formula:
             super().__init__(rtype, sign)
             self.timerange = timerange
     
+        def __repr__(self):
+            cls_name = self.__class__.__name__
+            return "{}({!r}, {!r})".format(cls_name, self.rtype, self.timerange)
+
         def __hash__(self):
-            return hash(self.rtype) ^ hash(self.sign) ^ hash(self.timerange)
+            return hash(super().__hash__()) ^ hash(self.timerange)
 
         def __eq__(self, other):
             if self.rtype != other.rtype or self.sign != other.sign \
@@ -139,9 +153,15 @@ class Formula:
             return True
 
         def get_value(self, data):
-            return data[self.rtype][self.timerange]
+            return data[self.rtype][self.timerange]["value"]
     
-    
+        def override_genuine_record(self, data):
+            item = data.get(self.rtype, {}).get(self.timerange, None)
+            if not item:
+                return False
+            else:
+                return not item.get("synthetic", False)
+
     def __init__(self, lhs, rhs=None):
         self.lhs = lhs
         self.rhs = rhs or list()
@@ -173,6 +193,9 @@ class Formula:
     
     def is_calculable(self, data):
         return all(map(lambda item: item.is_calculable(data), self))
+
+    def override_genuine_record(self, data):
+        return self.lhs.override_genuine_record(data)
     
     def extend_with_timerange(self, timerange):
         new_formula = Formula(
@@ -183,13 +206,6 @@ class Formula:
                 Formula.TimeRangeComponent(item.rtype, item.sign, timerange)
             )
         return new_formula
-        
-    def is_calculated(self, data):
-        try:
-            self.lhs.get_value(data)
-            return True
-        except KeyError:
-            return False
 
     @classmethod
     def create_pot_formulas(cls, db_formulas, rtypes=None):
@@ -293,18 +309,24 @@ def create_inverted_mapping(formulas):
     return mapping
     
     
-def create_synthetic_records(base_record, data, formulas):
+def create_synthetic_records(base_record, data, formulas, exclude=None):
+    exclude = set() if exclude is None else set(exclude)
+    if base_record in exclude:
+        return []
+    exclude.add(base_record)
     rtype, timerange = base_record
-    
+
     # Filter all formulas involving base record.
     record_formulas = formulas.get(rtype, dict()).get(timerange, None)
     if not record_formulas:
         return list()
-    
+
     # Filter calculable formulas which output is not present in data
     calc_formulas = [ 
         formula for formula in record_formulas 
-        if formula.is_calculable(data) and not formula.is_calculated(data)
+        if formula.is_calculable(data) \
+           and not formula.override_genuine_record(data) \
+           and not (formula.lhs.rtype, formula.lhs.timerange) in exclude
     ]
 
     # Create synthetic records
@@ -316,16 +338,25 @@ def create_synthetic_records(base_record, data, formulas):
         }
         for formula in calc_formulas 
     ]
+    exclude.update(
+        (item.rtype, item.timerange) 
+        for formula in calc_formulas for item in formula 
+    )
 
     # Update data
     for record in synthetic_records:
-        data.setdefault(record["rtype"], dict())[record["timerange"]] =\
-            record["value"]
+        data.setdefault(record["rtype"], dict())[record["timerange"]] = {
+            "value": record["value"], 
+            "synthetic": False # set False to prevent updating the same record 
+                               # twice (this information is used by 
+                               # formula.override_genuine_record(...) )
+        }
         
     # Create synthetic records for newly created records
     synthetic_records_2nd = concatenate_lists(
         create_synthetic_records(
-            (record["rtype"], record["timerange"]), data, formulas
+            (record["rtype"], record["timerange"]), data, 
+            formulas, exclude
         )
         for record in synthetic_records
     )

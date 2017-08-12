@@ -19,6 +19,7 @@
 }
 #report-content table tbody td { 
     font-family: "Courier New", Courier, monospace;
+    font-size: 0.8em;
     padding: 0px;
 }
 #report-content table thead th {
@@ -77,21 +78,21 @@ td.record-name {
     padding-top: 10px !important; 
 }
 
-.records-table > tbody >tr > td {
-    padding-bottom: 0px;
+.records-table > tbody > tr > td {
+    text-align: center;
 }
 .records-table > tbody > tr > td input {
     text-align:center 
 }
 .records-table > thead th {
     vertical-align: middle;
-    text-align: justify;
-}
-.column-timestamp {
-    white-space: nowrap;
+    text-align: center;
 }
 .rtype-selection {
     width: 200px;
+}
+.units-selection {
+    width: 75px;
 }
 
 .no-left-padding {
@@ -137,3 +138,7 @@ td.record-name {
             animation: fadeIt 1s ease-in-out; 
 }
 
+.data-validation {
+    display: none;
+    margin: 10px 0px;
+}

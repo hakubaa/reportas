@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'admin/tools/utils.html' as utils %}
 
 {% block responsivnes %}{% endblock %}
 {% block title %} Parser {% endblock %}
@@ -7,6 +8,8 @@
 {{ super() }}
     <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/miner.css') }}" rel="stylesheet">
 {% endblock %}
@@ -15,7 +18,7 @@
 {{ super() }}
     <div class="container container-full">
         <h3>Financial Data Miner - Summary</h3>
-        <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}(not identified){% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m-%d')}} {% else %}(not identified){% endif %}</span></strong> 
+        <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}---{% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m')}} {% else %}---{% endif %}</span></strong> 
         (<a href="#column-editor" data-toggle="modal" data-target="#column-editor">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
         <p>
             <label>Company </label>
@@ -100,12 +103,13 @@
                     <th></th>
                     <th></th>
                     <th>Record Type</th>
+                    <th>Units</th>
                     {% for i in range(data.ncols) %}
                         {% if data.names|length > i %}
                             {% set timerange = data.names[0] %}
-                            {% set timestamp = data.names[1]|join('-') %}
+                            {% set timestamp = data.names[1][:2]|join('-') %}
                         {% else %}
-                            {% set timerange = '(not identified)' %}
+                            {% set timerange = '---' %}
                             {% set timestamp = timerange %}
                         {% endif %}
                         <th data-column-id="{{loop.index}}">
@@ -136,15 +140,10 @@
                                 <span class="glyphicon glyphicon-arrow-up"></span>
                             </button>   
                         </td>
-                        <td>
-                            <select class="rtype-selection" data-init-selected="{{record_name}}"></select>
-                        </td>
+                        <td><select class="rtype-selection" data-init-text="{{record_name}}"></select></td>
+                        <td><select class="units-selection" data-init-val="{{data.uom}}"></select></td>
                         {% for value in values %}
-                            <td>
-                                <div class="form-group">
-                                    <input type="text" class="form-control input-sm" value="{{value}}">
-                                </div>
-                            </td>
+                            <td><input type="text" class="form-control input-sm" value="{{value}}"></td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -156,70 +155,27 @@
 
     <div class="container container-full">
         <div style="margin-top:30px"></div>
-        <div>
-            <form method="POST" action="{{ url_for('dbmd_tools.upload_data') }}" id="export-data-form">
-                <input type="hidden" name="data" value="" id="data-to-export">
-                <button class="btn btn-info">Validate Data</button>
-                <input class="btn btn-success" name="submit" type="submit" value="Export Data">
-            </form>
-        </div>
-        <ul>
-            <li>check columnas</li>
-            <li>search for duplicate records</li>
-            <li>check company</li>
-            <li>chek report (warning) </li>
-            <li>check comlums compare the same</li>
-            <li>add unit of measure</li>
-        </ul>
+        {{ utils.render_export_form(url_for('dbmd_tools.upload_data')) }}
     </div>
 
-    <div class="modal fade" id="column-editor" tabindex="-1" role="dialog" aria-labelledby="modal-label">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <h4 class="modal-title" id="modal-label">Timestamp & Timerange Editor</h4>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="form-group">
-                            <label for="timestamp-input" class="control-label">Timestamp:</label>
-                            <input type="text" class="form-control input-sm" id="timestamp-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="timerange-input" class="control-label">Timerange:</label>
-                            <div>
-                                <select class="form-control" id="timerange-input" style="width: 100%;">
-                                    <option value="3">3</option>
-                                    <option value="6">6</option>
-                                    <option value="9">9</option>
-                                    <option value="12">12</option>
-                                </select>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Abort</button>
-                    <button type="button" class="btn btn-primary" id="modal-ok-btn">Ok</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{ utils.modal_column_editor() }}
 {% endblock %}
 
 {% block body_scripts %}
 <script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/miner.js') }}"></script>
 <script>
     var rtypes = {{ rtypes|tojson }};
 
-    $("select.rtype-selection").applySelect2(rtypes, text="name");
+    $("select.rtype-selection").applySelect2({data: rtypes, text: "name"});
+    $("select.units-selection").bindUnitsOfMeasure();
     $("#company-select").applySelect2();
-    $(".record-row").makeDraggable().makeDroppable();
+
+    // Remove comment if you want to make rows draggable.
+    // $(".record-row").makeDraggable().makeDroppable();
 
     $(document).on("click", ".record-remove-btn", function() {
         var $table = $(this).closest("table");
@@ -227,6 +183,7 @@
         toggleTable($table);
     });
     
+
     activateFocusOnInputs("#identified-records");
 
     // Seting animation when user clisk record in rows-table
@@ -248,9 +205,9 @@
         var $timestampInput = modal.find("#timestamp-input");
 
         // update inputs with current values
-        var timestamp = moment($timestampSpan.text(), "YYYY-MM-DD");
+        var timestamp = moment($timestampSpan.text(), "YYYY-MM");
         if (timestamp != null && timestamp.isValid()) {
-            $timestampInput.val(timestamp.format("YYYY-MM-DD"));
+            $timestampInput.val(timestamp.format("YYYY-MM"));
         } else {
             $timestampInput.val("");    
         }
@@ -267,7 +224,8 @@
             okButton.unbind("click");
         });
     });
-    $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
+    // $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
+    $("#timestamp-input").bindDatePicker({orientation: "bottom"});
 
     $(document).on("change", ".record-row select", function() {
         var recordType = $(this).find("option:selected").text();
@@ -361,21 +319,40 @@
         }
     );
 
-    function refreshReportUI() {
-        var counter = $(".selector > input:checkbox:checked").length;
-        if (counter > 0) {
-            $("#stm-dropdown").css("display","inline-block");
-            $("#row-remove-btn").css("display","inline-block");
+    $("#export-data-form").submit(function(event) {
+        var data = createDataForExport(["#identified-records"]);
+        if (!submitExportForm(data, validateData)) {
+            event.preventDefault();
+            return false;
+        }
+        return true;
+    });
 
-            $("#stm-filter-btn").text("NONE");
-            $("#stm-filter-btn").data("select-type", "NONE");
-        } else {
-            $("#stm-dropdown").css("display","none"); 
-            $("#row-remove-btn").css("display","none"); 
+    function validateData() {
+        var $table = $("#identified-records");
+        var vals = [
+            validateDuplicateRecords($table),
+            validateRecordsColumns($table),
+            validateRecords($table),
+            validateCompany()
+        ];
+        var result = vals.every(function(val) { return val.result; });
 
-            $("#stm-filter-btn").text("ALL");
-            $("#stm-filter-btn").data("select-type", "ALL");
-        }  
+        var alerts = [].concat(
+            createAlertsForDuplicatedRecords(vals[0].details)
+        ).concat(
+            createAlertsForRecordsColumnsValidation(vals[1].details)
+        ).concat(
+            createAlertsForRecordsValidation(vals[2].details)
+        );
+        alerts.push(createAlertForCompanyValidation(vals[3].details));
+        alerts.push(createAlertForReportValidation(validateReport().details));
+        return {
+            "result": result, 
+            "alerts": alerts.filter(function(item) { 
+                return item !== null && item !== undefined 
+            })
+        };
     }
 </script>
 {% endblock %}
