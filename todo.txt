@@ -1,14 +1,23 @@
 ﻿TO_DO:
-- synthetic records should be overriden manually
+- optimize ui - try to remove all what is possible and redundant
+- upload few reports to test it live
+- deploy on rhcloud with postgresql
+- formulas in database, create new formula and so on
+- order book d3.js (free delivery?)
+- batch uploader!!!!!
+- delete multiple records with one dbrequest
+- timestamp in dbmd.records - only years and months
 
 DONE:
-- create synthetic records for financial recordfs of ics/cfs and bls
+- create synthetic records for financial records of ics/cfs and bls
 - Record.project_onto_fiscal_year will decide how to project bls and ics/cfs
 - update synthetic records (when updating new field)
 - delete syntehtic records ? - no, only manually
 - timestamp, only years and months in tools
 - add warnings and errors when uploading data with tools
 - units of measure
+- synthetic records should be overriden manually
+
 
 ################################################################################
 

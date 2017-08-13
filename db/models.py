@@ -479,11 +479,22 @@ class Record(VersionedModel):
 # timerange of 'point-in-time' records cannot be changed, this field has
 # little sense for this records, because they show some value at specific
 # time
-@event.listens_for(Record, "refresh")
-def receive_set(target, context, attrs):
-    if "timerange" in attrs:
-        if target.rtype.timeframe == "pit":
-            target.timerange = 0
+@event.listens_for(Record.timerange, "set", retval=True)
+def update_timerange_for_pit_records(target, value, oldvalue, initiator):
+    if target.rtype and target.rtype.timeframe == "pit":
+        return 0
+    return value
+
+
+@event.listens_for(Record, "after_insert")
+def after_insert(mapper, connection, target):
+    if target.rtype and target.rtype.timeframe == "pit":
+        record_table = Record.__table__
+        connection.execute(
+            record_table.update().
+            where(record_table.c.id == target.id).
+            values(timerange=0)
+        )
 
 
 class RecordFormula(VersionedModel):

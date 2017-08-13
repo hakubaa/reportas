@@ -6,7 +6,9 @@ __all__ = [
     "FinancialStatementTypeReprSchema"
 ]
 
-from marshmallow import validates, ValidationError, fields, validates_schema
+from marshmallow import (
+    validates, ValidationError, fields, validates_schema, post_load
+)
 from marshmallow_sqlalchemy import field_for, ModelSchema
 from marshmallow.validate import OneOf
 from sqlalchemy import exists, and_
@@ -199,7 +201,7 @@ class RecordTypeReprSchema(ModelSchema):
 class RecordTypeSchema(ModelSchema):
     class Meta:
         model = models.RecordType
-        exclude = ("records", "version", "revcomponents", "ftype_id")
+        exclude = ("records", "version", "revcomponents")
 
     id = MyInteger()
     ftype = fields.Nested(
@@ -226,7 +228,7 @@ class RecordTypeSchema(ModelSchema):
         return True
 
     @validates("ftype_id")
-    def validate_rtype(self, value):
+    def validate_ftype(self, value):
         (ret, ), = self.session.query(
             exists().where(models.FinancialStatementType.id == value)
         )
@@ -309,29 +311,52 @@ class RecordSchema(ModelSchema):
                 "company_id" in data and "rtype_id" in data):
             return False
 
-        if (self.instance 
-            and (
-                self.instance.timerange == data["timerange"] and
-                self.instance.timestamp == data["timestamp"] and
-                self.instance.company_id == data["company_id"] and
-                self.instance.rtype_id == data["rtype_id"]
-            )
-        ):
+        self._modify_timeframe_for_pit_record(data)
+
+        if self._test_whether_updating_instance(data):
             return True
 
-        (ret, ), = self.session.query(exists().where(and_(
-            models.Record.timerange == data["timerange"],
-            models.Record.timestamp == data["timestamp"],
-            models.Record.company_id == data["company_id"],
-            models.Record.rtype_id == data["rtype_id"]
-        )))
-        if ret:
+        if not self._is_record_unique(data):
             raise ValidationError(
                 "Record not unique in terms of timerange, timestamp, "
                 "company and type.", field_names=("record")
             )
         return True
 
+    @post_load
+    def remove_dsynthetic_record(self, record):
+        self.session.query(models.Record).filter(
+            models.Record.timerange == record.timerange,
+            models.Record.timestamp == record.timestamp,
+            models.Record.company_id == record.company_id,
+            models.Record.rtype_id == record.rtype_id,
+            models.Record.synthetic == True
+        ).delete()
+
+    def _modify_timeframe_for_pit_record(self, data):
+        rtype = self.session.query(models.RecordType).get(data["rtype_id"])
+        if rtype.timeframe == "pit":
+            data["timerange"] = 0
+
+    def _test_whether_updating_instance(self, data):
+        return (self.instance 
+            and (
+                self.instance.timerange == data["timerange"] and
+                self.instance.timestamp == data["timestamp"] and
+                self.instance.company_id == data["company_id"] and
+                self.instance.rtype_id == data["rtype_id"]
+            )
+        )
+
+    def _is_record_unique(self, data):
+        (ret, ), = self.session.query(exists().where(and_(
+            models.Record.timerange == data["timerange"],
+            models.Record.timestamp == data["timestamp"],
+            models.Record.company_id == data["company_id"],
+            models.Record.rtype_id == data["rtype_id"],
+            models.Record.synthetic == False # synthetic records can be overridden 
+        ))) 
+        return not ret
 
 @records_factory.register_schema()
 class ReportSchema(ModelSchema):

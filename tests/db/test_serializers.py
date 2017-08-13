@@ -569,7 +569,7 @@ class RecordSchemaTest(DbTestCase):
     def test_load_creates_new_record(self):
         company = models.Company(name="TEST", isin="TEST")
         ftype = create_ftype(self.db.session)
-        rtype = models.RecordType(name="TEST", ftype=ftype)
+        rtype = models.RecordType(name="TEST", ftype=ftype, timeframe="pot")
         self.db.session.add_all((company, rtype))
         self.db.session.commit()
         data = {
@@ -587,41 +587,102 @@ class RecordSchemaTest(DbTestCase):
         self.assertEqual(record.timerange, 12)
         self.assertEqual(record.timestamp, date(2015, 3, 31))
 
-    def test_deserialized_data_contains_type_of_record(self):
+    def create_record(self, **kwargs):
         company = models.Company(name="TEST", isin="TEST")
         ftype = create_ftype(self.db.session)
-        rtype = models.RecordType(name="TEST", ftype=ftype)
+        rtype = models.RecordType(
+            name="TEST", ftype=ftype, 
+            timeframe=kwargs.pop("timeframe", "pot")
+        )
         self.db.session.add_all((company, rtype))
         self.db.session.flush()
-        record = models.Record(
-            value=10, timerange=12, company=company, rtype=rtype, 
-            timestamp=datetime(2015, 3, 31)
-        )
+        kwargs.update(dict(rtype=rtype, company=company))
+        record = models.Record(**kwargs)
         self.db.session.add(record)
-        self.db.session.commit()
+        self.db.session.commit()   
+        return record
+
+    def test_deserialized_data_contains_type_of_record(self):
+        record = self.create_record(
+            value=10, timerange=12, timestamp=datetime(2015, 3, 31)
+        )
+
         data = RecordSchema().dump(record).data
+
         self.assertEqual(data["rtype"], "TEST")
 
     def test_combination_company_rtype_timestamp_and_timerange_is_unique(self):
-        ftype = create_ftype(self.db.session)
-        company = models.Company(name="TEST", isin="TEST")
-        rtype = models.RecordType(name="TEST", ftype=ftype)
-        self.db.session.add_all((company, rtype))
-        self.db.session.flush()
-        record = models.Record(
-            value=10, timerange=12, company=company, rtype=rtype, 
-            timestamp=date(2015, 3, 31)
+        record = self.create_record(
+            value=10, timerange=12, timestamp=datetime(2015, 3, 31),
+            timeframe="pot"
         )
-        self.db.session.add(record)
-        self.db.session.commit()
         data = {
             "rtype_id": record.rtype_id, "company_id": record.company_id, 
             "timerange": record.timerange, "value": 345, 
             "timestamp": "2015-03-31"
         }
+
         obj, errors = RecordSchema().load(data, session=self.db.session)
+
         self.assertTrue(errors)
         self.assertIn("record", errors)
+
+    def test_timerange_of_pit_records_is_ignore_by_serializers(self):
+        record = self.create_record(
+            value=10, timerange=0, timeframe="pit", 
+            timestamp=date(2015, 3, 31)
+        )
+        data = {
+            "rtype_id": record.rtype_id, "company_id": record.company_id, 
+            "timerange": 12, "value": 345, 
+            "timestamp": "2015-03-31"
+        }
+
+        obj, errors = RecordSchema().load(data, session=self.db.session)
+
+        # despite 'different' timeranges error is being risen
+        self.assertTrue(errors)
+        self.assertIn("record", errors)       
+
+    def test_overridding_synthetic_records_doesnt_raise_errors(self):
+        record = self.create_record(
+            value=10, timerange=12, timeframe="pit", synthetic=True, 
+            timestamp=date(2015, 3, 31)
+        )
+
+        data = {
+            "rtype_id": record.rtype_id, "company_id": record.company_id, 
+            "timerange": 0, "value": 345, 
+            "timestamp": "2015-03-31"
+        }
+
+        obj, errors = RecordSchema().load(data, session=self.db.session)
+
+        self.assertFalse(errors)
+        self.assertEqual(obj.value, 345)
+
+    def test_remove_synthetic_records_when_overridding(self):
+        record = self.create_record(
+            value=10, timerange=12, timeframe="pit", synthetic=True, 
+            timestamp=date(2015, 3, 31)
+        )
+
+        data = {
+            "rtype_id": record.rtype_id, "company_id": record.company_id, 
+            "timerange": 0, "value": 345, 
+            "timestamp": "2015-03-31"
+        }
+
+        obj, errors = RecordSchema().load(data, session=self.db.session) 
+        
+        self.db.session.add(obj)
+        self.db.session.commit()   
+
+        self.assertEqual(self.db.session.query(models.Record).count(), 1)
+
+        record = self.db.session.query(models.Record).one()
+        self.assertEqual(record.synthetic, False)
+        self.assertEqual(record.value, 345)
 
 
 class ReportSchemaTest(DbTestCase):
@@ -640,7 +701,7 @@ class ReportSchemaTest(DbTestCase):
         
     def test_create_report_with_records(self):
         ftype = create_ftype(self.db.session)
-        rtype = models.RecordType(name="NETPROFIT", ftype=ftype)
+        rtype = models.RecordType(name="NETPROFIT", ftype=ftype, timeframe="pot")
         self.db.session.add(rtype)
         company = models.Company(isin="#TEST", name="TEST")
         self.db.session.add(company)
