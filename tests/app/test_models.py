@@ -536,6 +536,28 @@ class DBRequestTest(AppTestCase):
         self.assertEqual(db.session.query(Student).count(), 1)
         self.assertEqual(db.session.query(Account).count(), 1)
 
+    def test_deletion_of_main_request_delets_subrequests(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17, "name": "Python"}    
+        )    
+
+        db.session.delete(main_request)
+        db.session.commit()
+
+        self.assertEqual(db.session.query(DBRequest).count(), 0)
+
+    def test_deletion_of_subrequest_does_not_delete_main_request(self):
+        user = self.create_user()
+        main_request, subrequest = create_related_requests(
+            db.session, user, data={"age": 17, "name": "Python"}    
+        )    
+
+        db.session.delete(subrequest)
+        db.session.commit()
+
+        self.assertEqual(db.session.query(DBRequest).count(), 0)
+
 
 class UserModelTest(unittest.TestCase):
 

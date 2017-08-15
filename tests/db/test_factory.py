@@ -104,3 +104,23 @@ class InstanceFactoryTest(DbTestCase):
         schema = factory.get_schema("Student")
         
         self.assertEqual(schema, StudentSchema)
+
+    def test_updating_instance_without_any_data_does_not_raise_erros(self):
+        factory = DBRecordFactory(session=self.db.session)
+        factory.register_model(Student, StudentSchema)
+        student = self.create_student()
+        
+        obj, errors = factory.update(student)
+
+        self.assertFalse(errors)
+        self.assertEqual(obj, student)
+
+    def test_id_in_data_is_ignored_when_updating(self):
+        factory = DBRecordFactory(session=self.db.session)
+        factory.register_model(Student, StudentSchema)
+        student = self.create_student()
+        
+        obj, errors = factory.update(student, id=student.id)
+
+        self.assertFalse(errors)
+        self.assertEqual(obj, student)

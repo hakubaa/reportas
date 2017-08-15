@@ -194,10 +194,8 @@ class DBRequest(Model):
     
     parent_request_id = Column(Integer, ForeignKey("dbrequest.id"))
     subrequests = relationship(
-        "DBRequest", 
-        backref=backref(
-            "parent_request", remote_side=[id], cascade="all, delete"
-        )
+        "DBRequest", cascade="all, delete",
+        backref=backref("parent_request", remote_side=[id], cascade="all, delete")
     )
 
     __table_args__ = (

@@ -165,24 +165,6 @@ jQuery.fn.bindUnitsOfMeasure = function() {
     });
 }
 
-$.fn.singleDatePicker = function(attributes) {
-    $(this).on("apply.daterangepicker", function(e, picker) {
-        picker.element.val(picker.startDate.format(picker.locale.format));
-    });
-    var defaultAttributes = {
-        singleDatePicker: true,
-        showDropdowns: true,
-        locale: {
-            format: "YYYY-MM-DD"
-        },
-        autoUpdateInput: false
-    };
-    for(var property in attributes) {
-        defaultAttributes[property] = attributes[property];
-    }
-    return $(this).daterangepicker(defaultAttributes);
-};
-
 $.fn.bindDatePicker = function(attributes) {
     if (attributes === undefined) attributes = {};
 
@@ -236,14 +218,11 @@ function toggleTable(table) {
     }
 }
 
-function addEmptyRow(selector, rtypes) {
+function addEmptyRow(selector) {
     if (selector === undefined) throw "Undefined selector.";
     var numberOfColumns = getNumberOfColumns(selector);
     var $newRow = createNewRecordRow(numberOfColumns);
-    $newRow.find(".rtype-selection").applySelect2({
-        data: rtypes, text: "name"
-    });
-    $newRow.find(".units-selection").bindUnitsOfMeasure();
+    $newRow.find(".record-uom").bindUnitsOfMeasure();
     addRowToTable($(""+selector), $newRow);
 }
 
@@ -291,9 +270,8 @@ function createHeaderElement(selector) {
     }).appendTo($th);
     $("<span> </span>").appendTo($th);
     $("<a></a>", {
-        "href": "#",
-        "data-toggle": "modal",
-        "data-target": "#column-editor",
+        "href": "javascript:void(0);",
+        "class": "time-editor-btn",
         "html": "<span class='glyphicon glyphicon-edit'></span>"
     }).appendTo($th);
     $("<a></a>", {
@@ -337,11 +315,18 @@ function createNewRecordRow(numberOfValueInputs, attributes) {
             {"class": "no-left-padding"}
         )
     );  
-    $row.append(wrapWith(
-        "td", $("<select></select>", {"class": "rtype-selection"})
+    $row.append(wrapWith("td", [
+            $("<span></span>", {"class": "record-rtype", "text": "--- SELECT RECORD TYPE ---"}),
+            $("<span> </span>"),
+            wrapWith("a",
+                $("<span></span>", {"class": "glyphicon glyphicon-list"}),
+                {"href": "javascript:void(0);", "class": "record-rtype-btn"}    
+            )
+        ]
     ));
+
     $row.append(wrapWith(
-        "td", $("<select></select>", {"class": "units-selection"})
+        "td", $("<select></select>", {"class": "record-uom"})
     ));
     for (var i = 0; i < numberOfValueInputs; i++) {
         $row.append(wrapWith("td", createRecordInputValue()));
@@ -353,8 +338,8 @@ function createNewRecordRow(numberOfValueInputs, attributes) {
     return $row;
 }
 
-function populateRowWithData(row, rtypes, data) {
-    if (data === undefined) data = {"type": undefined, "values": []}
+function populateRowWithData(row, data) {
+    if (data === undefined) data = {"rtype": undefined, "values": []}
 
     var valueInputs = row.find(".record-value");
     for (var i = 0; i < valueInputs.length; i++) {
@@ -365,11 +350,12 @@ function populateRowWithData(row, rtypes, data) {
         $(valueInputs[i]).val(value);
     }
 
-    row.find(".rtype-selection").applySelect2({
-        data: rtypes, text: "name"
-    });
-    if (data.type !== undefined) {
-        row.find(".rtype-selection").val(String(data.type)).trigger("change");
+    if (data.rtype !== undefined) {
+        row.find(".record-rtype").text(data.rtype);
+    }
+
+    if (data.uom !== undefined) {
+        row.find(".record-uom").val(data.uom).trigger("change");
     }
 }
 
@@ -456,24 +442,6 @@ function scrollToRow(selector) {
     }, 1000);
 }
 
-function createRecordTypeSelect(options, selected) {
-    var $select = $("<select></select>", {"class": "rtype-selection"});
-    for(var i = 0; i < options.length; i++) {
-        createRecordTypeSelectOption(options[i].id, options[i].name).
-        appendTo($select);
-    }
-    $select.val(String(selected));
-    return $select;
-}
-
-function createRecordTypeSelectOption(value, name) {
-    var $option = $("<option></option>", {
-        "value": String(value),
-        "text": name
-    });
-    return $option;
-}
-
 function getNumberOfColumns(selector) {
     if (selector === undefined) throw "Undefined selector.";
     return $("" + selector).find("thead th").length - FIXED_COLUMNS;
@@ -498,13 +466,13 @@ function appendLastDayOfMonth(string) {
     }
 }
 
-function createDataForExport(tables) {
+function createDataForExport(tables, rtypes) {
     var timerange = $("#report-timerange").text();
     var timestamp = appendLastDayOfMonth($("#report-timestamp").text());
     var companyId = $("#company-select").val();
 
     var records = tables.map(function(tname) {
-        return readRecordsFromTable(tname, companyId);
+        return readRecordsFromTable(tname, companyId, rtypes);
     }).reduce(function(r1, r2) {
         return r1.concat(r2);
     });
@@ -520,7 +488,7 @@ function createDataForExport(tables) {
     return data;
 }
 
-function readRecordsFromTable(selector, companyId) {
+function readRecordsFromTable(selector, companyId, rtypes) {
     if (companyId === undefined) companyId = null;
 
     var table = $(selector);
@@ -528,15 +496,15 @@ function readRecordsFromTable(selector, companyId) {
 
     var records = table.find("tbody tr:not(:first-child)").map(function(rowIndex) {
         var tds = $(this).find("td");
-        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").val();
+        var rtype = $(tds[RECORD_TYPE_COLUMN]).find(".record-rtype").text();
         var uom = parseInt($(tds[UNITS_OF_MEASURE_COLUMN]).find("select").val());
         return $(this).find("td").slice(FIXED_COLUMNS).map(function(columnIndex) {
             return {
                 "company_id": companyId,
                 "value": parseFloat($(this).find("input").val()) * uom,
-                "rtype_id": recordType,
+                "rtype_id": getIDforRType(rtype, rtypes),
                 "timerange": parseInt(headers[columnIndex].timerange),
-                "timestamp": headers[columnIndex].timestamp
+                "timestamp": appendLastDayOfMonth(headers[columnIndex].timestamp)
             }       
         }).get();
     }).get();
@@ -574,10 +542,10 @@ function createRecordForm(config) {
 
     $form.append(wrapWith("div",
         [
-            createLabel({"class": "control-label col-sm-2", "text": "Financial Item"}),
+            createLabel({"class": "control-label col-md-2 col-xs-1", "text": "Financial Item"}),
             wrapWith("div",
-                createSelect([], {"class": "new-record-name"}),
-                {"class": "col-sm-10"}
+                createSelect([], {"class": "new-record-name", "style": "width: 100%;"}),
+                {"class": "col-md-3 col-xs-3"}
             )
         ], 
         {"class": "form-group"}
@@ -585,13 +553,24 @@ function createRecordForm(config) {
 
     $form.append(wrapWith("div",
         [
-            createLabel({"class": "control-label col-sm-2", "text": "Statement"}),  
+            createLabel({"class": "control-label col-md-2 col-xs-1", "text": "Statement"}),  
             wrapWith("div",
                 createSelect(
                     [{"name": "BLS"}, {"name": "ICS"}, {"name": "CFS"}],
-                    {"class": "new-record-statement"}
+                    {"class": "new-record-statement", "style": "width: 100%;"}
                 ),
-                {"class": "col-sm-10"}
+                {"class": "col-md-1 col-xs-1"}
+            )  
+        ],
+        {"class": "form-group"}
+    ));
+
+    $form.append(wrapWith("div",
+        [
+            createLabel({"class": "control-label col-md-2 col-xs-1", "text": "Units of Measure"}),  
+            wrapWith("div",
+                createSelect([], {"class": "new-record-uom", "style": "width: 100%;"}),
+                {"class": "col-md-1 col-xs-1"}
             )  
         ],
         {"class": "form-group"}
@@ -629,10 +608,10 @@ function createRecordForm(config) {
 
     $form.append(wrapWith("div",
         [
-            createLabel({"class": "control-label col-sm-2", "text": "Financial Data"}), 
+            createLabel({"class": "control-label col-md-2 col-xs-1", "text": "Financial Data"}), 
             wrapWith("div",
                 valueInputs,
-                {"class": "form-inline col-sm-10"}
+                {"class": "form-inline col-md-10 col-xs-11"}
             ) 
         ],
         {"class": "form-group"}
@@ -659,14 +638,14 @@ function createRecordForm(config) {
                 ],
                 {"class": "btn-toolbar"}
             ),
-            {"class": "col-sm-offset-2 col-sm-10"}
+            {"class": "col-md-offset-2 col-md-10 col-xs-offset-2 col-xs-10"}
         ),
         {"class": "form-group"}
     ));
 
-    $form.find("select.new-record-name").applySelect2({
-        data: config.rtypes, text: "name"
-    });
+    $form.find("select.new-record-name").applySelect2({data: config.rtypes, text: "name"});
+    $form.find("select.new-record-statement").applySelect2({minimumResultsForSearch: Infinity});
+    $form.find("select.new-record-uom").bindUnitsOfMeasure();
 
     return $form;
 }
@@ -710,9 +689,10 @@ function createButton(elements, attributes) {
 
 function readDataFromRecordForm(form) {
     var recordsData = {
-        "type": form.find(".new-record-name :selected").val(),
-        "type_name": form.find(".new-record-name :selected").text(),
+        // "type": form.find(".new-record-name :selected").val(),
+        "rtype": form.find(".new-record-name :selected").text(),
         "statement": form.find(".new-record-statement :selected").text(),
+        "uom": form.find(".new-record-uom").val(),
         "values": 
             form.find("input.record-value").map(
                 function () {
@@ -726,7 +706,7 @@ function readDataFromRecordForm(form) {
 function findDuplicateRecords(table) {
     var records = table.find("tbody tr").map(function(rowIndex) {
         var tds = $(this).find("td");
-        var recordType = $(tds[RECORD_TYPE_COLUMN]).find("select").find("option:selected").text();
+        var recordType = $(tds[RECORD_TYPE_COLUMN]).find(".record-rtype").text();
         return recordType;
     }).get();
 
@@ -784,7 +764,7 @@ function validateRecords(table) {
             "rows": numberOfCells == columnNumbers,
             "cells": cells,
             "index": index,
-            "rtype": $(this).find(".rtype-selection option:selected").text()
+            "rtype": $(this).find(".record-rtype").text()
         };
     }).get();
     return {"result": result, "details": details};
@@ -934,7 +914,7 @@ function createAlert(text, context) {
     return alert;
 }
 
-function submitExportForm(data, validator) {
+function submitExportForm(data, validator, callback) {
     var validation = validator();
     clearAlerts();
     if (!validation.result) {
@@ -945,23 +925,30 @@ function submitExportForm(data, validator) {
         });
         showDataValidation();
         appendAlerts(validation.alerts);
-        return false;
     } else {
         if (validation.alerts.length > 0) {
-            if (BootstrapDialog.confirm({
+            BootstrapDialog.confirm({
                 title: "Validation Data - Warnings",
                 type: BootstrapDialog.TYPE_WARNING,
                 message: "Validation procedure has detected some warnings. They are not danger but may point out to some inconsistency in your data which will in the end influence quality if data in openstock database.  Do you want to continue?",
                 btnCancelLabel: "No, I want to inspect the warnings.",
-                btnOKLabel: "Yes, export data."
-            })) {
-                showDataValidation();
-                appendAlerts(validation.alerts);
-                return false;
-            }
+                btnOKLabel: "Yes, export data.",
+                callback: function(result) {
+                    showDataValidation();
+                    appendAlerts(validation.alerts);
+                    if (result) {
+                        $("#data-to-export").val(data); 
+                    }
+                    if (callback !== undefined) {
+                        callback(result);
+                    }
+                }
+            });
         }
         $("#data-to-export").val(data);
-        return false;
+        if (callback !== undefined) {
+            callback(true);
+        }
     }
 }
 
@@ -995,4 +982,160 @@ function refreshReportUI() {
         $("#stm-filter-btn").text("ALL");
         $("#stm-filter-btn").data("select-type", "ALL");
     }  
+}
+
+
+function createTimeSelectionDialog(config) {
+    if (config === undefined) config = {};
+    if (config.title === undefined) config.title = "Timestamp  & Timerange Selection";
+
+    var dialog = new BootstrapDialog({
+        title: config.title,
+        type: BootstrapDialog.TYPE_DEFAULT,
+        message: function(dialog) {
+            var $content = wrapWith("div", [
+                wrapWith("div", [
+                        $("<label>Timestamp</label>", {
+                            "for": "timestamp-input", "class": "control-label"
+                        }),
+                        $("<input></input>", {
+                            "type": "text", "class": "form-control input-sm",
+                            "id": "timestamp-input"            
+                        })
+                    ],
+                    {"class": "form-group"}
+                ),
+                wrapWith("div",[
+                        $("<label>Timerange</label>", {
+                            "for": "timestamp-input", "class": "control-label"
+                        }),
+                        $("<select></select>", {
+                            "class": "form-control", "id": "timerange-input",
+                            "style": "width: 100%;"
+                        })
+                    ],
+                    {"class": "form-group"}
+                )
+            ]);
+            var data = [
+                {"id": "none", "text": "None"},
+                {"id": 0, "text": "0"},
+                {"id": 3, "text": "3"},
+                {"id": 6, "text": "6"},
+                {"id": 9, "text": "9"},
+                {"id": 12, "text": "12"}
+            ];
+
+            var $timerangeInput = $content.find("#timerange-input");
+            var $timestampInput = $content.find("#timestamp-input");
+
+            $timerangeInput.applySelect2({"data": data});
+            $timestampInput.bindDatePicker({orientation: "bottom"});
+
+            // update inputs with current values
+            if (config.timestamp !== undefined) {
+                var timestamp = moment(config.timestamp.text(), "YYYY-MM");
+                if (timestamp != null && timestamp.isValid()) {
+                    $timestampInput.val(timestamp.format("YYYY-MM"));
+                } else {
+                    $timestampInput.val("");    
+                }
+            }
+            if (config.timerange !== undefined) {
+                $timerangeInput.val(config.timerange.text()).trigger("change");
+            }
+
+            return $content;
+        },
+        buttons: [
+            {
+                label: "Ok",
+                cssClass: "btn-sm btn-success",
+                action: function(dialog) {
+                    var $timerangeInput = dialog.getModalContent().find("#timerange-input");
+                    var $timestampInput = dialog.getModalContent().find("#timestamp-input");
+
+                    dialog.close();
+
+                    if (config.timerange !== undefined) {
+                        config.timerange.text($timerangeInput.find(":selected").val());
+                    }
+                    if (config.timestamp !== undefined) {
+                        var timestamp = $timestampInput.val();
+                        if (timestamp !== "") {
+                            config.timestamp.text(timestamp);
+                        }    
+                    }
+                }
+            },
+            {
+                label: "Abort",
+                cssClass: "btn-sm btn-danger",
+                action: function(dialog){
+                    dialog.close();
+                }
+            }
+        ]
+
+    });
+    return dialog;
+}
+
+
+function createRTypeSelectionDialog(config) {
+    if (config === undefined) config = {};
+    if (config.title === undefined) config.title = "Record Type Selection";
+
+    var dialog = new BootstrapDialog({
+        title: config.title,
+        type: BootstrapDialog.TYPE_DEFAULT,
+        message: function(dialog) {
+            var $select = $("<select style='width: 100%'></select>");
+            var $content = wrapWith("div", $select);
+            $select.applySelect2({
+                data: config.data, text: config.text,
+                dropdownParent: dialog.getModal()
+            });
+            if (config.initval !== undefined) {
+                $select.val(config.initval).trigger("change");
+            }
+            return $content;
+        },
+        buttons: [
+            {
+                label: "Ok",
+                cssClass: "btn-sm btn-success",
+                action: function(dialog) {
+                    if (config.callback) {
+                        var $select = dialog.getModalContent().find("select");
+                        dialog.close();
+                        config.callback({
+                            value: $select.val(),
+                            text: $select.find("option:selected").text()
+                        });
+                    }
+                }
+            },
+            {
+                label: "Abort",
+                cssClass: "btn-sm btn-danger",
+                action: function(dialog){
+                    dialog.close();
+                }
+            }
+        ]
+    });
+    return dialog;
+}
+
+function getIDforRType(name, rtypes) {
+    var matchedRTypes = $.grep(rtypes, function(obj) { 
+        return (obj.name == name); 
+    });
+
+    var recordId = undefined;
+    if (matchedRTypes.length > 0) {
+        recordId = String(matchedRTypes[0].id);
+    }
+    return recordId;
 }

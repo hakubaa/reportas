@@ -18,8 +18,10 @@
 {{ super() }}
     <div class="container container-full">
         <h3>Financial Data Miner - Summary</h3>
-        <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}---{% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m')}} {% else %}---{% endif %}</span></strong> 
-        (<a href="#column-editor" data-toggle="modal" data-target="#column-editor">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+        <div>
+            <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}---{% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m')}} {% else %}---{% endif %}</span></strong> 
+            (<a href="javascript:void(0);" class="time-editor-btn">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+        </div>
         <p>
             <label>Company </label>
             <select id="company-select">
@@ -106,15 +108,15 @@
                     <th>Units</th>
                     {% for i in range(data.ncols) %}
                         {% if data.names|length > i %}
-                            {% set timerange = data.names[0] %}
-                            {% set timestamp = data.names[1][:2]|join('-') %}
+                            {% set timerange = data.names[i][0] %}
+                            {% set timestamp = data.names[i][1][:2]|join('-') %}
                         {% else %}
                             {% set timerange = '---' %}
                             {% set timestamp = timerange %}
                         {% endif %}
                         <th data-column-id="{{loop.index}}">
                             <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
-                            <a href="#column-editor" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
+                            <a href="javascript:void(0);" class="time-editor-btn"><span class="glyphicon glyphicon-edit"></span></a>
                             <a href="javascript:void(0);" onclick="removeColumn('#identified-records', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
                         </th>
                     {% endfor %}
@@ -140,8 +142,11 @@
                                 <span class="glyphicon glyphicon-arrow-up"></span>
                             </button>   
                         </td>
-                        <td><select class="rtype-selection" data-init-text="{{record_name}}"></select></td>
-                        <td><select class="units-selection" data-init-val="{{data.uom}}"></select></td>
+                        <td>
+                            <span class="record-rtype">{{record_name}}</span>
+                            <a href="javascript:void(0);" class="record-rtype-btn"><span class="glyphicon glyphicon-list"></span></a>
+                        </td>
+                        <td><select class="record-uom" data-init-val="{{data.uom}}"></select></td>
                         {% for value in values %}
                             <td><input type="text" class="form-control input-sm" value="{{value}}"></td>
                         {% endfor %}
@@ -149,7 +154,7 @@
                 {% endfor %}
             </tbody>
         </table>
-        <button class="btn btn-primary" onclick="addEmptyRow('#identified-records', rtypes);">Add Record</button>
+        <button class="btn btn-primary" onclick="addEmptyRow('#identified-records');">Add Record</button>
         <button class="btn btn-primary" onclick="addEmptyColumn('#identified-records');">Add Column</button>
     </div>
 
@@ -157,8 +162,6 @@
         <div style="margin-top:30px"></div>
         {{ utils.render_export_form(url_for('dbmd_tools.upload_data')) }}
     </div>
-
-    {{ utils.modal_column_editor() }}
 {% endblock %}
 
 {% block body_scripts %}
@@ -170,8 +173,7 @@
 <script>
     var rtypes = {{ rtypes|tojson }};
 
-    $("select.rtype-selection").applySelect2({data: rtypes, text: "name"});
-    $("select.units-selection").bindUnitsOfMeasure();
+    $("select.record-uom").bindUnitsOfMeasure();
     $("#company-select").applySelect2();
 
     // Remove comment if you want to make rows draggable.
@@ -183,6 +185,30 @@
         toggleTable($table);
     });
     
+    $(document).on("click", ".record-rtype-btn", function() {
+        var $self = $(this);
+        var recordId = getIDforRType($self.closest("td").find(".record-rtype").text(), rtypes);
+        var dialog = createRTypeSelectionDialog({
+            data: rtypes, text: "name", 
+            initval: recordId,
+            callback: function(rtype) {
+                $self.closest("td").find(".record-rtype").text(rtype.text);
+                $self.closest("tr").attr("data-record-name", rtype.text);
+
+            }
+        });
+        dialog.open();
+    });
+
+    $(document).on("click", ".time-editor-btn", function() {
+        var $timerange = $(this).parent().find(".timerange");
+        var $timestamp = $(this).parent().find(".timestamp");
+        var dialog = createTimeSelectionDialog({
+            "timerange": $timerange,
+            "timestamp": $timestamp
+        });
+        dialog.open();
+    });
 
     activateFocusOnInputs("#identified-records");
 
@@ -193,39 +219,6 @@
             $(this).removeClass("backgroundAnimated");
         }
     );
-
-    // Config bootstrap modal for updating column names
-    $("#column-editor").on("show.bs.modal", function(event) {
-        var $caller = $(event.relatedTarget); 
-        var $timerangeSpan = $caller.parent().find(".timerange");
-        var $timestampSpan = $caller.parent().find(".timestamp");
-
-        var modal = $(this);
-        var $timerangeInput = modal.find("#timerange-input");
-        var $timestampInput = modal.find("#timestamp-input");
-
-        // update inputs with current values
-        var timestamp = moment($timestampSpan.text(), "YYYY-MM");
-        if (timestamp != null && timestamp.isValid()) {
-            $timestampInput.val(timestamp.format("YYYY-MM"));
-        } else {
-            $timestampInput.val("");    
-        }
-        $timerangeInput.val($timerangeSpan.text());
-
-        // set callback for Ok button
-        var okButton = modal.find("#modal-ok-btn");
-        okButton.click(function(event) {
-            $timerangeSpan.text($timerangeInput.find(":selected").val());
-            if ($timestampInput.val() != "") {
-                $timestampSpan.text($timestampInput.val());
-            }
-            modal.modal("hide");
-            okButton.unbind("click");
-        });
-    });
-    // $("#timestamp-input").singleDatePicker({"parentEl": "#column-editor"});
-    $("#timestamp-input").bindDatePicker({orientation: "bottom"});
 
     $(document).on("change", ".record-row select", function() {
         var recordType = $(this).find("option:selected").text();
@@ -251,10 +244,9 @@
                         },
                         "addCallback": function() {
                             var recordsData = readDataFromRecordForm($(this).closest("form"));
-                            if (recordsData.type === "NONE") {
+                            if (recordsData.rtype === "NONE") {
                                 alert("No item selected. Please select one of the item from the list.");
                             } else {
-                                var recordType = recordsData.type_name;
                                 var numberOfColumns = getNumberOfColumns("#identified-records");
                                 if (numberOfColumns < recordsData.values.length) {
                                     for(var i = 0; i < recordsData.values.length - numberOfColumns; i++) {
@@ -264,11 +256,12 @@
                                 }
                                 var $newRow = createNewRecordRow(
                                     numberOfColumns, 
-                                    {"data-record-name": recordType}
+                                    {"data-record-name": recordsData.rtype}
                                 );
-                                populateRowWithData($newRow, rtypes, recordsData);
+                                $newRow.find(".record-uom").bindUnitsOfMeasure();
+                                populateRowWithData($newRow, recordsData);
                                 addRowToTable($("#identified-records"), $newRow);
-                                bindRecordToRow($currentRow, recordType);
+                                bindRecordToRow($currentRow, recordsData.rtype);
                                 $(this).closest("tr").remove();
                             }
                         }
@@ -319,13 +312,15 @@
         }
     );
 
-    $("#export-data-form").submit(function(event) {
-        var data = createDataForExport(["#identified-records"]);
-        if (!submitExportForm(data, validateData)) {
-            event.preventDefault();
-            return false;
-        }
-        return true;
+    $(document).on("click", ".data-export-btn", function(event) {
+        var data = createDataForExport(["#identified-records"], rtypes);
+        submitExportForm(data, validateData, function(result) {
+            if (result) {
+                $("#export-data-form").submit();
+            }
+        });
+        event.preventDefault();
+        return false;     
     });
 
     function validateData() {

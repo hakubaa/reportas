@@ -96,8 +96,8 @@ class CompanyRepr(VersionedModel):
 
     company_id = Column(Integer, ForeignKey("company.id"))
     company = relationship(
-        "Company", 
-        backref=backref("reprs", lazy="joined", cascade="all, delete")
+        "Company",
+        backref=backref("reprs", lazy="joined", cascade="all, delete-orphan")
     )
 
 
@@ -110,8 +110,8 @@ class Report(VersionedModel):
 
     company_id = Column(Integer, ForeignKey("company.id"), nullable=False)
     company = relationship(
-        "Company", 
-        backref=backref("reports", lazy="joined", cascade="all,delete")
+        "Company",
+        backref=backref("reports", lazy="joined", cascade="all, delete-orphan")
     ) 
 
     __table_args__ = (
@@ -209,7 +209,7 @@ class FinancialStatementTypeRepr(VersionedModel):
     )
     ftype = relationship(
         "FinancialStatementType", 
-        backref=backref("reprs", lazy="joined", cascade="all, delete")
+        backref=backref("reprs", lazy="joined", cascade="all, delete-orphan")
     )
 
     def __repr__(self):
@@ -230,7 +230,8 @@ class RecordType(VersionedModel):
         Integer, ForeignKey("financialstatementtype.id"), nullable=False
     )
     ftype = relationship(
-        "FinancialStatementType",backref=backref("rtypes", lazy="select")
+        "FinancialStatementType",
+        backref=backref("rtypes", lazy="select", cascade="all, delete-orphan")
     )
 
     __table_args__ = (
@@ -269,7 +270,10 @@ class RecordTypeRepr(VersionedModel):
     default = Column(Boolean, default=False)
 
     rtype_id = Column(Integer, ForeignKey("recordtype.id"))
-    rtype = relationship("RecordType", backref=backref("reprs", lazy="joined"))
+    rtype = relationship(
+        "RecordType",
+        backref=backref("reprs", lazy="joined", cascade="all, delete-orphan")
+    )
 
     
 class Record(VersionedModel):
@@ -284,7 +288,8 @@ class Record(VersionedModel):
 
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
     rtype = relationship(
-        "RecordType", backref=backref("records", lazy="joined")
+        "RecordType",
+        backref=backref("records", lazy="joined", cascade="all, delete-orphan")
     )
 
     report_id = Column(Integer, ForeignKey("report.id"))
@@ -292,7 +297,8 @@ class Record(VersionedModel):
 
     company_id = Column(Integer, ForeignKey("company.id"), nullable=False)
     company = relationship(
-        "Company", backref=backref("records", lazy="joined")
+        "Company",
+        backref=backref("records", lazy="joined", cascade="all, delete-orphan")
     )
 
     __table_args__ = (
@@ -503,7 +509,8 @@ class RecordFormula(VersionedModel):
     
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
     rtype = relationship(
-        "RecordType", backref=backref("formulas", lazy="dynamic")
+        "RecordType",
+        backref=backref("formulas", lazy="dynamic", cascade="all, delete-orphan")
     )
     
     def __repr__(self):
@@ -577,14 +584,16 @@ class FormulaComponent(VersionedModel):
         Integer, ForeignKey("recordformula.id"), nullable=False
     )
     formula = relationship(
-        "RecordFormula", backref=backref("components", lazy="joined")
+        "RecordFormula",
+        backref=backref("components", lazy="joined", cascade="all, delete-orphan")
     )
     
     rtype_id = Column(
         Integer, ForeignKey("recordtype.id"), nullable=False
     )
     rtype = relationship(
-        "RecordType", backref=backref("revformulas", lazy="joined")
+        "RecordType",
+        backref=backref("revformulas", lazy="joined", cascade="all, delete-orphan")
     )
     
     sign = Column(Integer, default=1, nullable=False)

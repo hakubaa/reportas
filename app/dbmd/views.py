@@ -24,31 +24,6 @@ from app import db
 # BUILDING BLOCKS FOR VIEWS
 #-------------------------------------------------------------------------------
 
-class ActionButton(BaseRule):
-
-    def __init__(self, action, attribute, text):
-        super(ActionButton).__init__()
-        self.action = action
-        self.attribute = attribute
-        self.text = text
-
-    def __call__(self, form, form_opts=None, field_args={}):
-        obj_id = getattr(form._obj, self.attribute, None)
-        if obj_id:
-            html = """
-            <form method='POST' action='/dbmd/dbrequest/action/'>
-                <input id='action' name='action' value='{action}' type='hidden'>
-                <input name='rowid' value='{obj_id}' type='hidden'>
-                <button type='submit' class='btn btn-success'>
-                    {text}
-                </button>
-            </form>
-            """.format(
-                action=self.action, obj_id=obj_id, text=self.text
-            )
-            return Markup(html)
-
-
 class Link(BaseRule):
     def __init__(self, endpoint, attribute, text):
         super(Link, self).__init__()
@@ -175,7 +150,8 @@ class RecordView(DBRequestBasedView):
 
     column_searchable_list = ["company.name", "rtype.name"]
     column_filters = [
-        "rtype.name", "company.name", "timerange", "timestamp", "rtype.ftype.name"
+        "rtype.name", "company.name", "timerange", "timestamp", "rtype.ftype.name",
+        "synthetic"
     ]
     column_list = (
         "rtype",  "company", "timerange", "timestamp", "value"
@@ -335,8 +311,7 @@ class SubrequestModelForm(InlineFormAdmin):
 
     form_rules = (
         "model", "data", "action", "moderator_action", "errors",
-        Link(endpoint="dbrequest.edit_view", attribute="id", text="Edit Request"),
-        ActionButton(action="accept", attribute="id", text="Accept")
+        Link(endpoint="dbrequest.edit_view", attribute="id", text="Edit Request")
     )
 
 

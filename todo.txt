@@ -7,6 +7,8 @@
 - batch uploader!!!!!
 - delete multiple records with one dbrequest
 - timestamp in dbmd.records - only years and months
+- timestamp/timerange report - empty option
+- delete action: use wrapping request to group many delete requests
 
 DONE:
 - create synthetic records for financial records of ics/cfs and bls
@@ -17,7 +19,7 @@ DONE:
 - add warnings and errors when uploading data with tools
 - units of measure
 - synthetic records should be overriden manually
-
+- add unit of measure selection in form
 
 ################################################################################
 
@@ -153,63 +155,6 @@ regardless of the method.
 - show comunicate when table is empty or table-content is empty
 - update pdf_file_miner with improvements from direct_input_miner
 - try to create some layer of abstraction for miners
-
-
-
-Działalność kontynuowana
-Przychody                                                                           47 086               49 384
-                                                                2
-Przychody netto ze sprzedaży produktów i usług                                      26 820               26 446
-
-                                                                2
-Przychody netto ze sprzedaży towarów i materiałów                                   20 266               22 938
-
-Koszty własny sprzedaży                                                             30 997               31 288
-
-Koszt wytworzenia sprzedanych produktów i usług                                     16 662               16 439
-
-Wartość sprzedanych towarów i materiałów                                            14 334               14 849
-
-Zysk (strata) brutto ze sprzedaży                                                   16 089               18 096
-Koszty sprzedaży                                                                    11 311               12 094
-Koszty zarządu                                                                       2 115                2 069
-Pozostałe przychody operacyjne                                   3                     910                  138
-Pozostałe koszty operacyjne                                      3                   1 070                  914
-
-Zysk (strata) z działalności operacyjnej                                             2 503                3 157
-
-Przychody finansowe                                              4                     150                1 638
-Koszty finansowe                                                 4                     151                1 603
-Zysk/strata na sprzedaży całości lub części udziałów
-jednostek zależnych                                                                  2 117                     -
-
-Zysk (strata) przed opodatkowaniem                                                   4 619                3 192
-Podatek dochodowy                                                                       (7)                 833
-
-Zysk (strata) netto z działalności kontynuowanej                                     4 626                2 359
-
-Działalność zaniechana                                                                    -                    -
-Wynik netto z działalności zaniechanej                                                    -                    -
-Zysk (strata) netto za okres sprawozdawczy, przypadający
-                                                                                    4 626                2 359
-na:
-Jednostkę dominującą                                                                 4 626                2 359
-Udziały niedające kontroli                                                                -                    -
-
-Różnice kursowe z przeliczenia jednostek zagranicznych                              (2 512)                 703
-
-Całkowite dochody ogółem                                                             2 114                3 062
-
-Całkowite dochody ogółem, przypadające na:                                           2 114                3 062
-
-
-
-
-
-
-
-
-
 
 
 

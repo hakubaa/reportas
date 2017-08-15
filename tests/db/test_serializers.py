@@ -784,6 +784,23 @@ class ReportSchemaTest(DbTestCase):
         self.assertTrue(errors)
         self.assertIn("report", errors)
 
+    def test_load_with_instance(self):
+        company = models.Company(isin="#TEST", name="TEST")
+        self.db.session.add(company)
+        report = models.Report(
+            company=company, timerange=12, timestamp=date(2015, 3, 31)
+        )
+        self.db.session.add(report)
+        self.db.session.commit()
+
+        instance, errors = ReportSchema().load(
+            data={"id": report.id}, instance=report, partial=True, 
+            session=self.db.session
+        )
+
+        self.assertFalse(errors)
+        self.assertEqual(instance, report)
+
         
 def create_formula(session):
     ftype = create_ftype(session)

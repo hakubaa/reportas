@@ -88,10 +88,8 @@ td.record-name {
     vertical-align: middle;
     text-align: center;
 }
-.rtype-selection {
-    width: 200px;
-}
-.units-selection {
+
+.record-uom {
     width: 75px;
 }
 

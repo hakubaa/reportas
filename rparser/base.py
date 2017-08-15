@@ -502,7 +502,7 @@ class RecordsCollector(UserDict):
                 ]
 
                 if sv_cols and (sv_cols[0] == 0 or sv_cols[0] == last_col_index):
-                    note_column = sv_coll
+                    note_column = sv_cols[0]
                 else: 
                     #make decision on the base of correlation
                     corr = np.corrcoef(data, rowvar=0)

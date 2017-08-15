@@ -306,25 +306,77 @@ class RecordSchema(ModelSchema):
         return True
 
     @validates_schema
-    def validate_uniquness(self, data):
-        if not ("timerange" in data and "timestamp" in data and 
-                "company_id" in data and "rtype_id" in data):
-            return False
+    def validate_uniqueness(self, data):
+        if self.instance:
+            uniqnuness = self._test_uniqueness_for_update(data)
+        else:
+            uniqnuness = self._test_uniqueness_for_create(data)
 
-        self._modify_timeframe_for_pit_record(data)
-
-        if self._test_whether_updating_instance(data):
-            return True
-
-        if not self._is_record_unique(data):
+        if not uniqnuness:
             raise ValidationError(
                 "Record not unique in terms of timerange, timestamp, "
                 "company and type.", field_names=("record")
             )
         return True
 
+    def _test_uniqueness_for_update(self, data):
+        # Test whether main fields can change.
+        if not ("timerange" in data or "timestamp" in data 
+                or "company_id" in data or "rtype_id" in data):
+            return True
+
+        timerange = data.get("timerange", self.instance.timerange)
+        timestamp = data.get("timestamp", self.instance.timestamp)
+        company_id = data.get("company_id", self.instance.company_id)
+        rtype_id = data.get("rtype_id", self.instance.rtype_id)
+
+        timerange = self._adjust_timerange_for_pit_records(timerange, rtype_id)
+
+        # Test whether main fields are going to change.
+        if (timerange == self.instance.timerange 
+                and timestamp == self.instance.timestamp
+                and company_id == self.instance.company_id
+                and rtype_id == self.instance.rtype_id):
+            return True
+
+        return not self._does_record_exist(
+            timerange=timerange, timestamp=timestamp, company_id=company_id,
+            rtype_id=rtype_id
+        )
+
+    def _test_uniqueness_for_create(self, data):
+        # Test whether fields to asses uniqueness are present.
+        if not ("timerange" in data and "timestamp" in data 
+                and "company_id" in data and "rtype_id" in data):
+            return False
+
+        timerange = self._adjust_timerange_for_pit_records(
+            data["timerange"], data["rtype_id"]
+        )
+
+        return not self._does_record_exist(
+            timerange=timerange, timestamp=data["timestamp"],
+            company_id=data["company_id"], rtype_id=data["rtype_id"]
+        )
+
+    def _does_record_exist(self, timerange, timestamp, company_id, rtype_id):
+        (ret, ), = self.session.query(exists().where(and_(
+            models.Record.timerange == timerange,
+            models.Record.timestamp == timestamp,
+            models.Record.company_id == company_id,
+            models.Record.rtype_id == rtype_id,
+            models.Record.synthetic == False
+        ))) 
+        return ret
+
+    def _adjust_timerange_for_pit_records(self, timerange, rtype_id):
+        rtype = self.session.query(models.RecordType).get(rtype_id)
+        if rtype and rtype.timeframe == "pit":
+            return 0
+        return timerange
+
     @post_load
-    def remove_dsynthetic_record(self, record):
+    def remove_synthetic_record(self, record):
         self.session.query(models.Record).filter(
             models.Record.timerange == record.timerange,
             models.Record.timestamp == record.timestamp,
@@ -333,30 +385,6 @@ class RecordSchema(ModelSchema):
             models.Record.synthetic == True
         ).delete()
 
-    def _modify_timeframe_for_pit_record(self, data):
-        rtype = self.session.query(models.RecordType).get(data["rtype_id"])
-        if rtype.timeframe == "pit":
-            data["timerange"] = 0
-
-    def _test_whether_updating_instance(self, data):
-        return (self.instance 
-            and (
-                self.instance.timerange == data["timerange"] and
-                self.instance.timestamp == data["timestamp"] and
-                self.instance.company_id == data["company_id"] and
-                self.instance.rtype_id == data["rtype_id"]
-            )
-        )
-
-    def _is_record_unique(self, data):
-        (ret, ), = self.session.query(exists().where(and_(
-            models.Record.timerange == data["timerange"],
-            models.Record.timestamp == data["timestamp"],
-            models.Record.company_id == data["company_id"],
-            models.Record.rtype_id == data["rtype_id"],
-            models.Record.synthetic == False # synthetic records can be overridden 
-        ))) 
-        return not ret
 
 @records_factory.register_schema()
 class ReportSchema(ModelSchema):
@@ -370,40 +398,59 @@ class ReportSchema(ModelSchema):
         error_messages={"required": "Company is required."}
     ) 
     timestamp = fields.Date("%Y-%m-%d", required=True)
-
-    records = fields.Nested(
-        RecordSchema, 
-        many=True
-    )
+    records = fields.Nested(RecordSchema, many=True)
 
     @validates_schema
-    def validate_uniquness(self, data):
-        if not ("timerange" in data and "timestamp" in data and 
-                "company_id" in data):
-            return False
+    def validate_uniqueness(self, data):
+        if self.instance:
+            uniqueness = self._test_uniqueness_for_update(data)
+        else:
+            uniqueness = self._test_uniqueness_for_create(data)
 
-        if (self.instance 
-            and (
-                self.instance.timerange == data["timerange"] and
-                self.instance.timestamp == data["timestamp"] and
-                self.instance.company_id == data["company_id"]
-            )
-        ):
-            return True
-
-        (ret, ), = self.session.query(exists().where(and_(
-            models.Report.timerange == data["timerange"],
-            models.Report.timestamp == data["timestamp"],
-            models.Report.company_id == data["company_id"]
-        )))
-        if ret:
+        if not uniqueness:
             raise ValidationError(
                 "Report not unique in terms of timerange, timestamp and "
                 "company.", field_names=("report")
             )
         return True
-    
-    
+
+    def _test_uniqueness_for_update(self, data):
+        if not ("timerange" in data or "timestamp" in data 
+                or "company_id" in data):
+            return True
+
+        timerange = data.get("timerange", self.instance.timerange)
+        timestamp = data.get("timestamp", self.instance.timestamp)
+        company_id = data.get("company_id", self.instance.company_id)
+
+        if (timerange == self.instance.timerange 
+                and timestamp == self.instance.timestamp
+                and company_id == self.instance.company_id):
+            return True
+
+        return not self._does_report_exist(
+            timerange=timerange, timestamp=timestamp, company_id=company_id
+        )
+
+    def _test_uniqueness_for_create(self, data):
+        if not ("timerange" in data and "timestamp" in data 
+                and "company_id" in data):
+            return False
+
+        return not self._does_report_exist(
+            timerange = data["timerange"], timestamp=data["timestamp"],
+            company_id = data["company_id"]
+        )
+
+    def _does_report_exist(self, timerange, timestamp, company_id):
+        (ret, ), = self.session.query(exists().where(and_(
+            models.Report.timerange == timerange,
+            models.Report.timestamp == timestamp,
+            models.Report.company_id == company_id
+        ))) 
+        return ret
+
+
 @records_factory.register_schema()
 class FormulaComponentSchema(ModelSchema):
     class Meta:

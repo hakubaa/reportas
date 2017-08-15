@@ -279,7 +279,7 @@ class ParserPostViewTest(AppTestCase):
         self.assertEqual(response.status_code, 403)
 
     @create_and_login_user()
-    def test_create_request_to_create_report(self):
+    def test_create_request_creates_report(self):
         data = self.create_data_for_request(records=False)
         response = self.send_post_request(data)
 
@@ -355,7 +355,7 @@ class ParserPostViewTest(AppTestCase):
         data["timerange"] = ""
         data["timestamp"] = ""
 
-        response = self.send_post_request(data,)
+        response = self.send_post_request(data)
 
         self.assertEqual(db.session.query(DBRequest).count(), 1)
         
@@ -369,7 +369,7 @@ class ParserPostViewTest(AppTestCase):
         data["timerange"] = "(not identified)"
         data["timestamp"] = "-"
 
-        response = self.send_post_request(data,)
+        response = self.send_post_request(data)
 
         self.assertEqual(db.session.query(DBRequest).count(), 1)
         
