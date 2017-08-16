@@ -13,7 +13,7 @@ from db.models import (
     FinancialStatementType
 )
 from rparser.nlp import find_ngrams
-import rparser.util as putil
+import rparser.utils as putil
 
 
 

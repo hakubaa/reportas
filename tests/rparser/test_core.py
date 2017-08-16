@@ -3,15 +3,15 @@ from datetime import date
 import unittest
 import io
 
-from rparser.base import (
+from rparser.core import (
     PDFFileIO, Document, UnevenTable, RecordsCollector,
     FinancialStatement, FinancialReport
 )
 from rparser.nlp import NGram
 
 
-@mock.patch("rparser.base.util.pdfinfo", return_value=({"Title": "Test"}, None))
-@mock.patch("rparser.base.util.read_pdf",  
+@mock.patch("rparser.core.utils.pdfinfo", return_value=({"Title": "Test"}, None))
+@mock.patch("rparser.core.utils.read_pdf",  
             return_value=(b"Page 1\n\x0cPage2\n\x0cPage3", None))
 class PDFFileIOTest(unittest.TestCase):
     
@@ -306,7 +306,7 @@ class RecordsCollectorTest(unittest.TestCase):
         """)
         
         rc = RecordsCollector(table, spec)   
-        rc.shift_records_map(5)
+        rc.shift_maps(5)
         
         self.assertEqual(rc.records_map["REVENUE"], (6,))
         self.assertEqual(rc.records_map["NET_PROFIT"], (7,))  

@@ -1,5 +1,6 @@
 from collections import Counter
 from calendar import monthrange
+from functools import reduce
 import subprocess
 import importlib
 import itertools
@@ -15,6 +16,10 @@ import re
 RE_NUMBER = re.compile(
     r"^(?:\+|-|\()?(?: )?\d+(?:(?: |\.)\d{3})*(?:[,]\d+)?(?:\))?$"
 )
+
+
+def concatenate_lists(lists):
+    return reduce(lambda list_1, list_2: list_1 + list_2, lists, [])
 
 
 def load_module(name, attach = False, force_reload = True):

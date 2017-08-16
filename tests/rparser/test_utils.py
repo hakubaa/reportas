@@ -2,7 +2,7 @@ import unittest
 import unittest.mock as mock
 from datetime import datetime
 
-from rparser.util import convert_to_number, pdfinfo, determine_timerange
+from rparser.utils import convert_to_number, pdfinfo, determine_timerange
 
 
 class DetermineTimerangeTest(unittest.TestCase):

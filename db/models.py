@@ -257,7 +257,7 @@ class RecordType(VersionedModel):
 
     @staticmethod
     def insert_rtypes(session):
-        import rparser.spec as spec
+        import rparser.specs.records as spec
         import db.tools as tools
         tools.upload_records_spec(session, spec.finrecords)
         session.commit()

@@ -1,5 +1,4 @@
 ﻿TO_DO:
-- optimize ui - try to remove all what is possible and redundant
 - upload few reports to test it live
 - deploy on rhcloud with postgresql
 - formulas in database, create new formula and so on
@@ -9,6 +8,7 @@
 - timestamp in dbmd.records - only years and months
 - timestamp/timerange report - empty option
 - delete action: use wrapping request to group many delete requests
+- think about moving logic concerning synthetic records to rparser
 
 DONE:
 - create synthetic records for financial records of ics/cfs and bls
@@ -20,6 +20,7 @@ DONE:
 - units of measure
 - synthetic records should be overriden manually
 - add unit of measure selection in form
+- optimize ui - try to remove all what is possible and redundant
 
 ################################################################################
 

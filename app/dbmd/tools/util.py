@@ -17,7 +17,7 @@ from app import db
 from app.models import DBRequest
 from db import models
 from db.tools import get_records_reprs, get_companies_reprs
-from rparser.base import FinancialReport, PDFFileIO, FinancialStatement
+from rparser.core import FinancialReport, PDFFileIO, FinancialStatement
 
 from .forms import ReportUploaderForm, DirectInputForm
 

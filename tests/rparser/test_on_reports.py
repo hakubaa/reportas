@@ -2,15 +2,15 @@ import unittest
 import unittest.mock as mock
 import io
 
-from rparser.base import FinancialReport, PDFFileIO
+from rparser.core import FinancialReport, PDFFileIO
 from db.core import SQLAlchemy
-from db.models import RecordTypeRepr
+from db.models import RecordTypeRepr, FinancialStatementType, RecordType
 from db.tools import (
     upload_records_spec, get_records_reprs, get_companies_reprs, 
     upload_companies
 )
-import rparser.spec as spec
-from rparser.util import remove_non_ascii
+import rparser.specs.records as spec
+from rparser.utils import remove_non_ascii
 from rparser.nlp import find_ngrams
 
 # reports/cng_2016_y.pdf
@@ -39,6 +39,12 @@ from rparser.nlp import find_ngrams
 # reports/acp_2016_y.pdf
 
 
+def get_ftype(session, name):
+    ftype = session.query(FinancialStatementType).\
+                filter_by(name=name).one()        
+    return ftype
+
+
 class RecordsExtractorTest(unittest.TestCase):
 
     @classmethod
@@ -47,7 +53,8 @@ class RecordsExtractorTest(unittest.TestCase):
         cls.db = SQLAlchemy("sqlite:///:memory:")
         cls.db.create_all()
 
-        upload_records_spec(cls.db.session, spec.finrecords)
+        FinancialStatementType.insert_defaults(cls.db.session)
+        RecordType.insert_rtypes(cls.db.session)
 
         # Create vocabuluary
         cls.voc = set(map(str, find_ngrams(
@@ -66,9 +73,9 @@ class RecordsExtractorTest(unittest.TestCase):
 
         # Create specification for identifying records
         cls.spec = dict(
-            bls=get_records_reprs(cls.db.session, "bls", record_spec_id="name"),
-            ics=get_records_reprs(cls.db.session, "ics", record_spec_id="name"),
-            cfs=get_records_reprs(cls.db.session, "cfs", record_spec_id="name")
+            bls=get_records_reprs(cls.db.session, ftype=get_ftype(cls.db.session, "bls")),
+            ics=get_records_reprs(cls.db.session, ftype=get_ftype(cls.db.session, "ics")),
+            cfs=get_records_reprs(cls.db.session, ftype=get_ftype(cls.db.session, "cfs"))
         )
 
     @classmethod

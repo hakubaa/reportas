@@ -14,7 +14,7 @@ import re
 
 import numpy as np
 
-from rparser import util
+from rparser import utils
 from rparser import nlp
 
 
@@ -26,7 +26,7 @@ class PDFFileIO(io.BytesIO):
     def __init__(
         self, path, first_page=None, last_page=None, **kwargs
     ):
-        pdf_content, warnings = util.read_pdf(
+        pdf_content, warnings = utils.read_pdf(
             path, layout=True, first_page=first_page, last_page=last_page
         )    
         super().__init__(pdf_content)
@@ -35,7 +35,7 @@ class PDFFileIO(io.BytesIO):
     @property
     def file_info(self):
         if not hasattr(self, "_info"):
-            self._info, errors = util.pdfinfo(self.path)
+            self._info, errors = utils.pdfinfo(self.path)
         return self._info
 
 
@@ -328,7 +328,7 @@ class RecordsCollector(UserDict):
                 ))
     
             # Check for presence of numbers in the row
-            row_numbers_count = sum(map(util.is_number, row))
+            row_numbers_count = sum(map(utils.is_number, row))
     
             if label_tokens:
                 if row_numbers_count:
@@ -408,7 +408,7 @@ class RecordsCollector(UserDict):
                     key = operator.itemgetter(1)
                 )
                 if convert_numbers:
-                    numbers = [ util.convert_to_number(num) for num in numbers ]
+                    numbers = [ utils.convert_to_number(num) for num in numbers ]
                 ident_records.append(
                     (spec_id, numbers, rows_indices)
                 )
@@ -590,7 +590,7 @@ class FinancialStatement(RecordsCollector):
         remove_nonascii=True
     ):
         if remove_nonascii:
-            text = util.remove_non_ascii(text)
+            text = utils.remove_non_ascii(text)
         super().__init__(UnevenTable(text), spec, voc)
         if len(self) == 0: # no records identified
             self.names = []
@@ -612,7 +612,7 @@ class FinancialStatement(RecordsCollector):
         rows_with_records = reduce(operator.add, records_map.values())
         min_vip_rows = max(min(rows_with_records) - 10, 0)
         rows_with_labels = list(range(min_vip_rows, min(rows_with_records)))
-        text_rows = util.split_text_into_rows(text)
+        text_rows = utils.split_text_into_rows(text)
 
         text_labels = '\n'.join(
             row for index, row in text_rows if index in rows_with_labels if row
@@ -625,7 +625,7 @@ class FinancialStatement(RecordsCollector):
             row for index, row in text_rows if index in rows_with_records if row
         )
 
-        cols = util.split_text_into_columns(text_labels + "\n" + text_numbers)
+        cols = utils.split_text_into_columns(text_labels + "\n" + text_numbers)
         cols = [ 
             re.sub(" + ", " ", ' '.join(col[0:len(rows_with_labels)])) 
             for col in cols if col 
@@ -634,12 +634,12 @@ class FinancialStatement(RecordsCollector):
         # Find timeranges and timestamps by columns
         tranges = list(map(
             operator.itemgetter(-1), 
-            [[None] + tr for tr in map(util.determine_timerange, cols)]
+            [[None] + tr for tr in map(utils.determine_timerange, cols)]
         ))[-ncols:]
 
         full_dates = [ 
             list(filter(lambda x: x[-1], dt))
-            for dt in map(util.find_dates, cols) 
+            for dt in map(utils.find_dates, cols) 
         ]
         dates = list(map(
             lambda item: item[-1][0],
@@ -649,7 +649,7 @@ class FinancialStatement(RecordsCollector):
         if not dates:
             dates = list(map(
                 lambda item: item[-1][0],
-                [dt for dt in map(util.find_dates, cols) 
+                [dt for dt in map(utils.find_dates, cols) 
                     if dt and dt[-1][0][2] in (28, 29, 30, 31)] 
             ))[-ncols:]
 
@@ -664,14 +664,14 @@ class FinancialStatement(RecordsCollector):
             temp_tranges = (
                 [ item for item in trange if item > 2] 
                 for trange in filter(
-                    bool, map(util.determine_timerange, reversed(rows))
+                    bool, map(utils.determine_timerange, reversed(rows))
                 )
             )
             rows_tranges = next(temp_tranges, [])[-ncols:]
       
             rows_dates = list(map(
                 operator.itemgetter(0), 
-                next(filter(bool, map(util.find_dates, reversed(rows))), [])
+                next(filter(bool, map(utils.find_dates, reversed(rows))), [])
             ))
             rows_dates = [ 
                 date for date in rows_dates 
@@ -797,7 +797,7 @@ class SelfSearchingPage:
     def _extract_ngrams(self, text, n=2):
         freq = Counter(nlp.find_ngrams(text, n))
         if self.use_number_ngram:
-            freq[nlp.NGram("fake#number")] = len(util.find_numbers(text))
+            freq[nlp.NGram("fake#number")] = len(utils.find_numbers(text))
         return freq
 
     def _select_ngrams(self, text_ngrams):
@@ -983,15 +983,15 @@ class FinancialReport(Document):
         return rmap        
 
     def recognize_timerange(self, max_page=3):
-        sa_tokens = util.remove_non_ascii("półroczny półroczne").split()
-        qr_tokens = util.remove_non_ascii(
+        sa_tokens = utils.remove_non_ascii("półroczny półroczne").split()
+        qr_tokens = utils.remove_non_ascii(
                         "kwartalny kwartał‚ kwartały kwartalne").split()
         # semiannual if not quarterly
-        sa2_tokens = util.remove_non_ascii("śródroczne").split()
+        sa2_tokens = utils.remove_non_ascii("śródroczne").split()
 
         # Make decision on the base of the first three pages
         tokens = set(map(operator.itemgetter(0), nlp.find_ngrams(
-            util.remove_non_ascii('\n'.join(self[0:max_page])), n=1, 
+            utils.remove_non_ascii('\n'.join(self[0:max_page])), n=1, 
             remove_non_alphabetic=True,
             min_len=min(map(len, itertools.chain(qr_tokens, sa_tokens))),
             return_tuples=True
@@ -1055,10 +1055,10 @@ class FinancialReport(Document):
         return next(filter(lambda cp: cp["isin"] == isin, cspec)) 
 
     def recognize_timestamp(self):
-        text = util.remove_non_ascii('\n'.join(self))
+        text = utils.remove_non_ascii('\n'.join(self))
         timestamps = list()
 
-        for timestamp, _, flag in util.find_dates(text, re_days=r"(28|29|30|31)"):
+        for timestamp, _, flag in utils.find_dates(text, re_days=r"(28|29|30|31)"):
             if flag:    
                 try:
                     timestamps.append(datetime.date(
