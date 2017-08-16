@@ -10,7 +10,7 @@ from rparser.utils import concatenate_lists
 
 Timeframe = namedtuple("Timeframe", field_names="start, end")
 TimeframeSpec = namedtuple("TimeframeSpec", field_names="spec, timeframe")
-Record = namedtuple("Record", field_names="spec, value")
+Record = namedtuple("Record", field_names="spec, value, synthetic")
 
 
 class RecordsDataset(abc.ABC):

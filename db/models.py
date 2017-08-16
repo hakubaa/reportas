@@ -354,7 +354,7 @@ class Record(VersionedModel):
             projection = self.timestamp.month - fiscal_year.start.month + 1
         else:
             projection = 12 - fiscal_year.start.month + self.timestamp.month + 1
-        return utils.TimeRange(start=projection, end=projection)
+        return projection, projection
 
     def _project_pot_onto_fiscal_year(self, fiscal_year):
         if self.timestamp_start.month >= fiscal_year.start.month:
@@ -362,7 +362,7 @@ class Record(VersionedModel):
         else:
             pstart = 12 - fiscal_year.start.month + self.timestamp_start.month + 1
         pend = pstart + self.timerange - 1
-        return utils.TimeRange(start=pstart, end=pend)        
+        return pstart, pend    
 
     def get_formulas(self):
         '''Return all formulas invovling the record.'''
