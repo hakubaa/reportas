@@ -26,6 +26,7 @@ class Student(Model):
     id = Column(Integer, primary_key=True)
     age = Column(Integer)
     name = Column(String)
+    
 
 class EMail(Model):
     __tablename__ = "emails"

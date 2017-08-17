@@ -6,7 +6,6 @@ from datetime import date
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
 
-from app import db
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
     FinancialStatementType
@@ -15,31 +14,30 @@ from db.core import Model, VersionedModel
 import db.utils as utils
 import db.tools as tools
 
-from tests.app import AppTestCase
+from tests.db import DbTestCase
 
 #-------------------------------------------------------------------------------
+# Utils
+#-------------------------------------------------------------------------------
 
-def create_ftype(name="bls"):
+def create_ftype(session, name="bls"):
     fst = FinancialStatementType(name=name)
-    db.session.add(fst)
-    db.session.commit()
+    session.add(fst)
+    session.commit()
     return fst
 
-
-def create_rtype(name, ftype, timeframe="pot"):
+def create_rtype(session, name, ftype, timeframe="pot"):
     total_assets = RecordType(name=name, ftype=ftype, timeframe=timeframe)
-    db.session.add(total_assets)
-    db.session.commit()    
+    session.add(total_assets)
+    session.commit()    
     return total_assets
-
 
 def counter_decorator(func):
     func.counter = 0
     return func
     
-
 @counter_decorator
-def create_company(name=None, isin=None, fiscal_year_start_month = 1):
+def create_company(session, name=None, isin=None, fiscal_year_start_month = 1):
     if not name:
         name = "TEST#%s" % create_company.counter
     if not isin:
@@ -48,53 +46,26 @@ def create_company(name=None, isin=None, fiscal_year_start_month = 1):
     company = Company(
         name=name, isin=isin, fiscal_year_start_month=fiscal_year_start_month
     )
-    db.session.add(company)
-    db.session.commit()
+    session.add(company)
+    session.commit()
     return company
 
-
-def create_record(**kwargs):
+def create_record(session, **kwargs):
     record = Record(**kwargs)
-    db.session.add(record)
-    db.session.commit()
+    session.add(record)
+    session.commit()
     return record
-
-
-def create_rtypes(ftype=None, timeframe="pot"):
-    if not ftype:
-        ftype = create_ftype()
-    total_assets = RecordType(
-        name="TOTAL_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    current_assets = RecordType(
-        name="CURRENT_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    fixed_assets = RecordType(
-        name="FIXED_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    db.session.add_all((total_assets, current_assets, fixed_assets))
-    db.session.commit()    
-    return total_assets, current_assets, fixed_assets
-
-
-def create_db_formula(left, right):
-    formula = RecordFormula(rtype=left)
-    db.session.add(formula)
-    for item in right:
-        formula.add_component(rtype=item[1], sign=item[0])
-    db.session.commit()
-    return formula
-    
 
 #-------------------------------------------------------------------------------
 
-class UtilsForSyntheticReccordsTest(AppTestCase):
+class TestUtils(DbTestCase):
     
     def create_records(self, data):
         records = list()
         for item in data:
             records.append(
                 create_record(
+                    self.db.session,
                     company=item[0], rtype=item[1], timerange=item[2], 
                     timestamp=item[3], value=item[4]
                 )
@@ -102,9 +73,10 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
         return records
 
     def test_group_records_by_company(self):
-        company1 = create_company()
-        company2 = create_company()
-        rtype = create_rtype("ASSETS", create_ftype("bls"))
+        company1 = create_company(self.db.session)
+        company2 = create_company(self.db.session)
+        rtype = create_rtype(self.db.session, "ASSETS", 
+                             create_ftype(self.db.session, "bls"))
         records = self.create_records([
             (company1, rtype, 12, date(2015, 12, 31), 0),
             (company1, rtype, 12, date(2014, 12, 31), 0),
@@ -120,8 +92,9 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
         self.assertEqual(len(records_map[company2]), 1)
         
     def test_group_records_by_fiscal_year(self):
-        company = create_company()  
-        rtype = create_rtype("ASSETS", create_ftype("bls"))
+        company = create_company(self.db.session)  
+        rtype = create_rtype(self.db.session, "ASSETS", 
+                             create_ftype(self.db.session, "bls"))
         records = self.create_records([
             (company, rtype, 12, date(2015, 12, 31), 0),
             (company, rtype, 12, date(2014, 12, 31), 0),
@@ -150,33 +123,4 @@ class UtilsForSyntheticReccordsTest(AppTestCase):
         
         self.assertEqual(len(full_list), 9)
         self.assertCountEqual(full_list, range(1, 10))
-
-
-class UtilsFormulaTest(AppTestCase):
-        
-    def test_project_timerange_onto_fiscal_year_test01(self):
-        timestamp_range = utils.project_timerange_onto_fiscal_year(
-            utils.TimeRange(1, 3), 
-            utils.FiscalYear(date(2015, 1, 1), date(2015, 12, 31))
-        )
-        
-        self.assertEqual(timestamp_range.start, date(2015, 1, 1))
-        self.assertEqual(timestamp_range.end, date(2015, 3, 31))
-        
-    def test_project_timerange_onto_fiscal_year_test02(self):
-        timestamp_range = utils.project_timerange_onto_fiscal_year(
-            utils.TimeRange(1, 6), 
-            utils.FiscalYear(date(2014, 7, 1), date(2015, 6, 30))
-        )
-        
-        self.assertEqual(timestamp_range.start, date(2014, 7, 1))
-        self.assertEqual(timestamp_range.end, date(2014, 12, 31)) 
-        
-    def test_project_timerange_onto_fiscal_year_test03(self):
-        timestamp_range = utils.project_timerange_onto_fiscal_year(
-            utils.TimeRange(1, 12), 
-            utils.FiscalYear(date(2014, 7, 1), date(2015, 6, 30))
-        )
-        
-        self.assertEqual(timestamp_range.start, date(2014, 7, 1))
-        self.assertEqual(timestamp_range.end, date(2015, 6, 30))        
+      

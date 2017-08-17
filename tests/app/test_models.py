@@ -21,12 +21,12 @@ from db.core import Model, VersionedModel
 
 class Student(Model):
     __tablename__ = "students"
-
+    
     id = Column(Integer, primary_key=True)
     age = Column(Integer)
     name = Column(String, nullable=False, unique=True)
 
-
+    
 class Account(Model):
     __tablename__ = "accounts"
 

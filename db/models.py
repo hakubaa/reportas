@@ -17,6 +17,7 @@ from dateutil.relativedelta import relativedelta
 
 from db.core import Model, VersionedModel
 from db import utils
+import db.adapters.rparser as adapter
 
 
 class Sector(VersionedModel):
@@ -255,6 +256,11 @@ class RecordType(VersionedModel):
     def __str__(self):
         return self.name
 
+    @property
+    def revformulas(self):
+        return [ item.formula for item in self.formula_components ]
+        
+        
     @staticmethod
     def insert_rtypes(session):
         import rparser.specs.records as spec
@@ -364,10 +370,6 @@ class Record(VersionedModel):
         pend = pstart + self.timerange - 1
         return pstart, pend    
 
-    def get_formulas(self):
-        '''Return all formulas invovling the record.'''
-        return [ item.formula for item in self.rtype.revformulas ]
-
     @staticmethod
     def create_synthetic_records(session, base_records):
         if not isinstance(base_records, collections.Iterable):
@@ -407,45 +409,28 @@ class Record(VersionedModel):
         if not isinstance(base_records, collections.Iterable):
             base_records = [base_records]      
     
-        db_formulas = utils.concatenate_lists(
-            record.get_formulas() for record in base_records
+        formulas = utils.concatenate_lists(
+            record.rtype.revformulas for record in base_records
         )
-        data = utils.represent_records_as_matrix(
-            Record.get_records_for_company_within_fiscal_year(
-                session, company, fiscal_year
-            )
+        records_db = Record.get_records_for_company_within_fiscal_year(
+            session, company, fiscal_year
         )
-
-        formulas = {
-            "pot": utils.create_inverted_mapping(
-                utils.Formula.create_pot_formulas(
-                    db_formulas, rtypes = session.query(RecordType).all()
-                )
-            ),
-            "pit": utils.create_inverted_mapping(
-                utils.Formula.create_pit_formulas(db_formulas)
+    
+        synthetic_records = [
+            adapter.convert_rparser_record(
+                session, record, company, fiscal_year
+            ) 
+            for record in adapter.create_synthetic_records(
+                base_records, records_db, formulas
             )
-        }
-
-        records = utils.concatenate_lists(
-            Record._create_db_records_from_json(
-                session,
-                utils.create_synthetic_records(
-                    base_record = (
-                        record.rtype, 
-                        record.project_onto_fiscal_year(fiscal_year)
-                    ),
-                    data = data, formulas = formulas[record.rtype.timeframe]
-                ),
-                company, fiscal_year
-            )
-            for record in base_records
-        )
-        session.add_all(records)
-        return records
+        ]
+        session.add_all(synthetic_records)
+        return synthetic_records
 
     @staticmethod
-    def get_records_for_company_within_fiscal_year(session, company, fiscal_year):
+    def get_records_for_company_within_fiscal_year(
+        session, company, fiscal_year
+    ):
         # postgre sql only
         # records = session.query(Record).filter( 
         #     Record.company == company,
@@ -462,26 +447,7 @@ class Record(VersionedModel):
         ))
         return records
         
-    @staticmethod
-    def _create_db_records_from_json(session, data, company, fiscal_year):
-        return [
-            Record.update_or_create(
-                session,
-                defaults = { "value": item["value"] },
-                company = company,
-                rtype = item["rtype"],
-                timerange = (
-                    0 if item["rtype"].timeframe == "pit" 
-                    else item["timerange"].end - item["timerange"].start + 1
-                ),
-                timestamp = utils.project_timerange_onto_fiscal_year(
-                    item["timerange"], fiscal_year
-                ).end,
-                synthetic=True
-            )
-            for item in data
-        ]
-
+        
 # timerange of 'point-in-time' records cannot be changed, this field has
 # little sense for this records, because they show some value at specific
 # time
@@ -593,7 +559,9 @@ class FormulaComponent(VersionedModel):
     )
     rtype = relationship(
         "RecordType",
-        backref=backref("revformulas", lazy="joined", cascade="all, delete-orphan")
+        backref=backref(
+            "formula_components", lazy="joined", cascade="all, delete-orphan"
+        )
     )
     
     sign = Column(Integer, default=1, nullable=False)

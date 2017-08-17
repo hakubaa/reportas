@@ -1,16 +1,18 @@
-from collections import namedtuple
 import collections
+from collections import namedtuple
 from functools import reduce
 import operator
 from datetime import date, timedelta
 import abc
 
-from rparser.utils import concatenate_lists
-
 
 Timeframe = namedtuple("Timeframe", field_names="start, end")
 TimeframeSpec = namedtuple("TimeframeSpec", field_names="spec, timeframe")
 Record = namedtuple("Record", field_names="spec, value, synthetic")
+
+
+from rparser.utils import concatenate_lists
+from rparser.specs import formulas as fspec
 
 
 class RecordsDataset(abc.ABC):
@@ -192,7 +194,8 @@ def create_synthetic_records(spec, dataset, formulas, exclude=None):
 
     # Create synthetic records
     synthetic_records = [
-        Record(spec=formula.spec, value=formula.calculate(dataset))
+        Record(spec=formula.spec, value=formula.calculate(dataset), 
+               synthetic=False)
         for formula in calculable_formulas 
     ]
 
@@ -200,7 +203,7 @@ def create_synthetic_records(spec, dataset, formulas, exclude=None):
         item.spec for formula in calculable_formulas for item in formula.rhs
     )
     exclude.add(spec)
-    dataset.insert(synthetic_records, synthetic=False)
+    dataset.insert(synthetic_records)
 
     # Create synthetic records for newly created records
     synthetic_records_2nd = concatenate_lists(
@@ -225,43 +228,32 @@ def extend_formulas_with_timeframes(formulas, timeframes):
         for formula in formulas
         for timeframe in timeframes 
     ]
+
+
+def create_formulas_transformations(formulas):
+    return [ 
+        formula.transform(component.spec) 
+        for formula in formulas
+        for component in formula.rhs
+    ]
+
+def create_pot_formulas(base_formulas, specs):
+    formulas = list(base_formulas)
+    formulas.extend(create_formulas_transformations(formulas))
+    formulas = extend_formulas_with_timeframes(formulas, fspec.timeframes_pot)
+    formulas.extend(
+        Formula.create_timeframe_formula(spec, timeframe_spec)
+        for spec in specs for timeframe_spec in fspec.timeframe_formulas
+    )
+    formulas = remove_duplicate_formulas(formulas)
+    return formulas
+    
+
+def create_pit_formulas(base_formulas):
+    formulas = list(base_formulas)
+    formulas.extend(create_formulas_transformations(formulas))
+    formulas = extend_formulas_with_timeframes(formulas, fspec.timeframes_pit)
+    formulas = remove_duplicate_formulas(formulas)
+    return formulas    
     
 ################################################################################    
-
-
-# def create_formulas_for_csr(
-#     base_formulas, timeranges=None, timerange_formulas=None, rtypes=None
-# ):
-#     if not isinstance(base_formulas, collections.Iterable):
-#         base_formulas = [base_formulas]
-#     formulas = list(base_formulas)
-#     formulas.extend(create_db_formulas_transformations(formulas))
-#     formulas = convert_db_formulas(formulas)
-#     formulas = extend_formulas_with_timerange(formulas, timeranges)
-#     if timerange_formulas and rtypes:
-#         formulas.extend(create_timerange_formulas(rtypes, timerange_formulas))
-#     formulas = remove_duplicated_formulas(formulas)
-#     return formulas
-
-# def project_timerange_onto_fiscal_year(timerange, fiscal_year):
-#     start_month = fiscal_year.start.month + timerange.start - 1
-#     if start_month > 12:
-#         start_month -= 12
-#         start_year = fiscal_year.start.year + 1
-#     else:
-#         start_year = fiscal_year.start.year
-#     start_timestamp = date(start_year, start_month, 1)
-    
-#     end_month = fiscal_year.start.month + timerange.end - 1
-#     if end_month > 12:
-#         end_month -= 12
-#         end_year = fiscal_year.start.year + 1
-#     else:
-#         end_year = fiscal_year.start.year
-
-#     if end_month == 12:
-#         end_timestamp = date(end_year+1, 1, 1) - timedelta(days=1)    
-#     else:
-#         end_timestamp = date(end_year, end_month+1, 1) - timedelta(days=1)
-    
-#     return TimeRange(start=start_timestamp, end=end_timestamp)

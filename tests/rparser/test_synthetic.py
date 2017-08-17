@@ -6,7 +6,7 @@ from rparser.synthetic import (
     RecordsDataset, FormulaComponent, Timeframe, TimeframeSpec,
     DatasetNotFoundError, Formula, create_inverted_mapping,
     extend_formula_with_timeframe,  remove_duplicate_formulas,
-    create_synthetic_records, Record
+    create_synthetic_records, Record, create_formulas_transformations
 )
 
 
@@ -369,3 +369,15 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].spec, "TOTAL_ASSETS")
         self.assertEqual(records[0].value, 100)
+        
+    def test_create_formulas_transformations(self):
+         formula = self.create_default_formula()
+         
+         new_formulas = create_formulas_transformations((formula,))
+         
+         self.assertEqual(len(new_formulas), 2)
+         
+         formula_ca = next(filter(lambda item: item.spec == "CURRENT_ASSETS", 
+                                  new_formulas))
+         formula_fa = next(filter(lambda item: item.spec == "FIXED_ASSETS", 
+                                  new_formulas))

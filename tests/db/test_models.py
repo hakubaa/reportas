@@ -586,11 +586,11 @@ class SyntheticReccordsTest(AppTestCase):
             (company2, rtype, 12, date(2015, 12, 31), 0)
         ]) 
         
-        timerange = utils.TimeRange(
+        fiscal_year = utils.FiscalYear(
             start=date(2015, 1, 1), end=date(2015, 12, 31)
         )
         records_ = Record.get_records_for_company_within_fiscal_year(
-            db.session, company1, timerange
+            db.session, company1, fiscal_year
         )
 
         self.assertEqual(len(records_), 2)
