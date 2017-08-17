@@ -8,6 +8,7 @@ from sqlalchemy import (
     Column, Integer, String, Boolean, Float,
     UniqueConstraint, CheckConstraint, Date
 )
+from sqlalchemy.orm.query import Query
 from sqlalchemy import func, bindparam, cast, inspect, event
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
@@ -577,3 +578,60 @@ class FormulaComponent(VersionedModel):
         if self.rtype_id != other.rtype_id or self.sign != other.sign:
             return False
         return True
+
+
+class FinancialStatementSchema(Model):
+    id = Column(Integer, primary_key=True)
+
+    ftype_id = Column(
+        Integer, ForeignKey("financialstatementtype.id"), nullable=False
+    )
+    ftype = relationship(
+        "FinancialStatementType", 
+        backref=backref(
+            "fstatements", lazy="joined", 
+            cascade="all, delete-orphan"
+        )
+    )
+
+    def append_rtype(self, rtype, position):
+        assoc = RTypeFSchemaAssoc(rtype=rtype, position=position, fschema=self)
+        return assoc
+
+    @property
+    def default_repr(self):
+        if isinstance(self.reprs, Query):
+            fs_reprs = self.reprs.all()
+        else:
+            fs_reprs = self.reprs
+
+        try:
+            return next(filter(lambda item: item.default, fs_reprs))
+        except StopIteration:
+            return None
+
+
+class FinancialStatementSchemaRepr(Model):
+    id = Column(Integer, primary_key=True)
+    lang = Column(String, nullable=False, default="PL")
+    value = Column(String, nullable=False)
+    default = Column(Boolean, default=False, nullable=False)
+
+    fschema_id = Column(
+        Integer, ForeignKey("financialstatementschema.id"), nullable=False
+    )
+    fschema = relationship(
+        "FinancialStatementSchema",
+        backref=backref("reprs", lazy="select", cascade="all, delete-orphan")
+    )
+
+
+class RTypeFSchemaAssoc(Model):
+    '''Association table between RecordType and FinancialStatement.'''
+    rtype_id = Column(Integer, ForeignKey("recordtype.id"), primary_key=True)
+    fstatement_id = Column(
+        Integer, ForeignKey("financialstatementschema.id"), primary_key=True
+    )
+    rtype = relationship("RecordType", backref=backref("fschemas"))
+    fschema = relationship("FinancialStatementSchema", backref=backref("rtypes"))
+    position = Column(Integer, nullable=False, default=0)

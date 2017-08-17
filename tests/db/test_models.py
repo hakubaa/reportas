@@ -7,10 +7,12 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
 
 from tests.app import AppTestCase
+from tests.db import DbTestCase
 from app import db
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatementType
+    FinancialStatementType, FinancialStatementSchema, RTypeFSchemaAssoc,
+    FinancialStatementSchemaRepr
 )
 from db.core import Model, VersionedModel
 import db.utils as utils
@@ -777,3 +779,71 @@ class FinancialStatementTypeTest(AppTestCase):
         db.session.query(FinancialStatementType).filter_by(name="bls").one()
         db.session.query(FinancialStatementType).filter_by(name="ics").one()
         db.session.query(FinancialStatementType).filter_by(name="cfs").one()
+
+
+class FinancialStatementTest(DbTestCase):
+
+    def setUp(self):
+        super().setUp()
+        FinancialStatementType.insert_defaults(self.db.session)
+
+    def get_ftype(self, name):
+        return self.db.session.query(FinancialStatementType).\
+                    filter_by(name=name).one()
+
+    def test_create_relation_with_record_type_test01(self):
+        fs = FinancialStatementSchema(ftype=self.get_ftype("bls"))
+        rtype = RecordType(name="TOTAL_ASSETS", ftype=self.get_ftype("bls"))
+
+        assoc = RTypeFSchemaAssoc(position=1)
+        assoc.rtype = rtype
+        assoc.fschema = fs
+        self.db.session.add(assoc)
+        self.db.session.commit()
+
+        self.assertEqual(len(fs.rtypes), 1)
+        self.assertEqual(fs.rtypes[0].rtype, rtype)
+        self.assertEqual(fs.rtypes[0].position, 1)
+        self.assertEqual(rtype.fschemas[0].fschema, fs)
+
+    def test_create_relation_with_record_type_test02(self):
+        fs = FinancialStatementSchema(ftype=self.get_ftype("bls"))
+        rtype = RecordType(name="TOTAL_ASSETS", ftype=self.get_ftype("bls"))
+        self.db.session.add_all((fs, rtype))
+        self.db.session.commit()
+
+        fs.rtypes.append(RTypeFSchemaAssoc(rtype=rtype, position=1))
+        self.db.session.commit()
+
+        self.assertEqual(len(fs.rtypes), 1)
+        self.assertEqual(fs.rtypes[0].rtype, rtype)
+        self.assertEqual(fs.rtypes[0].position, 1)
+        self.assertEqual(rtype.fschemas[0].fschema, fs)
+
+    def test_create_relation_with_method_append_rtype(self):
+        fs = FinancialStatementSchema(ftype=self.get_ftype("bls"))
+        rtype = RecordType(name="TOTAL_ASSETS", ftype=self.get_ftype("bls"))
+        self.db.session.add_all((fs, rtype))
+        self.db.session.commit()
+
+        fs.append_rtype(rtype, 1)
+        self.db.session.commit()
+
+        self.assertEqual(len(fs.rtypes), 1)
+        self.assertEqual(fs.rtypes[0].rtype, rtype)
+        self.assertEqual(fs.rtypes[0].position, 1)
+        self.assertEqual(rtype.fschemas[0].fschema, fs)
+
+    def test_get_default_repr(self):
+        fs = FinancialStatementSchema(ftype=self.get_ftype("bls"))
+        fs.reprs.append(FinancialStatementSchemaRepr(lang="PL", value="Bilans"))
+        fs.reprs.append(FinancialStatementSchemaRepr(
+            lang="EN", value="Balance Sheet", default=True
+        ))
+        self.db.session.add(fs)
+        self.db.session.commit()
+
+        fs_repr = fs.default_repr
+
+        self.assertEqual(fs_repr.lang, "EN")
+        self.assertEqual(fs_repr.value, "Balance Sheet")
