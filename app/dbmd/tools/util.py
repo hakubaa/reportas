@@ -23,7 +23,7 @@ from .forms import ReportUploaderForm, DirectInputForm
 
 
 #-------------------------------------------------------------------------------
-# HELPE CLASSES
+# HELPER CLASSES
 #-------------------------------------------------------------------------------
 
 class FinancialReportDB(FinancialReport):

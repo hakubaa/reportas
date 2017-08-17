@@ -10,7 +10,7 @@ from flask import url_for, current_app
 
 from app import db
 from app.models import File, User, DBRequest
-from app.dbmd.tools.forms import ReportUploaderForm, DirectInputForm
+from app.dbmd.tools import forms
 from db import models
 from app.rapi.util import DatetimeEncoder
 
@@ -67,13 +67,13 @@ class MinerIndexViewTest(AppTestCase):
     def test_for_passing_pdf_file_form_to_template(self):
         response = self.send_get_request()
         form = self.get_context_variable("pdf_file_form")
-        self.assertIsInstance(form, ReportUploaderForm) 
+        self.assertIsInstance(form, forms.ReportUploaderForm) 
 
     @create_and_login_user()    
     def test_for_passing_direct_input_form_to_template(self):
         response = self.send_get_request()
         form = self.get_context_variable("direct_input_form")
-        self.assertIsInstance(form, DirectInputForm) 
+        self.assertIsInstance(form, forms.DirectInputForm) 
 
 
 class PDFFileMinerViewTest(AppTestCase):
@@ -376,3 +376,38 @@ class ParserPostViewTest(AppTestCase):
         dbrequest = db.session.query(DBRequest).one()
         self.assertIsNone(dbrequest.model)
         self.assertTrue(dbrequest.wrapping_request)
+
+
+class BatchIndexViewTest(AppTestCase):
+
+    def send_get_request(self, **kwargs):
+        response = self.client.get(
+            url_for("dbmd_tools.batch_index"),
+            **kwargs
+        )    
+        return response
+
+    @create_and_login_user()    
+    def test_get_request_renders_template(self):
+        response = self.send_get_request()
+        self.assert_template_used("admin/tools/batch_index.html")
+        
+    def test_unauthenticated_users_are_redirected(self):
+        response = self.send_get_request(follow_redirects = False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            urlparse(response.location).path, 
+            url_for("user.login")
+        )
+        
+    @create_and_login_user(role_name="Visitor")
+    def test_unauthorized_users_get_403(self):
+        response = self.send_get_request(follow_redirects = False)
+        self.assertEqual(response.status_code, 403)
+
+    @create_and_login_user()
+    def test_for_passing_batch_uploader_form_to_template(self):
+        response = self.send_get_request()
+        form = self.get_context_variable("form")
+        self.assertIsInstance(form, forms.BatchUploaderForm) 

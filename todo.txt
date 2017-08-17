@@ -1,7 +1,10 @@
 ﻿#TODO:
 - batch uploader!!!!!
-  - create FinancialStatement model - list of records constituting specific
-    financial statement like income statement
+    - create FinancialStatement model - list of records constituting specific
+      financial statement like income statement
+        - user defined schemas
+- parser:
+    - apply schema option
 
 - deploy on rhcloud with postgresql
 - formulas in database, create new formula and so on

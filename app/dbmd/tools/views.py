@@ -1,8 +1,8 @@
-from flask import url_for, redirect, flash
+from flask import url_for, redirect, flash, render_template
 from flask_login import current_user, login_required
 
 from app.dbmd.tools import dbmd_tools
-from app.dbmd.tools.forms import ReportUploaderForm, DirectInputForm
+from app.dbmd.tools import forms
 from app.dbmd.tools.util import *
 from app.models import Permission
 from app.decorators import permission_required
@@ -20,7 +20,7 @@ def miner_index():
 @login_required
 @permission_required(Permission.CREATE_REQUESTS)
 def pdf_file_miner():
-    form = ReportUploaderForm()
+    form = forms.ReportUploaderForm()
     if form.validate_on_submit():
         return render_pdf_file_miner(form, db.session)
     return render_miner_index(pdf_file_form=form)
@@ -30,7 +30,7 @@ def pdf_file_miner():
 @login_required
 @permission_required(Permission.CREATE_REQUESTS)
 def direct_input_miner():
-    form = DirectInputForm()
+    form = forms.DirectInputForm()
     if form.validate_on_submit():
         return render_direct_input_miner(form, db.session)
     return render_miner_index(direct_input_form=form)
@@ -47,3 +47,11 @@ def upload_data():
     flash("Request for uploading data has been registered. "
           "Please wait for its acceptance");
     return redirect(url_for("admin.index"))
+
+
+@dbmd_tools.route("/batch", methods=("GET",))
+@login_required
+@permission_required(Permission.CREATE_REQUESTS)
+def batch_index():
+    form = forms.BatchUploaderForm()
+    return render_template("admin/tools/batch_index.html", form=form) 

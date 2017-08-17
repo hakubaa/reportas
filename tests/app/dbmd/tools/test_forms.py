@@ -1,15 +1,13 @@
-from app.dbmd.tools.forms import ReportUploaderForm, DirectInputForm
-from db.models import Company
-from app import db
+from app.dbmd.tools.forms import (
+    ReportUploaderForm, DirectInputForm, BatchUploaderForm
+)
+# from db import models
+# from app import db
 
 from tests.app import AppTestCase, create_and_login_user
-
-
-def create_company(name, isin):
-    company = Company(name=name, isin=isin)
-    db.session.add(company)
-    db.session.commit()
-    return company
+from tests.app.dbmd.tools.utils import (
+    create_company, create_ftype, create_fschema
+)
 
 
 class ReportUploaderFormTest(AppTestCase):
@@ -56,3 +54,26 @@ class DirectInputFormTest(AppTestCase):
         self.assertEqual(len(choices), 2)
         self.assertIn(company1.name, choices[0])
         self.assertIn(company2.name, choices[1])
+
+
+class BatchUploaderFormTest(AppTestCase):
+
+    def test_required_fields(self):
+        form = BatchUploaderForm()
+
+        form.validate()
+
+        self.assertTrue(form.errors)
+        self.assertIn("fschema", form.errors)
+
+    def test_populate_fschema_select_field_with_schemas(self):
+        ftype = create_ftype("bls")
+        schema1 = create_fschema(ftype=ftype, value="FSCHEMA#1")
+        schema2 = create_fschema(ftype=ftype, value="FSCHEMA#2")
+
+        form = BatchUploaderForm()
+
+        choices = list(form.fschema.iter_choices())
+        self.assertEqual(len(choices), 2)
+        self.assertIn(schema1.default_repr.value, choices[0])
+        self.assertIn(schema2.default_repr.value, choices[1])

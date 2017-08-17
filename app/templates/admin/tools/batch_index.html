@@ -1,0 +1,75 @@
+{% import "bootstrap/utils.html" as utils %}
+{% extends "base.html" %}
+{% block title %}Batch Uploader{% endblock %}
+
+
+{% block head_css %}
+{{ super() }}
+    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
+{% endblock %}
+
+
+{% block page_body %}
+<div class="container">
+  <div class="page-header">
+    <h4>Extract financial data from given text.</h4>
+  </div>
+  <form method="post" enctype="multipart/form-data" action="{{url_for('dbmd_tools.direct_input_miner') }}">
+    {{ form.csrf_token }}
+    <div class="form-group {% if form.fschema.errors %}has-error{% endif %}">
+      <label for="fschema" class="control-label">Financial Statement Schema<strong style="color: red">&#42;</strong></label>
+      <div>
+        {{form.fschema}}
+      </div>
+      {% for error in form.fschema.errors %}
+          <p class="help-block">{{error}}</p>
+      {% endfor %}
+    </div>
+    <div class="form-group {% if form.language.errors %}has-error{% endif %}">
+      <label for="language" class="control-label">Language<strong style="color: red">&#42;</strong></label>
+      <div>
+        {{form.language}}
+      </div>
+      {% for error in form.language.errors %}
+          <p class="help-block">{{error}}</p>
+      {% endfor %}
+    </div>
+    <div class="form-group {% if form.company.errors %}has-error{% endif %}">
+      <label for="company" class="control-label">Company<strong style="color: red">&#42;</strong></label>
+      <div>
+        {{form.company}}
+      </div>
+      {% for error in form.company.errors %}
+          <p class="help-block">{{error}}</p>
+      {% endfor %}
+    </div>
+    <div class="form-group {% if form.report_timerange.errors %}has-error{% endif %}">
+      <label for="report_timerange" class="control-label">Report Timerange</label>
+      <div>
+        {{form.report_timerange}}
+      </div>
+      {% for error in form.report_timerange.errors %}
+          <p class="help-block">{{error}}</p>
+      {% endfor %}
+    </div>
+    <div class="form-group {% if form.report_timestamp.errors %}has-error{% endif %}">
+      <label for="report_timestamp" class="control-label">Report Timestamp</label>
+      <div>
+        {{form.report_timestamp}}
+      </div>
+      {% for error in form.report_timestamp.errors %}
+          <p class="help-block">{{error}}</p>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-success">Process Input</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/miner.js') }}"></script>
+{% endblock %}

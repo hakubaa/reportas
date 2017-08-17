@@ -581,6 +581,18 @@ class FormulaComponent(VersionedModel):
 
 
 class FinancialStatementSchema(Model):
+
+    DEFAULT_SCHEMAS = [
+        {
+            "ftype": "bls",
+            "rtypes": [],
+            "reprs": [
+                {"lang": "PL", "value": "Pusty schema", "default": False},
+                {"lang": "EN", "value": "Clear schema", "default": True}
+            ]
+        }
+    ]
+
     id = Column(Integer, primary_key=True)
 
     ftype_id = Column(
@@ -600,15 +612,37 @@ class FinancialStatementSchema(Model):
 
     @property
     def default_repr(self):
+        if hasattr(self, "_cached_default_repr"): 
+            return self._cached_default_repr
+
         if isinstance(self.reprs, Query):
             fs_reprs = self.reprs.all()
         else:
             fs_reprs = self.reprs
 
         try:
-            return next(filter(lambda item: item.default, fs_reprs))
+            default_repr = next(filter(lambda item: item.default, fs_reprs))
+            self._cached_default_repr = default_repr
+            return default_repr
         except StopIteration:
             return None
+
+
+    @staticmethod
+    def insert_defaults(session):
+        for fschema_spec in FinancialStatementSchema.DEFAULT_SCHEMAS:
+            ftype = session.query(FinancialStatementType).\
+                        filter_by(name=fschema_spec["ftype"]).one()
+            fschema = FinancialStatementSchema(ftype=ftype)
+            for rtype in fschema_spec["rtypes"]:
+                fschema.append_rtype(
+                    session.query(RecordType).filter_by(name=rtype).one()
+                )
+            for fschema_repr in fschema_spec["reprs"]:
+                fschema.reprs.append(
+                    FinancialStatementSchemaRepr(**fschema_repr)       
+                )
+            session.add(fschema)
 
 
 class FinancialStatementSchemaRepr(Model):

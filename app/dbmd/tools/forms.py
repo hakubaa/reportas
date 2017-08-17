@@ -7,7 +7,7 @@ from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from werkzeug.utils import secure_filename
 
 from app import db
-from db.models import Company
+from db.models import Company, FinancialStatementSchema
 
 
 class LanguageMixin(object):
@@ -15,6 +15,23 @@ class LanguageMixin(object):
     language = fields.SelectField(
         "Language", choices=[("PL", "PL")], default="PL"
     )
+
+
+class ReportTimerangeMixin(object):
+    report_timerange = fields.SelectField(
+        "Timerange", default="12",
+        choices=[("3", "3"), ("6", "6"), ("9", "9"), ("12", "12")],
+    )
+    report_timestamp = fields.DateField(
+        "Timestamp", format="%Y-%m", validators=[validators.optional()]
+    )
+
+
+class CompanyMixin(object):
+    company = QuerySelectField(
+        query_factory=lambda: db.session.query(Company).all(),
+        get_label=lambda item: item.name, get_pk=lambda item: item.id
+    ) 
 
 
 class ReportUploaderForm(LanguageMixin, FlaskForm):
@@ -45,16 +62,18 @@ class ReportUploaderForm(LanguageMixin, FlaskForm):
         return self.file.data.filename
 
 
-class DirectInputForm(LanguageMixin, FlaskForm):
+class DirectInputForm(
+    CompanyMixin, ReportTimerangeMixin, LanguageMixin, FlaskForm
+):
     content = fields.TextAreaField("Content", [validators.DataRequired()])
-    company = QuerySelectField(
-        query_factory=lambda: db.session.query(Company).all(),
-        get_label=lambda item: item.name, get_pk=lambda item: item.id
-    )
-    report_timerange = fields.SelectField(
-        "Timerange", default="12",
-        choices=[("3", "3"), ("6", "6"), ("9", "9"), ("12", "12")],
-    )
-    report_timestamp = fields.DateField(
-        "Timestamp", format="%Y-%m", validators=[validators.optional()]
-    )
+
+
+class BatchUploaderForm(
+    CompanyMixin, ReportTimerangeMixin, LanguageMixin, FlaskForm
+):
+    fschema = QuerySelectField(
+        query_factory=lambda: db.session.query(FinancialStatementSchema).all(),
+        get_label=lambda item: item.default_repr.value, 
+        get_pk=lambda item: item.id,
+        validators = [validators.DataRequired()]
+    ) 
