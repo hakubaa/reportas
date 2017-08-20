@@ -16,7 +16,7 @@ from dateutil.parser import parse
 
 from app import db
 from app.models import DBRequest
-from db import models
+from db import models, serializers
 from db.tools import get_records_reprs, get_companies_reprs
 from rparser.core import FinancialReport, PDFFileIO, FinancialStatement
 
@@ -281,11 +281,15 @@ def render_batch_uploader(form, session):
     report_timestamp = form.data["report_timestamp"]
 
     fschema_db = form.data["fschema"]
-
+    formulas = session.query(models.RecordFormula).all()
     fschema = {
         "repr": fschema_db.default_repr.value,
         "rtypes": sorted(fschema_db.get_rtypes(), 
-                         key=lambda item: item["position"])
+                         key=lambda item: item["position"]),
+        "formulas": create_formulas_mapping(formulas),
+        "calculable": [ 
+            assoc.rtype.name for assoc in fschema_db.rtypes if assoc.calculable 
+        ]
     }
 
     return render_template(
@@ -294,3 +298,21 @@ def render_batch_uploader(form, session):
         report_timerange=report_timerange, report_timestamp=report_timestamp,
         
     )
+
+
+def create_formulas_mapping(formulas_db):
+    formulas = [ convert_db_formula(formula) for formula in formulas_db ]
+    formulas_mapping = dict(base_rtypes=list())
+    for formula in formulas:
+        formulas_mapping["base_rtypes"].append(formula["rtype"])
+        formulas_mapping.setdefault(formula["rtype"], []).append(formula)
+        for component in formula["components"]:
+            formulas_mapping.setdefault(component["rtype"], []).append(formula)
+    return formulas_mapping
+
+
+def convert_db_formula(db_formula):
+    formula = dict(rtype=db_formula.rtype.name, components=list())
+    for item in db_formula.rhs:
+        formula["components"].append(dict(rtype=item.rtype.name, sign=item.sign))
+    return formula

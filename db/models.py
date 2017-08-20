@@ -475,8 +475,7 @@ class RecordFormula(VersionedModel):
     
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
     rtype = relationship(
-        "RecordType",
-        backref=backref("formulas", lazy="dynamic", cascade="all, delete-orphan")
+        "RecordType", backref=backref("formulas", cascade="all, delete-orphan")
     )
     
     def __repr__(self):
@@ -541,6 +540,23 @@ class RecordFormula(VersionedModel):
     @property
     def rhs(self):
         return self.components
+
+    @staticmethod
+    def insert_defaults(session):
+        import rparser.specs.formulas as spec
+        for lhs, rhs in spec.entity_formulas:
+            rtype_lhs = session.query(RecordType).filter_by(name=lhs).one()
+            formula = RecordFormula(rtype=rtype_lhs)
+            session.add(formula)
+            session.flush()
+            for rtype_name, sign in rhs:
+                rtype_rhs = session.query(RecordType)\
+                                .filter_by(name=rtype_name).one()
+                formula.components.append(FormulaComponent(
+                    rtype=rtype_rhs, sign=sign
+                ))
+            session.add(formula)
+        session.commit()
 
 
 class FormulaComponent(VersionedModel):
@@ -617,8 +633,10 @@ class FinancialStatementSchema(Model):
         )
     )
 
-    def append_rtype(self, rtype, position):
-        assoc = RTypeFSchemaAssoc(rtype=rtype, position=position, fschema=self)
+    def append_rtype(self, rtype, position, **kwargs):
+        assoc = RTypeFSchemaAssoc(
+            rtype=rtype, position=position, fschema=self, **kwargs
+        )
         return assoc
 
     def get_rtypes(self):
@@ -690,3 +708,4 @@ class RTypeFSchemaAssoc(Model):
     rtype = relationship("RecordType", backref=backref("fschemas"))
     fschema = relationship("FinancialStatementSchema", backref=backref("rtypes"))
     position = Column(Integer, nullable=False, default=0)
+    calculable = Column(Boolean, default=False)

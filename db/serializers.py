@@ -3,7 +3,8 @@ __all__ = [
     "RecordTypeSchema", "RecordTypeReprSchema", "RecordTypeSimpleSchema",
     "RecordSchema", "ReportSchema", "RecordFormulaSchema",
     "FormulaComponentSchema", "SectorSchema", "FinancialStatementTypeSchema",
-    "FinancialStatementTypeReprSchema"
+    "FinancialStatementTypeReprSchema", "FinancialStatementSchema",
+    "FinancialStatementSchemaSimple"
 ]
 
 from marshmallow import (
@@ -519,3 +520,47 @@ class RecordFormulaSchema(ModelSchema):
                 "RecordType with id '{}' does not exist.".format(value)
             )
         return True
+
+
+class RTypeFSchemaAssocSchema(ModelSchema):
+    class Meta:
+        model = models.RTypeFSchemaAssoc
+
+    rtype_id = field_for(
+        models.RTypeFSchemaAssoc, "rtype_id", required=True,
+        error_messages={"required": "RecordType is required."}
+    )
+    rtype = fields.Nested(RecordTypeSchema, only=("id", "name"))
+
+    @validates("rtype_id")
+    def validate_rtype(self, value):
+        (ret, ), = self.session.query(
+            exists().where(models.RecordType.id == value)
+        )
+        if not ret:
+            raise ValidationError(
+                "RecordType with id '{}' does not exist.".format(value)
+            )
+        return True
+
+
+@records_factory.register_schema() 
+class FinancialStatementSchema(ModelSchema):
+    class Meta:
+        model = models.FinancialStatementSchema
+
+    rtypes = fields.Nested(
+        RTypeFSchemaAssocSchema, many=True,
+        only=("position", "rtype", "calculable", "rtype_id"), 
+    )
+
+
+class FinancialStatementSchemaSimple(ModelSchema):
+    class Meta:
+        model = models.FinancialStatementSchema
+        fields = ("rtypes",)
+
+    rtypes = fields.Nested(
+        RTypeFSchemaAssocSchema, only=("position", "rtype", "calculable"), 
+        many=True
+    )

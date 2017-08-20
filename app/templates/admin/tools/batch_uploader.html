@@ -16,6 +16,13 @@
         table.records-table thead tr {
             border-bottom: 1px solid gray;
         }
+        td.cell-btn {
+            /*padding-left: 0px !important;*/
+            /*padding-right: 0px !important;*/
+        }
+        tr.row-calculable {
+            background-color: rgba(0, 0, 0, 0.3) !important; 
+        }
     </style>
 {% endblock %}
 
@@ -51,6 +58,7 @@
             <thead>
                 <tr>
                     <th class="column-btn"></th>
+                    <th class="column-calculable">Calc.</th>
                     <th class="column-rtype">Record Type</th>
                     <th class="column-uom">Units</th>
                     {% for i in range(2) %}
@@ -74,19 +82,25 @@
                     </td>
                 </tr>
                 {% for item in fschema.rtypes %}
-                    <tr class="record-row ui-widget-content" data-record-rtype="{{item.rtype.name}}" data-rtype-id="{{item.rtype.id}}">
+                    {% set calculable_row = item.rtype.name in fschema.formulas.base_rtypes %}
+                    {% set calculable_by_default = item.rtype.name in fschema.calculable %}
+
+                    <tr class="record-row ui-widget-content {% if calculable_by_default %} row-calculable {% endif %}" data-record-rtype="{{item.rtype.name}}" data-rtype-id="{{item.rtype.id}}">
                         <td class="cell-btn">
-                            <button type="button" class="btn btn-xs btn-danger record-remove-btn">
+                            <button tabindex="-1" type="button" class="btn btn-xs btn-danger record-remove-btn">
                                 <span class="glyphicon glyphicon-remove"></span>
                             </button>      
                         </td>
+                        <td class="cell-calculable">
+                            <input type="checkbox" {% if calculable_by_default %} checked {% endif %} {% if not calculable_row %} disabled {% endif %}>
+                        </td>
                         <td class="cell-rtype">
                             <span class="record-rtype">{{item.rtype.name}}</span>
-                            <a href="javascript:void(0);" class="record-rtype-btn"><span class="glyphicon glyphicon-list"></span></a>
+                            <a tabindex="-1" href="javascript:void(0);" class="record-rtype-btn"><span class="glyphicon glyphicon-list"></span></a>
                         </td>
-                        <td class="cell-uom"><select class="record-uom"></select></td>
+                        <td class="cell-uom"><select tabindex="-1" class="record-uom"></select></td>
                         {% for i in range(2) %}
-                            <td class="cell-value"><input type="text" class="form-control input-sm" value="0"></td>
+                            <td class="cell-value"><input type="text" class="form-control input-sm" value="0" {% if calculable_by_default %} disabled {% endif %}></td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -109,6 +123,102 @@
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
 <script>
     var rtypes = {{ rtypes|tojson }};
+    var fschema_formulas = {{ fschema.formulas|tojson }};
+
+    $(document).on("change", "td.cell-value > input", function() {
+        var rtype_trigger = $(this).closest("tr").attr("data-record-rtype");
+        var columnIndex = $(this).closest("td").index();
+        var table = $(this).closest("table");
+        updateRecords(rtype_trigger, table, columnIndex);
+    });
+
+    $(document).on("change", "td.cell-uom > select", function() {
+        var rtype_trigger = $(this).closest("tr").attr("data-record-rtype");
+        var columns = $(this).closest("tr").find("td.cell-value");
+        var table = $(this).closest("table");
+        for (var i = 0; i < columns.length; i++) {
+            updateRecords(rtype_trigger, table, $(columns[i]).index());
+        }
+    });
+
+    $(document).on("change", "td.cell-calculable > input", function() {
+        if ($(this).is(":checked")) {
+            $(this).closest("tr").addClass("row-calculable");
+            $(this).closest("tr").find("td.cell-value input").prop("disabled", true);
+
+            var rtype_trigger = $(this).closest("tr").attr("data-record-rtype");
+            var columns = $(this).closest("tr").find("td.cell-value");
+            var table = $(this).closest("table");
+            for (var i = 0; i < columns.length; i++) {
+                updateRecords(rtype_trigger, table, $(columns[i]).index());
+            }
+        } else {
+            $(this).closest("tr").removeClass("row-calculable");
+            $(this).closest("tr").find("td.cell-value input").prop("disabled", false);
+        }
+    });
+
+    function updateRecords(rtype, table, columnIndex) {
+        if (rtype in fschema_formulas) {
+            var formulas = fschema_formulas[rtype];
+            var recordsInTable = getRTypesFromTable(table);
+
+            for (var i = 0; i < formulas.length; i++) {
+                // if (rtype === formulas[i].rtype) {
+                //     continue;
+                // }
+                if (recordsInTable.indexOf(formulas[i].rtype) < 0 || !isFormulaCalculable(formulas[i], table)) {
+                    continue;
+                }
+                var value = calculateFormula(formulas[i], table, columnIndex);
+                setValueOfRecord(formulas[i].rtype, value, table, columnIndex);
+            }
+        }
+    }
+
+    function setValueOfRecord(rtype, value, table, columnIndex) {
+        var row = table.find("tbody tr[data-record-rtype='" + rtype + "']");
+        for (var i = 0; i < row.length; i++) {
+            if (!$(row[i]).find("td.cell-calculable input").is(":checked")) {
+                continue;
+            }
+            var uom = parseInt($(row[i]).find("td.cell-uom select").val());
+            $($(row[i]).children("td")[columnIndex]).find("input").val(value / uom);
+        }
+    }
+
+    function calculateFormula(formula, table, columnIndex) {
+        var components = formula.components;
+        var value = 0;
+        for (var i = 0; i < components.length; i++) {
+            var row = table.find("tbody tr[data-record-rtype='" + components[i].rtype + "']");
+            for (var j = 0; j < row.length; j++) {
+                var rtype_value = parseFloat($($(row[j]).children("td")[columnIndex]).find("input").val());
+                var uom = parseInt($(row[j]).find("td.cell-uom select").val());
+                value += parseInt(components[i].sign) * rtype_value * uom;
+            }
+        }
+        return value;
+    }
+
+    function isFormulaCalculable(formula, table) {
+        var components = formula.components;
+        var recordsInTable = getRTypesFromTable(table);
+        for (var i = 0; i < components.length; i++) {
+            if (recordsInTable.indexOf(components[i].rtype) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function getRTypesFromTable(table) {
+        var rtypes = table.find("tbody tr").map(function() { 
+            return $(this).attr("data-record-rtype"); 
+        }).get();
+        return rtypes;
+    }
+
 </script>
 <script src="{{ url_for('static', filename='js/dbmd_tools.js') }}"></script>
 <script src="{{ url_for('static', filename='js/batch_uploader.js') }}"></script>

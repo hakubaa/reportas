@@ -2,7 +2,7 @@ $(document).ready(function() {
 
     $("select.record-uom").bindUnitsOfMeasure();
     $("#company-select").applySelect2();
-    $(".record-row").makeDraggable().makeDroppable();
+    // $(".record-row").makeDraggable().makeDroppable();
 
     $(document).on("click", ".record-remove-btn", function() {
         var $table = $(this).closest("table");
@@ -17,9 +17,15 @@ $(document).ready(function() {
             data: rtypes, text: "name", 
             initval: recordId,
             callback: function(rtype) {
+                var $row = $self.closest("tr");
                 $self.closest("td").find(".record-rtype").text(rtype.text);
-                $self.closest("tr").attr("data-record-rtype", rtype.text);
-                $self.closest("tr").find("span.record-rtype-select-msg").remove();
+                $row.attr("data-record-rtype", rtype.text);
+                $row.attr("data-record-id'", rtype.id);
+                $row.find("span.record-rtype-select-msg").remove();
+
+                if (rtype.text in fschema_formulas) {
+                    $row.find("td.cell-calculable input").prop("disabled", false);
+                }
 
             }
         });
@@ -103,7 +109,8 @@ function createNewRecordRow(numberOfValueInputs, attributes) {
     $.extend(defaultAttributes, attributes);
 
     var $row = $("<tr></tr>", defaultAttributes);
-    $row.append(wrapWith("td", createRecordRemoveButton()));
+    $row.append(wrapWith("td", createRecordRemoveButton(), {"class": "cell-btn"}));
+    $row.append(wrapWith("td", createCalculableCheckbox() , {"class": "cell-calculable"}));
     $row.append(createRecordTypeCell());
     $row.append(createUOMCell());
     for (var i = 0; i < numberOfValueInputs; i++) {

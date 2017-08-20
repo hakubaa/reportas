@@ -23,6 +23,22 @@ def create_ftype(session, name="bls"):
     session.commit()
     return ftype
 
+def create_formula(session):
+    ftype = create_ftype(session)
+    total_assets = models.RecordType(name="TOTAL_ASSETS", ftype=ftype)
+    current_assets = models.RecordType(name="CURRENT_ASSETS", ftype=ftype)
+    fixed_assets = models.RecordType(name="FIXED_ASSETS", ftype=ftype)
+    session.add_all((total_assets, current_assets, fixed_assets))
+    session.flush()    
+    
+    formula = models.RecordFormula(rtype=total_assets)
+    formula.add_component(rtype=current_assets, sign=1)
+    formula.add_component(rtype=fixed_assets, sign=1)
+    session.add(formula)
+    session.commit()
+    
+    return formula
+
 #-------------------------------------------------------------------------------
 
 class CompanyReprSchemaTest(DbTestCase):
@@ -800,24 +816,7 @@ class ReportSchemaTest(DbTestCase):
 
         self.assertFalse(errors)
         self.assertEqual(instance, report)
-
-        
-def create_formula(session):
-    ftype = create_ftype(session)
-    total_assets = models.RecordType(name="TOTAL_ASSETS", ftype=ftype)
-    current_assets = models.RecordType(name="CURRENT_ASSETS", ftype=ftype)
-    fixed_assets = models.RecordType(name="FIXED_ASSETS", ftype=ftype)
-    session.add_all((total_assets, current_assets, fixed_assets))
-    session.flush()    
     
-    formula = models.RecordFormula(rtype=total_assets)
-    formula.add_component(rtype=current_assets, sign=1)
-    formula.add_component(rtype=fixed_assets, sign=1)
-    session.add(formula)
-    session.commit()
-    
-    return formula
-        
         
 class RecordFormulaTest(DbTestCase):
     
@@ -889,3 +888,69 @@ class FormulaComponentTest(DbTestCase):
         data = FormulaComponentSchema().dump(component).data
         self.assertIn("rtype", data)
         self.assertEqual(data["rtype"], component.rtype.name)
+
+
+class FinancialStatementSchemaTest(DbTestCase):
+    
+    def test_fschema_is_serializable_without_any_data(self):
+        obj, errors = FinancialStatementSchema().load({}, session=self.db.session)
+        self.assertFalse(errors)
+
+    def test_deserialized_data_contains_records(self):
+        ftype = create_ftype(self.db.session)
+        total_assets = models.RecordType(name="TOTAL_ASSETS", ftype=ftype)
+        current_assets = models.RecordType(name="CURRENT_ASSETS", ftype=ftype)
+        fixed_assets = models.RecordType(name="FIXED_ASSETS", ftype=ftype)
+        self.db.session.add_all((total_assets, current_assets, fixed_assets))
+        
+        formula = models.RecordFormula(rtype=total_assets)
+        formula.add_component(rtype=current_assets, sign=1)
+        formula.add_component(rtype=fixed_assets, sign=1)
+        self.db.session.add(formula)
+        self.db.session.commit()
+
+        fschema = models.FinancialStatementSchema()
+        fschema.append_rtype(total_assets, 2, formula=formula)
+        fschema.append_rtype(current_assets, 1)
+        fschema.append_rtype(fixed_assets, 0)
+
+        data = FinancialStatementSchema().dump(fschema).data
+
+        self.assertIn("rtypes", data)
+        rtypes = sorted(data["rtypes"], key=lambda item: item["position"])
+        self.assertEqual(rtypes[0]["rtype"]["name"], fixed_assets.name)
+        self.assertEqual(rtypes[1]["rtype"]["name"], current_assets.name)
+        self.assertEqual(rtypes[2]["rtype"]["name"], total_assets.name)
+
+    def test_create_schema_with_records(self):
+        ftype = create_ftype(self.db.session)
+        total_assets = models.RecordType(name="TOTAL_ASSETS", ftype=ftype)
+        current_assets = models.RecordType(name="CURRENT_ASSETS", ftype=ftype)
+        fixed_assets = models.RecordType(name="FIXED_ASSETS", ftype=ftype)
+        self.db.session.add_all((total_assets, current_assets, fixed_assets))
+        self.db.session.commit()
+        
+        data = {
+            "ftype_id": ftype.id,
+            "rtypes": [
+                {"rtype_id": total_assets.id, "position": 2},
+                {"rtype_id": fixed_assets.id, "position": 1},
+                {"rtype_id": current_assets.id, "position": 0}
+            ]
+        }
+        fschema, errors = FinancialStatementSchema().load(
+            data, session=self.db.session
+        )
+
+        self.assertFalse(errors) 
+        
+        self.db.session.add(fschema)
+        self.db.session.commit()
+        
+        fschema = self.db.session.query(models.FinancialStatementSchema).one()
+        self.assertEqual(len(fschema.rtypes), 3)
+
+        rtypes = sorted(fschema.get_rtypes(), key=lambda item: item["position"])
+        self.assertEqual(rtypes[0]["rtype"], current_assets)
+        self.assertEqual(rtypes[1]["rtype"], fixed_assets)
+        self.assertEqual(rtypes[2]["rtype"], total_assets)

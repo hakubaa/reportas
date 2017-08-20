@@ -190,11 +190,11 @@ $.fn.bindDatePicker = function(attributes) {
 //------------------------------------------------------------------------------
 
 function activateFocusOnInputs(selector) {
-    $(document).on("focusin", selector + " td input", function() {
+    $(document).on("focusin", selector + " td input[type=text]", function() {
         $(this).closest("tr").addClass("info"); 
     });
     
-    $(document).on("focusout", selector + " td input", function() {
+    $(document).on("focusout", selector + " td input[type=text]", function() {
         $(this).closest("tr").removeClass("info"); 
     });
 }
@@ -353,7 +353,7 @@ function createRecordRemoveButton() {
         $("<span></span>", {"class": "glyphicon glyphicon-remove"}),
         {
             "class": "btn btn-danger btn-xs record-remove-btn",
-            "type": "button"
+            "type": "button", "tabindex": "-1"
         }
     ); 
 }
@@ -366,6 +366,10 @@ function createRecordScrollToRowButton() {
             "type": "button"
         }
     );    
+}
+
+function createCalculableCheckbox() {
+    return $("<input></input>", {"type": "checkbox", "disabled": true});
 }
 
 
@@ -409,13 +413,11 @@ function getNumberOfColumns(selector) {
 }
 
 function createRecordInputValue(value) {
-    return wrapWith("div",
-        $("<input></input>", {
+    return $("<input></input>", {
             "type": "text",
             "class": "form-control input-sm record-value",
             "val": (value ? value !== undefined : 0)
-        })    
-    );
+        });
 }
 
 function appendLastDayOfMonth(string) {
@@ -1138,7 +1140,10 @@ function createRecordTypeCell(attributes) {
             $("<span></span>", {"class": "record-rtype-select-msg", "text": EMPTY_RTYPE}),
             wrapWith("a",
                 $("<span></span>", {"class": "glyphicon glyphicon-list"}),
-                {"href": "javascript:void(0);", "class": "record-rtype-btn"}    
+                {
+                    "href": "javascript:void(0);", "class": "record-rtype-btn",
+                    "tabindex": "-1"
+                }    
             ),
             defaultAttributes
         ]
@@ -1152,7 +1157,7 @@ function createUOMCell(attributes) {
     $.extend(defaultAttributes, attributes);
 
     var $cell = wrapWith(
-        "td", $("<select></select>", {"class": "record-uom"}),
+        "td", $("<select></select>", {"class": "record-uom", "tabindex": "-1"}),
         defaultAttributes
     );
     return $cell;    

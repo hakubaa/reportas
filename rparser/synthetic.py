@@ -60,6 +60,9 @@ class FormulaComponent:
             return False
         return True
         
+    def as_json(self):
+        return {"spec": self.spec, "sign": self.sign}
+
     def get_value(self, dataset):
         return dataset.get_value(self.spec)
     
@@ -106,6 +109,12 @@ class Formula:
     def __repr__(self):
         msg = "Formula: {!r} = " + " + ".join("{!r}" for _ in range(len(self)))
         return msg.format(self.spec, *self.components)
+
+    def as_json(self):
+        return {
+            "spec": self.spec,
+            "components": [ item.as_json() for item in self.components ]
+        }
 
     def add_component(self, component):
         self.components.append(component)
