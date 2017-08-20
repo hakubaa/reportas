@@ -1,6 +1,7 @@
-var FIXED_COLUMNS = 4;
-var UNITS_OF_MEASURE_COLUMN = 3;
-var RECORD_TYPE_COLUMN = 2;
+var UNDEFINED_RTYPE = "NONE";
+var EMPTY_TIMERANGE = " --- ";
+var EMPTY_TIMESTAMP = " --- ";
+var EMPTY_RTYPE = " --- SELECT RECORD TYPE --- ";
 
 //------------------------------------------------------------------------------
 // XMLHttpRequests Functions
@@ -112,7 +113,7 @@ jQuery.fn.applySelect2 = function(attributes) {
     var attrs = {
         dropdownAutoWidth: true,
             placeholder: {
-                id: "-1",
+                id: "none",
                 text: "Select an option",
             }
     };
@@ -208,12 +209,12 @@ function toggleTable(table) {
     var numberOfRows = table.find("tbody tr:visible").not(".empty-row").length;
     if (numberOfRows === 0) { // show empty row
         table.find(".empty-row").show();
-        table.find("thead").hide();
+        // table.find("thead").hide();
     } else {
         var $firstRow = table.find("tbody tr:visible:first");
         if ($firstRow.hasClass("empty-row") && numberOfRows > 0) {
             $firstRow.hide();
-            table.find("thead").show();
+            // table.find("thead").show();
         } 
     }
 }
@@ -233,7 +234,7 @@ function addEmptyColumn(selector) {
         table.find("thead tr").append(createHeaderElement(selector));
         var rows = table.find("tbody tr").not(".empty-row");
         for(var i = 0; i < rows.length; i++) {
-            $(rows[i]).append(wrapWith("td", createRecordInputValue()));    
+            $(rows[i]).append(wrapWith("td", createRecordInputValue(), {"class": "cell-value"}));    
         }
 }
 
@@ -258,15 +259,18 @@ function removeColumn(selector, columnId) {
 function createHeaderElement(selector) {
     if (selector === undefined) throw "Undefined selector.";
     var columnId = generateColumnId(selector);
-    var $th = $("<th></th>", {"data-column-id": String(columnId)});
+    var $th = $("<th></th>", {
+        "data-column-id": String(columnId),
+        "class": "column-value"
+    });
     $("<span></span>", {
         "class": "timerange",
-        "text": "0"
+        "text": EMPTY_TIMERANGE
     }).appendTo($th);
     $("<span> months ended on </span>").appendTo($th);
     $("<span></span>", {
         "class": "timestamp",
-        "text": "0001-01-01"
+        "text": EMPTY_TIMESTAMP
     }).appendTo($th);
     $("<span> </span>").appendTo($th);
     $("<a></a>", {
@@ -284,59 +288,16 @@ function createHeaderElement(selector) {
 
 function generateColumnId(selector) {
     if (selector === undefined) throw "Undefined Selector.";
-    var maxColumnId = Math.max.apply(null, $("" + selector).find("thead tr th").map(function() {
+    var columns = $("" + selector).find("th.column-value");
+    if (columns.length === 0) {
+        return 1;
+    }
+    var maxColumnId = Math.max.apply(null, columns.map(function() {
         return $(this).data("column-id"); 
     }));
     return maxColumnId + 1;
 }
 
-
-function createNewRecordRow(numberOfValueInputs, attributes) {
-    if (numberOfValueInputs === undefined) {
-        throw "Undefined number of columns with inputs for values.";
-    }
-    if (attributes === undefined) attributes = {};
-
-    var defaultAttributes = {
-        "class": "record-row ui-widget-content"
-    };
-    $.extend(defaultAttributes, attributes);
-    var $row = $("<tr></tr>", defaultAttributes);
-
-    $row.append(
-        wrapWith("td", 
-            createRecordRemoveButton(),
-            {"class": "no-right-padding"}
-        )
-    );
-    $row.append(
-        wrapWith("td", 
-            createRecordScrollToRowButton(), 
-            {"class": "no-left-padding"}
-        )
-    );  
-    $row.append(wrapWith("td", [
-            $("<span></span>", {"class": "record-rtype", "text": "--- SELECT RECORD TYPE ---"}),
-            $("<span> </span>"),
-            wrapWith("a",
-                $("<span></span>", {"class": "glyphicon glyphicon-list"}),
-                {"href": "javascript:void(0);", "class": "record-rtype-btn"}    
-            )
-        ]
-    ));
-
-    $row.append(wrapWith(
-        "td", $("<select></select>", {"class": "record-uom"})
-    ));
-    for (var i = 0; i < numberOfValueInputs; i++) {
-        $row.append(wrapWith("td", createRecordInputValue()));
-    }
-
-    // Remove comment if you want to make rows draggable.
-    // $row.makeDraggable().makeDroppable();
-
-    return $row;
-}
 
 function populateRowWithData(row, data) {
     if (data === undefined) data = {"rtype": undefined, "values": []}
@@ -370,7 +331,7 @@ function createLinkToRecord(recordType) {
         $("<span>" + recordType + "</span>"),
         { 
             "href": "javascript:void(0);",
-            "onclick": "focusOnRecord('*[data-record-name=\"" + recordType + "\"]');"
+            "onclick": "focusOnRecord('*[data-record-rtype=\"" + recordType + "\"]');"
         }
     );
 }
@@ -444,7 +405,7 @@ function scrollToRow(selector) {
 
 function getNumberOfColumns(selector) {
     if (selector === undefined) throw "Undefined selector.";
-    return $("" + selector).find("thead th").length - FIXED_COLUMNS;
+    return $("" + selector).find("thead th.column-value").length;
 }
 
 function createRecordInputValue(value) {
@@ -477,15 +438,12 @@ function createDataForExport(tables, rtypes) {
         return r1.concat(r2);
     });
 
-    var data = JSON.stringify({
+    return {
         "timerange": timerange,
         "timestamp": timestamp,
         "company_id": companyId,
         "records": records
-    });
-
-
-    return data;
+    };
 }
 
 function readRecordsFromTable(selector, companyId, rtypes) {
@@ -495,10 +453,9 @@ function readRecordsFromTable(selector, companyId, rtypes) {
     var headers = getRecordsHeaders(table);
 
     var records = table.find("tbody tr:not(:first-child)").map(function(rowIndex) {
-        var tds = $(this).find("td");
-        var rtype = $(tds[RECORD_TYPE_COLUMN]).find(".record-rtype").text();
-        var uom = parseInt($(tds[UNITS_OF_MEASURE_COLUMN]).find("select").val());
-        return $(this).find("td").slice(FIXED_COLUMNS).map(function(columnIndex) {
+        var rtype = $(this).attr("data-record-rtype");
+        var uom = parseInt($(this).find("select.record-uom").val());
+        return $(this).find("td.cell-value").map(function(columnIndex) {
             return {
                 "company_id": companyId,
                 "value": parseFloat($(this).find("input").val()) * uom,
@@ -705,13 +662,13 @@ function readDataFromRecordForm(form) {
 
 function findDuplicateRecords(table) {
     var records = table.find("tbody tr").map(function(rowIndex) {
-        var tds = $(this).find("td");
-        var recordType = $(tds[RECORD_TYPE_COLUMN]).find(".record-rtype").text();
+        var recordType = $(this).find("td").find(".record-rtype").text();
         return recordType;
     }).get();
 
     var recordsCounter = {};
     for (var i = 0; i < records.length; i++) {
+        if (records[i] === "") continue;
         if (!(records[i] in recordsCounter)) {
             recordsCounter[records[i]] = 0;
         }
@@ -753,7 +710,7 @@ function validateRecords(table) {
     var columnNumbers = table.find("thead th").length;
     var details = table.find("tbody tr:not(:first-child)").map(function(index) {
         var numberOfCells = $(this).find("td").length;
-        var cells = $(this).find("td:nth-child(n+" + (FIXED_COLUMNS+1) + ")").map(function(index) {
+        var cells = $(this).find("td.cell-value").map(function(index) {
             result = result && !isNaN($(this).find("input").val());
             return {
                 "value": !isNaN($(this).find("input").val()),
@@ -791,11 +748,22 @@ function validateReport() {
     }
 }
 
+function validateRecordsTypes(table) {
+    var result = true;
+    var details = table.find("tbody tr").map(function(index) {
+        var rtype = $(this).attr("data-record-rtype");
+        result = result && rtype !== UNDEFINED_RTYPE;
+        return {"index": index, "rtype": rtype};
+    }).get();
+    return {"result": result, "details": details};
+}
+
 function validateDataInTable(table, prefix) {
     var vals = [
         validateDuplicateRecords(table),
         validateRecordsColumns(table),
         validateRecords(table),
+        validateRecordsTypes(table)
     ];
     var result = vals.every(function(val) { return val.result; });
     var alerts = [].concat(
@@ -804,6 +772,8 @@ function validateDataInTable(table, prefix) {
         createAlertsForRecordsColumnsValidation(vals[1].details, prefix)
     ).concat(
         createAlertsForRecordsValidation(vals[2].details, prefix)
+    ).concat(
+        createAlertsForRecordsTypesValidation(vals[3].details, prefix)
     );
     return {"result": result, "alerts": alerts};
 }
@@ -855,6 +825,24 @@ function createAlertsForRecordsValidation(validation, prefix) {
             }
         }
     }
+    if (validation.length === 0) {
+        msg = prefix + "There are not any records in the table.";
+        alerts.push(createAlert(msg, "warning"));        
+    }
+    return alerts;
+}
+
+function createAlertsForRecordsTypesValidation(validation, prefix) {
+    prefix = adjust_prefix(prefix);
+    var alerts = [];
+    var msg;
+    for(var i = 0; i < validation.length; i++) {
+        if (validation[i].rtype === UNDEFINED_RTYPE) {
+            msg = prefix + "Row #" + (validation[i].index + 1) + ": " +
+                  "type of record corrupted";
+            alerts.push(createAlert(msg, "danger"));
+        }
+    }     
     return alerts;
 }
 
@@ -892,7 +880,7 @@ function adjust_prefix(prefix) {
 }
 
 function getRecordsHeaders(table) {
-    var headers = table.find("thead tr th").slice(FIXED_COLUMNS).map(function() {
+    var headers = table.find("thead tr th.column-value").map(function() {
         return {
             "timerange": $(this).find(".timerange").text(),
             "timestamp": $(this).find(".timestamp").text()
@@ -1138,4 +1126,45 @@ function getIDforRType(name, rtypes) {
         recordId = String(matchedRTypes[0].id);
     }
     return recordId;
+}
+
+
+function createRecordTypeCell(attributes) {
+    var defaultAttributes = {"class": "cell-rtype"};
+    $.extend(defaultAttributes, attributes);
+
+    var $cell = wrapWith("td", [
+            $("<span></span>", {"class": "record-rtype", "text": ""}),
+            $("<span></span>", {"class": "record-rtype-select-msg", "text": EMPTY_RTYPE}),
+            wrapWith("a",
+                $("<span></span>", {"class": "glyphicon glyphicon-list"}),
+                {"href": "javascript:void(0);", "class": "record-rtype-btn"}    
+            ),
+            defaultAttributes
+        ]
+    );
+    return $cell;
+}
+
+
+function createUOMCell(attributes) {
+    var defaultAttributes = {"class": "cell-uom"};
+    $.extend(defaultAttributes, attributes);
+
+    var $cell = wrapWith(
+        "td", $("<select></select>", {"class": "record-uom"}),
+        defaultAttributes
+    );
+    return $cell;    
+}
+
+
+function createInputValueCell(attributes) {
+    var defaultAttributes = {"class": "cell-value"};
+    $.extend(defaultAttributes, attributes);
+
+    var $cell = wrapWith("td", 
+        createRecordInputValue(), defaultAttributes
+    );
+    return $cell;     
 }

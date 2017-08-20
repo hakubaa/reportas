@@ -7,21 +7,31 @@
 {{ super() }}
     <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
+    <style>
+      input, select, textarea {
+          width:195px;
+          -webkit-box-sizing: border-box;
+          -moz-box-sizing: border-box;
+          box-sizing: border-box;
+      }
+    </style>
 {% endblock %}
 
 
 {% block page_body %}
 <div class="container">
   <div class="page-header">
-    <h4>Extract financial data from given text.</h4>
+    <h3>Batch Uploader</h3>
+    <small>Upload simultaneously data for many records concerning different periods.</small>
   </div>
-  <form method="post" enctype="multipart/form-data" action="{{url_for('dbmd_tools.direct_input_miner') }}">
+  <form method="post" enctype="multipart/form-data" action="{{url_for('dbmd_tools.batch_uploader') }}">
     {{ form.csrf_token }}
     <div class="form-group {% if form.fschema.errors %}has-error{% endif %}">
       <label for="fschema" class="control-label">Financial Statement Schema<strong style="color: red">&#42;</strong></label>
       <div>
         {{form.fschema}}
       </div>
+      <p class="help-block">Select predefined schema including list of most common records.</p>
       {% for error in form.fschema.errors %}
           <p class="help-block">{{error}}</p>
       {% endfor %}
@@ -72,4 +82,8 @@
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/miner.js') }}"></script>
+<script>
+    $("select").applySelect2();
+    $('input[name="report_timestamp"]').bindDatePicker();
+</script>
 {% endblock %}

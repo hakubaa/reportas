@@ -15,24 +15,9 @@ from db import models
 from app.rapi.util import DatetimeEncoder
 
 from tests.app import AppTestCase, create_and_login_user
-
-
-def create_fake_company(isin="#TEST", name="TEST"):
-    company = db.session.query(models.Company).filter_by(isin=isin).first()
-    if company:
-        return company
-
-    company = models.Company(isin="#TEST", name="TEST")
-    db.session.add(company)
-    db.session.commit()
-    return company
-
-
-def create_ftype(name="ics"):
-    ftype = models.FinancialStatementType(name=name)
-    db.session.add(ftype)
-    db.session.commit()
-    return ftype
+from tests.app.dbmd.tools.utils import (
+    create_company, create_ftype, create_fschema, create_rtype
+)
 
 
 class MinerIndexViewTest(AppTestCase):
@@ -211,7 +196,7 @@ class DirectInputMinerViewTest(AppTestCase):
     @mock.patch("app.dbmd.tools.views.render_direct_input_miner") 
     def test_render_direct_input_miner_when_form_validates(self, render_mock):
         render_mock.return_value = ""
-        company = create_fake_company()
+        company = create_company()
         data = dict(
             content="NET PROFIT      100          200",
             company=str(company.id)
@@ -234,9 +219,9 @@ class ParserPostViewTest(AppTestCase):
         return report
 
     def create_data_for_request(self, records=True):
-        rtype = models.RecordType(name="NETPROFIT", ftype=create_ftype())
+        rtype = models.RecordType(name="NETPROFIT", ftype=create_ftype("bls"))
         db.session.add(rtype)
-        company = create_fake_company()
+        company = create_company()
         
         data = {
             "timestamp": "2015-03-31", "timerange": 12,
@@ -296,7 +281,7 @@ class ParserPostViewTest(AppTestCase):
     @create_and_login_user()
     def test_create_update_request_when_report_exists(self):
         data = self.create_data_for_request(records=False)
-        company = create_fake_company()
+        company = db.session.query(models.Company).get(data["company_id"])
         report = self.create_fake_report(
             timestamp=datetime.strptime(data["timestamp"], "%Y-%m-%d"),
             timerange=data["timerange"],
@@ -410,4 +395,79 @@ class BatchIndexViewTest(AppTestCase):
     def test_for_passing_batch_uploader_form_to_template(self):
         response = self.send_get_request()
         form = self.get_context_variable("form")
-        self.assertIsInstance(form, forms.BatchUploaderForm) 
+        self.assertIsInstance(form, forms.BatchUploaderForm)
+
+
+class BatchUploaderViewTest(AppTestCase):
+
+    def send_post_request(self, **kwargs):
+        response = self.client.post(
+            url_for("dbmd_tools.batch_uploader"),
+            **kwargs
+        )    
+        return response
+
+    def create_data_for_request(self, records=True):
+        company = create_company()
+        
+        data = {
+            "timestamp": "2015-03-31", "timerange": 12,
+            "company_id": company.id
+        }
+                
+        return data
+
+    @create_and_login_user()
+    @mock.patch("app.dbmd.tools.views.render_batch_uploader")
+    def test_renders_batch_uploader_after_successful_post(self, render_mock):
+        render_mock.return_value = ""
+
+        fschema = create_fschema(ftype=create_ftype("bls"), value="FSCHEMA#1")
+        company = create_company(name="TEST", isin="#TEST")
+        data = {
+            "company": company.id, "fschema": fschema.id, "language": "PL"
+        }
+
+        response = self.send_post_request(data=data)
+
+        self.assertTrue(render_mock.called)
+
+    @create_and_login_user()
+    @mock.patch("app.dbmd.tools.views.render_batch_index")
+    def test_renders_batch_index_when_post_request_fails(self, render_mock):
+        render_mock.return_value = ""
+
+        response = self.send_post_request(data={})
+
+        self.assertTrue(render_mock.called)
+
+    @create_and_login_user()
+    def test_for_rendering_proper_template(self):
+        fschema = create_fschema(ftype=create_ftype("bls"), value="FSCHEMA#1")
+        company = create_company(name="TEST", isin="#TEST")
+        data = {
+            "company": company.id, "fschema": fschema.id, "language": "PL"
+        }
+
+        response = self.send_post_request(data=data)
+
+        self.assert_template_used("admin/tools/batch_uploader.html")
+
+    @create_and_login_user()
+    def test_fschema_contains_sorted_rtypes_by_their_position(self):
+        ftype=create_ftype("bls")
+        fschema = create_fschema(ftype=ftype, value="FSCHEMA#1")
+        fschema.append_rtype(create_rtype(name="R2", ftype=ftype), position=2)
+        fschema.append_rtype(create_rtype(name="R1", ftype=ftype), position=1)
+        fschema.append_rtype(create_rtype(name="R3", ftype=ftype), position=3)
+        company = create_company(name="TEST", isin="#TEST")
+        data = {
+            "company": company.id, "fschema": fschema.id, "language": "PL"
+        }
+
+        response = self.send_post_request(data=data)
+
+        fschema = self.get_context_variable("fschema")
+        self.assertEqual(fschema["rtypes"][0]["rtype"].name, "R1")
+        self.assertEqual(fschema["rtypes"][1]["rtype"].name, "R2")
+        self.assertEqual(fschema["rtypes"][2]["rtype"].name, "R3")

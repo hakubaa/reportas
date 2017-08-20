@@ -230,6 +230,14 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Zysk netto za okres"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) netto za okres sprawozdawczy, przypadający"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) netto za okres sprawozdawczy"
             }
         ]
     },
@@ -1199,6 +1207,14 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Zysk (strata) na jedną akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) netto na akcję"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) netto na jedną akcję"
             },
             {
                 "lang": "PL",

@@ -5,7 +5,7 @@ import json
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
-from marshmallow_sqlalchemy import ModelSchema
+from marshmallow_sqlalchemy import field_for, ModelSchema
 from marshmallow import fields
 
 from app.models import User, Role, Permission, AnonymousUser, DBRequest
@@ -56,6 +56,12 @@ class SubAccountSchema(ModelSchema):
 class AccountSchema(ModelSchema):
     class Meta:
         model = Account
+
+    student = fields.Nested(Student,  many=False)
+    student_id = field_for(
+        Account, "student_id", required=True,
+        error_messages={"required": "RecordType is required."}
+    )
 
     subaccounts = fields.Nested(
         SubAccountSchema, only=("id", "balance"), many=True
@@ -557,6 +563,54 @@ class DBRequestTest(AppTestCase):
         db.session.commit()
 
         self.assertEqual(db.session.query(DBRequest).count(), 0)
+
+    def test_execute_request_with_some_corrupted_subrequest(self):
+        user = self.create_user()
+        wrapping_request = DBRequest(
+            user=user, action="create", wrapping_request=True,
+            model="Wrapping Request"
+        )
+        student = Student(name="Python", age=17)
+        db.session.add(student)
+        bad_request = DBRequest(
+            model="Student", user=user, action="create",
+            data=json.dumps({"age": student.age, "name": student.name})
+        )
+        ok_request = DBRequest(
+            model="Student", user=user, action="create",
+            data=json.dumps({"age": 20, "name": "C++"})
+        )
+        wrapping_request.add_subrequest(ok_request)
+        wrapping_request.add_subrequest(bad_request)
+        db.session.commit()
+
+        result = wrapping_request.execute(user, records_factory)
+       
+        self.assertEqual(db.session.query(Student).count(), 2)
+        self.assertFalse(bad_request.outcome)
+        self.assertTrue(ok_request.outcome)
+        self.assertTrue(json.loads(bad_request.errors))
+        self.assertFalse(json.loads(ok_request.errors))
+
+    def test_execute_returns_instances_with_refresh_relations(self):
+        user = self.create_user()
+        student = Student(name="Python", age=17)
+        db.session.add(student)
+        db.session.commit()
+        db.session.expunge(student)
+
+        request = DBRequest(
+            model="Account", user=user, action="create",
+            data=json.dumps({"balance": 100, "student_id": 1})
+        )
+
+        result = request.execute(user, records_factory)
+
+        self.assertIsNotNone(result["instance"].student)
+        self.assertEqual(
+            result["instance"].student, 
+            db.session.query(Student).one()
+        )        
 
 
 class UserModelTest(unittest.TestCase):

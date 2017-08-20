@@ -261,7 +261,6 @@ class RecordType(VersionedModel):
     def revformulas(self):
         return [ item.formula for item in self.formula_components ]
         
-        
     @staticmethod
     def insert_rtypes(session):
         import rparser.specs.records as spec
@@ -584,20 +583,32 @@ class FinancialStatementSchema(Model):
 
     DEFAULT_SCHEMAS = [
         {
-            "ftype": "bls",
             "rtypes": [],
             "reprs": [
                 {"lang": "PL", "value": "Pusty schema", "default": False},
                 {"lang": "EN", "value": "Clear schema", "default": True}
+            ]
+        },
+        {
+            "ftype": "bls",
+            "rtypes": [ 
+                "BLS#FIXEDASSETS", "BLS#CURRENTASSETS", "BLS#TOTALASSETS",
+                "BLS#EQUITY", "BLS#LONGANDSHORTERMLIABILITIES", 
+                "BLS#TOTALLIABILITIES"
+            ],
+            "reprs": [
+                {"lang": "PL", "value": "Uproszczony bilans", "default": False},
+                {
+                    "lang": "PL", "value": "Simplify balance sheet", 
+                    "default": True
+                }
             ]
         }
     ]
 
     id = Column(Integer, primary_key=True)
 
-    ftype_id = Column(
-        Integer, ForeignKey("financialstatementtype.id"), nullable=False
-    )
+    ftype_id = Column(Integer, ForeignKey("financialstatementtype.id"))
     ftype = relationship(
         "FinancialStatementType", 
         backref=backref(
@@ -609,6 +620,12 @@ class FinancialStatementSchema(Model):
     def append_rtype(self, rtype, position):
         assoc = RTypeFSchemaAssoc(rtype=rtype, position=position, fschema=self)
         return assoc
+
+    def get_rtypes(self):
+        return [
+            {"rtype": assoc.rtype, "position": assoc.position}
+            for assoc in self.rtypes
+        ]
 
     @property
     def default_repr(self):
@@ -631,13 +648,17 @@ class FinancialStatementSchema(Model):
     @staticmethod
     def insert_defaults(session):
         for fschema_spec in FinancialStatementSchema.DEFAULT_SCHEMAS:
-            ftype = session.query(FinancialStatementType).\
-                        filter_by(name=fschema_spec["ftype"]).one()
+            if "ftype" in fschema_spec:
+                ftype = session.query(FinancialStatementType).\
+                            filter_by(name=fschema_spec["ftype"]).one()
+            else:
+                ftype = None
+
             fschema = FinancialStatementSchema(ftype=ftype)
-            for rtype in fschema_spec["rtypes"]:
-                fschema.append_rtype(
-                    session.query(RecordType).filter_by(name=rtype).one()
-                )
+            for index, rtype in enumerate(fschema_spec["rtypes"]):
+                rtype_db = session.query(RecordType).filter_by(name=rtype).one()
+                if rtype_db:
+                    fschema.append_rtype(rtype_db, position=index)  
             for fschema_repr in fschema_spec["reprs"]:
                 fschema.reprs.append(
                     FinancialStatementSchemaRepr(**fschema_repr)       

@@ -41,13 +41,12 @@ td.record-name {
     text-align: center;
 }
 #report-ui {
-/*    border-bottom: 1px solid gray;*/
-
     -webkit-box-shadow: 0 6px 4px -4px gray;
     -moz-box-shadow: 0 6px 4px -4px gray;
     box-shadow: 0 6px 4px -4px gray;
-
-    padding: 5px;
+}
+#report-wrapper {
+    margin-bottom: 10px;
 }
 #row-remove-btn {
     display: none;

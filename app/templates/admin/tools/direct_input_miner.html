@@ -18,18 +18,35 @@
 {{ super() }}
     <div class="container container-full">
         <h3>Financial Data Miner - Summary</h3>
+        <hr>
+
         <div>
-            <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}---{% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m')}} {% else %}---{% endif %}</span></strong> 
-            (<a href="javascript:void(0);" class="time-editor-btn">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+            <h4>Company & Financial Report</h4>
+            <div>
+                <label>Company<strong style="color: red">&#42;</strong></label>
+                <select id="company-select">
+                    <option disabled selected value> -- select a company -- </option>
+                    {% for comp in companies %}<option value="{{comp.id}}" {% if company and company.name == comp.name %}selected="selected"{% endif %}>{{comp.name}}</option>{% endfor %}
+                </select>
+                <p class="help-block">Company is required. All uploaded records will be associated with selected company.</p>
+            </div>
+            <div>
+                <div class="checkbox">
+                    <label><input id="report-disable-btn" type="checkbox" {% if not (report_timerange and report_timestamp) %} checked {% endif %} value=""> 
+                        Data do not concern one particular financial report.
+                    </label>
+                </div>
+                <dvi id="report-data"{% if not (report_timerange and report_timestamp) %} style="display: none;" {% endif %}>
+                    <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}---{% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m')}} {% else %}---{% endif %}</span></strong> 
+                    (<a href="javascript:void(0);" class="time-editor-btn">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+                    <p class="help-block">Financial report is optional. All uploaded records will be associated with specified report.</p>
+                </dvi>
+            </div>
         </div>
-        <p>
-            <label>Company </label>
-            <select id="company-select">
-                <option disabled selected value> -- select a company -- </option>
-                {% for comp in companies %}<option value="{{comp.id}}" {% if company and company.name == comp.name %}selected="selected"{% endif %}>{{comp.name}}</option>{% endfor %}
-            </select>
-        </p>
+        <hr>
+
         <div id="report-wrapper">
+            <h4>Content of the report</h4>
             <div id="report-ui">
                 <div class="checkbox">
                     <label>
@@ -79,7 +96,7 @@
                                 <td class="pageno">{{loop.index}}</td>
                                 <td class="record-name">
                                     {% if record_name %}
-                                        <a href="javascript:void(0);" onclick="focusOnRecord('*[data-record-name=\'{{record_name}}\']');">{{record_name}}</a>
+                                        <a href="javascript:void(0);" onclick="focusOnRecord('*[data-record-rtype=\'{{record_name}}\']');">{{record_name}}</a>
                                     {% else %}
                                         <span>---</span>
                                     {% endif %}
@@ -102,9 +119,9 @@
                 <thead>
             {% endif %}
                 <tr>
-                    <th></th>
-                    <th></th>
-                    <th>Record Type</th>
+                    <th class="column-btn"></th>
+                    <th class="column-rtype"></th>
+                    <th class="column-uom">Record Type</th>
                     <th>Units</th>
                     {% for i in range(data.ncols) %}
                         {% if data.names|length > i %}
@@ -114,7 +131,7 @@
                             {% set timerange = '---' %}
                             {% set timestamp = timerange %}
                         {% endif %}
-                        <th data-column-id="{{loop.index}}">
+                        <th class="column-value" data-column-id="{{loop.index}}">
                             <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
                             <a href="javascript:void(0);" class="time-editor-btn"><span class="glyphicon glyphicon-edit"></span></a>
                             <a href="javascript:void(0);" onclick="removeColumn('#identified-records', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
@@ -131,24 +148,24 @@
                     </td>
                 </tr>
                 {% for record_name, values in data.items() %}
-                    <tr class="record-row ui-widget-content" data-record-name="{{record_name}}">
-                        <td class="no-right-padding">
+                    <tr class="record-row ui-widget-content" data-record-rtype="{{record_name}}">
+                        <td class="no-right-padding cell-btn">
                             <button type="button" class="btn btn-xs btn-danger record-remove-btn">
                                 <span class="glyphicon glyphicon-remove"></span>
                             </button>      
                         </td>
-                        <td class="no-left-padding">
+                        <td class="no-left-padding cell-btn">
                             <button type="button" class="btn btn-xs btn-primary btn-to-row">
                                 <span class="glyphicon glyphicon-arrow-up"></span>
                             </button>   
                         </td>
-                        <td>
+                        <td class="cell-rtype">
                             <span class="record-rtype">{{record_name}}</span>
                             <a href="javascript:void(0);" class="record-rtype-btn"><span class="glyphicon glyphicon-list"></span></a>
                         </td>
-                        <td><select class="record-uom" data-init-val="{{data.uom}}"></select></td>
+                        <td class="cell-uom"><select class="record-uom" data-init-val="{{data.uom}}"></select></td>
                         {% for value in values %}
-                            <td><input type="text" class="form-control input-sm" value="{{value}}"></td>
+                            <td class="cell-value"><input type="text" class="form-control input-sm" value="{{value}}"></td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -169,185 +186,9 @@
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/miner.js') }}"></script>
 <script>
     var rtypes = {{ rtypes|tojson }};
-
-    $("select.record-uom").bindUnitsOfMeasure();
-    $("#company-select").applySelect2();
-
-    // Remove comment if you want to make rows draggable.
-    // $(".record-row").makeDraggable().makeDroppable();
-
-    $(document).on("click", ".record-remove-btn", function() {
-        var $table = $(this).closest("table");
-        $(this).closest("tr").remove();
-        toggleTable($table);
-    });
-    
-    $(document).on("click", ".record-rtype-btn", function() {
-        var $self = $(this);
-        var recordId = getIDforRType($self.closest("td").find(".record-rtype").text(), rtypes);
-        var dialog = createRTypeSelectionDialog({
-            data: rtypes, text: "name", 
-            initval: recordId,
-            callback: function(rtype) {
-                $self.closest("td").find(".record-rtype").text(rtype.text);
-                $self.closest("tr").attr("data-record-name", rtype.text);
-
-            }
-        });
-        dialog.open();
-    });
-
-    $(document).on("click", ".time-editor-btn", function() {
-        var $timerange = $(this).parent().find(".timerange");
-        var $timestamp = $(this).parent().find(".timestamp");
-        var dialog = createTimeSelectionDialog({
-            "timerange": $timerange,
-            "timestamp": $timestamp
-        });
-        dialog.open();
-    });
-
-    activateFocusOnInputs("#identified-records");
-
-    // Seting animation when user clisk record in rows-table
-    $("tr").on( // remove class from row to enable next animation
-        "webkitAnimationEnd oanimationend msAnimationEnd animationend",
-        function() {
-            $(this).removeClass("backgroundAnimated");
-        }
-    );
-
-    $(document).on("change", ".record-row select", function() {
-        var recordType = $(this).find("option:selected").text();
-        var $row = $(this).closest("tr");
-        $row.attr("data-record-name", recordType);
-    });
-
-    $(document).on("click", ".btn-to-row", function() {
-        var recordType = $(this).closest("tr").attr("data-record-name");
-        focusOnRow("*[data-row-name='" + recordType + "']");
-    });
-
-    // Config form for adding new records
-    $(document).on("click", ".recordform-btn", function() {
-        var $currentRow = $(this).closest("tr");
-        if (!$currentRow.next().hasClass("record-form")) {
-            wrapWith("tr",
-                wrapWith("td", 
-                    createRecordForm({
-                        "rtypes": rtypes,
-                        "abortCallback": function() {
-                            $(this).closest("tr").remove();
-                        },
-                        "addCallback": function() {
-                            var recordsData = readDataFromRecordForm($(this).closest("form"));
-                            if (recordsData.rtype === "NONE") {
-                                alert("No item selected. Please select one of the item from the list.");
-                            } else {
-                                var numberOfColumns = getNumberOfColumns("#identified-records");
-                                if (numberOfColumns < recordsData.values.length) {
-                                    for(var i = 0; i < recordsData.values.length - numberOfColumns; i++) {
-                                        addEmptyColumn("#identified-records");
-                                    }
-                                    numberOfColumns = recordsData.values.length;
-                                }
-                                var $newRow = createNewRecordRow(
-                                    numberOfColumns, 
-                                    {"data-record-name": recordsData.rtype}
-                                );
-                                $newRow.find(".record-uom").bindUnitsOfMeasure();
-                                populateRowWithData($newRow, recordsData);
-                                addRowToTable($("#identified-records"), $newRow);
-                                bindRecordToRow($currentRow, recordsData.rtype);
-                                $(this).closest("tr").remove();
-                            }
-                        }
-                    }),
-                    {"colspan": "100%"}
-                ),
-                {"class": "record-form"}
-            ).insertAfter($currentRow);
-        }
-    });
-
-    // Setting report-ui
-    $("#row-remove-btn").click(function() {
-        $("#report-content").find(".selector input:checked").each(function() {
-            $(this).closest("tr").remove();
-        });
-    });
-
-    $(".selector > input").change(function() {
-        refreshReportUI();
-    });
-
-    $('#stm-filter-list a, #stm-filter-btn').click(
-        function () {
-            var stype = $(this).data("select-type");
-            if (stype !== undefined) {
-                // Turn off all checkboxes.
-                $(".selector > input:checkbox").prop("checked", false);
-                switch(stype) {
-                    case "ALL":
-                        $(".selector > input:checkbox").prop("checked", true);
-                        break;
-                    case "NONE":
-                        $(".selector > input:checkbox").prop("checked", false);
-                        break;
-                    case "BLS":
-                        $("tr[data-stm='bls']").find(".selector > input").prop("checked", true);
-                        break;
-                    case "ICS":
-                        $("tr[data-stm='ics']").find(".selector > input").prop("checked", true);
-                        break;
-                    case "CFS":
-                        $("tr[data-stm='cfs']").find(".selector > input").prop("checked", true);
-                        break;
-                }
-            }
-            refreshReportUI();
-        }
-    );
-
-    $(document).on("click", ".data-export-btn", function(event) {
-        var data = createDataForExport(["#identified-records"], rtypes);
-        submitExportForm(data, validateData, function(result) {
-            if (result) {
-                $("#export-data-form").submit();
-            }
-        });
-        event.preventDefault();
-        return false;     
-    });
-
-    function validateData() {
-        var $table = $("#identified-records");
-        var vals = [
-            validateDuplicateRecords($table),
-            validateRecordsColumns($table),
-            validateRecords($table),
-            validateCompany()
-        ];
-        var result = vals.every(function(val) { return val.result; });
-
-        var alerts = [].concat(
-            createAlertsForDuplicatedRecords(vals[0].details)
-        ).concat(
-            createAlertsForRecordsColumnsValidation(vals[1].details)
-        ).concat(
-            createAlertsForRecordsValidation(vals[2].details)
-        );
-        alerts.push(createAlertForCompanyValidation(vals[3].details));
-        alerts.push(createAlertForReportValidation(validateReport().details));
-        return {
-            "result": result, 
-            "alerts": alerts.filter(function(item) { 
-                return item !== null && item !== undefined 
-            })
-        };
-    }
 </script>
+<script src="{{ url_for('static', filename='js/dbmd_tools.js') }}"></script>
+<script src="{{ url_for('static', filename='js/direct_input_miner.js') }}"></script>
 {% endblock %}

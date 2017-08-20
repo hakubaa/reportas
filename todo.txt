@@ -2,7 +2,7 @@
 - batch uploader!!!!!
     - create FinancialStatement model - list of records constituting specific
       financial statement like income statement
-        - user defined schemas
+        - user defined schemas ?
 - parser:
     - apply schema option
 

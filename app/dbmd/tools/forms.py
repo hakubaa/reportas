@@ -19,8 +19,9 @@ class LanguageMixin(object):
 
 class ReportTimerangeMixin(object):
     report_timerange = fields.SelectField(
-        "Timerange", default="12",
-        choices=[("3", "3"), ("6", "6"), ("9", "9"), ("12", "12")],
+        "Timerange", default="",
+        choices=[("", "(select timerange"), ("3", "3"), ("6", "6"), 
+                 ("9", "9"), ("12", "12")],
     )
     report_timestamp = fields.DateField(
         "Timestamp", format="%Y-%m", validators=[validators.optional()]

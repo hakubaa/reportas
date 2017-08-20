@@ -1,7 +1,8 @@
 __all__ = [ 
     "FinancialReportDB", "render_miner_index", "get_request_data", 
     "create_dbrequest", "render_pdf_file_miner",
-    "render_direct_input_miner", "convert_empty_strings_to_none"
+    "render_direct_input_miner", "convert_empty_strings_to_none",
+    "render_batch_index", "render_batch_uploader"
 ]
 
 import io
@@ -19,7 +20,7 @@ from db import models
 from db.tools import get_records_reprs, get_companies_reprs
 from rparser.core import FinancialReport, PDFFileIO, FinancialStatement
 
-from .forms import ReportUploaderForm, DirectInputForm
+from .forms import ReportUploaderForm, DirectInputForm, BatchUploaderForm
 
 
 #-------------------------------------------------------------------------------
@@ -261,3 +262,35 @@ def get_report(timestamp=None, timerange=None, company_id=None, **kwargs):
     except sqlalchemy.exc.DataError:
         return None
     return report
+
+
+def render_batch_index(form=None):
+    if not form:
+        form = BatchUploaderForm()
+    return render_template("admin/tools/batch_index.html", form=form)
+
+
+def render_batch_uploader(form, session):
+    rtypes = get_record_types(session)
+    companies = session.query(models.Company.id, models.Company.name).all()
+
+    report_timerange = form.data["report_timerange"]
+    if report_timerange:
+        report_timerange = int(report_timerange)
+
+    report_timestamp = form.data["report_timestamp"]
+
+    fschema_db = form.data["fschema"]
+
+    fschema = {
+        "repr": fschema_db.default_repr.value,
+        "rtypes": sorted(fschema_db.get_rtypes(), 
+                         key=lambda item: item["position"])
+    }
+
+    return render_template(
+        "admin/tools/batch_uploader.html", company=form.data["company"], 
+        rtypes=rtypes, companies=companies, fschema=fschema,
+        report_timerange=report_timerange, report_timestamp=report_timestamp,
+        
+    )

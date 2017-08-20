@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% import 'admin/tools/utils.html' as utils %}
+
+{% block responsivnes %}{% endblock %}
+{% block title %} Parser {% endblock %}
+
+{% block head_css %}
+{{ super() }}
+    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/non-responsive.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/miner.css') }}" rel="stylesheet">
+    <style>
+        table.records-table thead tr {
+            border-bottom: 1px solid gray;
+        }
+    </style>
+{% endblock %}
+
+{% block page_body %}
+{{ super() }}
+    <div class="container container-full">
+        <div>
+            <h3>Company & Financial Report</h3>
+            <div>
+                <label>Company<strong style="color: red">&#42;</strong></label>
+                <select id="company-select">
+                    <option disabled selected value> -- select a company -- </option>
+                    {% for comp in companies %}<option value="{{comp.id}}" {% if company and company.name == comp.name %}selected="selected"{% endif %}>{{comp.name}}</option>{% endfor %}
+                </select>
+                <p class="help-block">Company is required. All uploaded records will be associated with selected company.</p>
+            </div>
+            <div>
+                <div class="checkbox">
+                    <label><input id="report-disable-btn" type="checkbox" {% if not (report_timerange and report_timestamp) %} checked {% endif %} value=""> 
+                        Data not not concern one particular financial report.
+                    </label>
+                </div>
+                <dvi id="report-data"{% if not (report_timerange and report_timestamp) %} style="display: none;" {% endif %}>
+                    <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report_timerange %}{{report_timerange}}{% else %}---{% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report_timestamp %}{{report_timestamp.strftime('%Y-%m')}} {% else %}---{% endif %}</span></strong> 
+                    (<a href="javascript:void(0);" class="time-editor-btn">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+                    <p class="help-block">Financial report is optional. All uploaded records will be associated with specified report.</p>
+                </dvi>
+            </div>
+        </div>
+        <hr>
+        <h3>Financial Data</h3>
+        <table id="identified-records" class="table table-striped table-hover records-table">
+            <thead>
+                <tr>
+                    <th class="column-btn"></th>
+                    <th class="column-rtype">Record Type</th>
+                    <th class="column-uom">Units</th>
+                    {% for i in range(2) %}
+                        {% set timerange = '---' %}
+                        {% set timestamp = '---' %}
+                        <th class="column-value" data-column-id="{{loop.index}}">
+                            <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
+                            <a href="javascript:void(0);" class="time-editor-btn"><span class="glyphicon glyphicon-edit"></span></a>
+                            <a href="javascript:void(0);" onclick="removeColumn('#identified-records', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                        </th>
+                    {% endfor %}
+
+                </tr>  
+            </thead>
+            <tbody>
+                <tr class="empty-row" {% if fschema.rtypes|length > 0 %} style="display: none;" {% endif %}>
+                    <td colspan="999">
+                        <div>
+                            <strong>No records in the table.</strong>
+                        </div>
+                    </td>
+                </tr>
+                {% for item in fschema.rtypes %}
+                    <tr class="record-row ui-widget-content" data-record-rtype="{{item.rtype.name}}" data-rtype-id="{{item.rtype.id}}">
+                        <td class="cell-btn">
+                            <button type="button" class="btn btn-xs btn-danger record-remove-btn">
+                                <span class="glyphicon glyphicon-remove"></span>
+                            </button>      
+                        </td>
+                        <td class="cell-rtype">
+                            <span class="record-rtype">{{item.rtype.name}}</span>
+                            <a href="javascript:void(0);" class="record-rtype-btn"><span class="glyphicon glyphicon-list"></span></a>
+                        </td>
+                        <td class="cell-uom"><select class="record-uom"></select></td>
+                        {% for i in range(2) %}
+                            <td class="cell-value"><input type="text" class="form-control input-sm" value="0"></td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button class="btn btn-primary" onclick="addEmptyRow('#identified-records');">Add Record</button>
+        <button class="btn btn-primary" onclick="addEmptyColumn('#identified-records');">Add Column</button>
+    </div>
+
+    <div class="container container-full">
+        <div style="margin-top:30px"></div>
+        {{ utils.render_export_form(url_for('dbmd_tools.upload_data')) }}
+    </div>
+{% endblock %}
+
+{% block body_scripts %}
+<script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
+<script>
+    var rtypes = {{ rtypes|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/dbmd_tools.js') }}"></script>
+<script src="{{ url_for('static', filename='js/batch_uploader.js') }}"></script>
+{% endblock %}

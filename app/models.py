@@ -293,16 +293,15 @@ class DBRequest(Model):
 
         instance = None
         try:
-            instance, errors = action_method[self.action](**data)
+            with factory.session.begin_nested():
+                instance, errors = action_method[self.action](**data)
         except KeyError:
             raise RuntimeError("action '%s' is not valid" % self.action)
         except SQLAlchemyError as e:
-            factory.session.rollback()
             errors = {"database": str(e.orig) }
         except Exception as e:
-            factory.session.rollback()
             errors = {
-                "system": "Internal system error.  If the problem persists, "
+                "system": "Internal system error. If the problem persists, "
                 "contact the administrator."
             }
 
@@ -310,8 +309,8 @@ class DBRequest(Model):
 
     def execute_create(self, factory, **data):
         instance, errors = factory.create(self.model, **data)
-        if not errors:
-            factory.session.flush()
+        # if not errors:
+        #     factory.session.flush()
         return instance, errors
 
     def execute_update(self, factory, **data):
