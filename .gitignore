@@ -12,3 +12,4 @@ migrations/versions
 uploads*
 /reports/
 dbmd_old
+dist

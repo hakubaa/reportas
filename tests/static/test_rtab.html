@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+    <head>
+        <title>rtab test</title>
+        <link rel="stylesheet" href="mocha.css">
+    </head>
+
+    <body>
+        <div id="fixtures"></div>
+
+        <script src="jquery-1.7.1.min.js"></script>
+        <script src="mocha.js"></script>
+        <script src="chai.js"></script>
+        <script src="sinon-1.17.6.js"></script>
+        <script>mocha.setup("bdd");</script>
+
+        <!-- load code you want to test heere -->
+        <script src="../../app/static/js/rtab.js"></script>
+
+        <!-- load your test files here -->
+        <script>
+
+        var assert = chai.assert;
+
+        describe("Records Table (rtab) Test", function() {
+
+            before(function() {
+                this.$fixture = $('<div id="view-fixture"></div>');
+            });
+ 
+            beforeEach(function() {
+               this.$fixture.empty().appendTo($("#fixtures"));
+               this.$fixture.prepend( '<div id="seasons"></div>' );
+            });
+         
+            afterEach(function() {
+                $("#fixtures").empty();
+            });
+
+            it("test for raising error when selector does not exist", function() {
+                chai.expect(function(){
+                    var testTab = rtab("#test-table");
+                }).to.throw();
+            });           
+        });
+        </script>
+
+        <script>
+            mocha.run();
+        </script>
+    </body>
+
+</html>
