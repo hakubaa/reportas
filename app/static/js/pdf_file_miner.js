@@ -2,31 +2,15 @@ $(document).ready(function() {
     $("select.record-uom").bindUnitsOfMeasure();
     $("#company-select").applySelect2();
     
-    // Remove comment if you want to make rows draggable.
-    // $(".record-row").makeDraggable().makeDroppable();
-
-    $(document).on("click", ".record-remove-btn", function() {
-        var $table = $(this).closest("table");
-        $(this).closest("tr").remove();
-        toggleTable($table);
+    $("#report-disable-btn").change(function() {
+        if ($(this).is(":checked")) {
+            $("#report-data").hide();
+        } else {
+            $("#report-data").show();
+        }
     });
 
-    $(document).on("click", ".record-rtype-btn", function() {
-        var $self = $(this);
-        var recordId = getIDforRType($self.closest("td").find(".record-rtype").text(), rtypes);
-        var dialog = createRTypeSelectionDialog({
-            data: rtypes, text: "name", 
-            initval: recordId,
-            callback: function(rtype) {
-                $self.closest("td").find(".record-rtype").text(rtype.text);
-                $self.closest("tr").attr("data-record-rtype", rtype.text);
-
-            }
-        });
-        dialog.open();
-    });
-
-    $(document).on("click", ".time-editor-btn", function() {
+    $(document).on("click", ".report-time-editor-btn", function() {
         var $timerange = $(this).parent().find(".timerange");
         var $timestamp = $(this).parent().find(".timestamp");
         var dialog = createTimeSelectionDialog({
@@ -36,9 +20,21 @@ $(document).ready(function() {
         dialog.open();
     });
 
-    activateFocusOnInputs("#ics-table");
-    activateFocusOnInputs("#bls-table");
-    activateFocusOnInputs("#cfs-table");
+    rtab.config("rtypes", rtypes);
+    rtab.config("columns", [ 
+        {
+            "factory_method": createRecordRemoveButton,
+            "attributes": {"class": "no-right-padding cell-btn"}
+        }, 
+        {
+            "factory_method": createRecordScrollToRowButton,
+            "attributes": {"class": "no-left-padding cell-btn"}
+        }
+    ]);
+
+    rtab.bindEvents("#ics-table", rtypes);
+    rtab.bindEvents("#bls-table", rtypes);
+    rtab.bindEvents("#cfs-table", rtypes);
 
     // Seting animation when user clisk record in rows-table
     $("tr").on( // remove class from row to enable next animation
@@ -47,12 +43,6 @@ $(document).ready(function() {
             $(this).removeClass("backgroundAnimated");
         }
     );
-
-    // $(document).on("change", ".record-row select", function() {
-    //     var recordType = $(this).find("option:selected").text();
-    //     var $row = $(this).closest("tr");
-    //     $row.attr("data-record-rtype", recordType);
-    // });
 
     $(document).on("click", ".btn-to-row", function() {
         var recordType = $(this).closest("tr").attr("data-record-rtype");
@@ -143,34 +133,39 @@ $(document).ready(function() {
         }
     );
 
-    $(document).on("click", ".data-export-btn", function(event) {
-        var data = createDataForExport(["#bls-table", "#ics-table", "#cfs-table"], rtypes);
-        if (data.records === undefined || data.records.length === 0) {
-            BootstrapDialog.alert({
-                title: "Validation Data - Errors",
-                message: "Nothing to export. There are not any records in the table.",
-                type: BootstrapDialog.TYPE_DANGER
-            });
-        } else {
-            submitExportForm(JSON.stringify(data), validateData, function(result) {
-                if (result) {
-                    $("#export-data-form").submit();
-                }
-            });
-        }
-        event.preventDefault();
-        return false;     
-    });
-    
-    $("#report-disable-btn").change(function() {
-        if ($(this).is(":checked")) {
-            $("#report-data").hide();
-        } else {
-            $("#report-data").show();
-        }
-    });
-
 });
+
+
+function addEmptyRow(selector) {
+    rtab.bind(selector).addRow();
+}
+
+
+function addEmptyColumn(selector) {
+    rtab.bind(selector).addColumn();
+}
+
+
+function exportData() {
+    var data = createDataForExport([
+        rtab.bind("#bls-table"), rtab.bind("#ics-table"), 
+        rtab.bind("#cfs-table")
+    ]);
+    if (data.records === undefined || data.records.length === 0) {
+        BootstrapDialog.alert({
+            title: "Validation Data - Errors",
+            message: "Nothing to export. There are not any records in the table.",
+            type: BootstrapDialog.TYPE_DANGER
+        });
+    } else {
+        submitExportForm(JSON.stringify(data), validateData, function(result) {
+            if (result) {
+                $("#export-data-form").submit();
+            }
+        });
+    }
+    return false;
+}
 
 
 function activateTab(tab){
@@ -178,48 +173,10 @@ function activateTab(tab){
 };
 
 
-function createNewRecordRow(numberOfValueInputs, attributes) {
-    if (numberOfValueInputs === undefined) {
-        throw "Undefined number of columns with inputs for values.";
-    }
-    if (attributes === undefined) attributes = {};
-
-    var defaultAttributes = {
-        "class": "record-row ui-widget-content",
-        "data-record-rtype": UNDEFINED_RTYPE
-    };
-    $.extend(defaultAttributes, attributes);
-
-    var $row = $("<tr></tr>", defaultAttributes);
-    $row.append(
-        wrapWith("td", 
-            createRecordRemoveButton(),
-            {"class": "no-right-padding cell-btn"}
-        )
-    );
-    $row.append(
-        wrapWith("td", 
-            createRecordScrollToRowButton(), 
-            {"class": "no-left-padding cell-btn"}
-        )
-    );  
-    $row.append(createRecordTypeCell());
-    $row.append(createUOMCell());
-    for (var i = 0; i < numberOfValueInputs; i++) {
-        $row.append(createInputValueCell());
-    }
-
-    // Remove comment if you want to make rows draggable.
-    $row.makeDraggable().makeDroppable();
-
-    return $row;
-}
-
-
 function validateData() {
-    var val_bls = validateDataInTable($("#bls-table"), "Balance Sheet");
-    var val_ics = validateDataInTable($("#ics-table"), "Income Statement");
-    var val_cfs = validateDataInTable($("#cfs-table"), "Cash Flow Statement");
+    var val_bls = validateDataInTable(rtab.bind("#bls-table"), "Balance Sheet");
+    var val_ics = validateDataInTable(rtab.bind("#ics-table"), "Income Statement");
+    var val_cfs = validateDataInTable(rtab.bind("#cfs-table"), "Cash Flow Statement");
     var val_company = validateCompany();
     
     var result = [ val_bls, val_ics, val_cfs, val_company ].every(

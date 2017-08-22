@@ -6,42 +6,328 @@
     </head>
 
     <body>
-        <div id="fixtures"></div>
+        <div id="fixture"></div>
+        <div id="mocha"></div>
 
         <script src="jquery-1.7.1.min.js"></script>
+        <script src="../../app/static/vendors/moment.min.js"></script>
+        <script src="../../app/static/vendors/select2/js/select2.full.min.js"></script>
         <script src="mocha.js"></script>
         <script src="chai.js"></script>
         <script src="sinon-1.17.6.js"></script>
         <script>mocha.setup("bdd");</script>
 
         <!-- load code you want to test heere -->
+        <script src="../../app/static/js/dbmd_utils.js"></script>
         <script src="../../app/static/js/rtab.js"></script>
 
         <!-- load your test files here -->
         <script>
 
         var assert = chai.assert;
+        
+        function createEmptyTable(attributes) {
+            return wrapWith("table", [
+                    wrapWith("thead", wrapWith("tr", [
+                        $("<th class='column-rtype'>Record Type</th>"),
+                        $("<th class='column-uom'>UOM</th>")
+                    ])),
+                    $("<tbody></tbody>")
+                ],
+                attributes
+            );           
+        }
+        
+        function createTable(attributes) {
+            return wrapWith("table", [
+                    wrapWith("thead", wrapWith("tr", [
+                        $("<th class='column-rtype'>Record Type</th>"),
+                        $("<th class='column-uom'>UOM</th>"),
+                        $("<th class='column-value'>C1</th>"),
+                        $("<th class='column-value'>C2</th>")
+                    ])),
+                    $("<tbody></tbody>")
+                ],
+                attributes
+            );
+        }
+
+        
+        function createRow(attributes) {
+            attributes = $.extend({}, attributes);
+            return wrapWith("tr",[
+                $("<td class='cell-rtype'><span class='record-rtype'></span></td>"),
+                $("<td class='cell-uom'><span class='record-uom'></span></td>"),
+                $("<td class='cell-value'><input type='text' class='record-value'></td>"),
+                $("<td class='cell-value'><input type='text' class='record-value'></td>")
+                ], attributes
+            );
+        }
 
         describe("Records Table (rtab) Test", function() {
 
             before(function() {
-                this.$fixture = $('<div id="view-fixture"></div>');
-            });
- 
-            beforeEach(function() {
-               this.$fixture.empty().appendTo($("#fixtures"));
-               this.$fixture.prepend( '<div id="seasons"></div>' );
-            });
-         
-            afterEach(function() {
-                $("#fixtures").empty();
+                this.$fixture = $("#fixture");
             });
 
-            it("test for raising error when selector does not exist", function() {
+            afterEach(function() {
+                this.$fixture.empty();
+            });
+
+            it("raise error when binding to selector that does not exist", function() {
                 chai.expect(function(){
-                    var testTab = rtab("#test-table");
+                    var testTab = rtab.bind("#test-table");
                 }).to.throw();
-            });           
+            });      
+            
+            it("raise error when binding to selector that does not point to table", function() {
+                this.$fixture.append($("<div id='test-table'></div>"));
+                chai.expect(function() {
+                    var testTab = rtab.bind("#test-table");    
+                }).to.throw();
+            });
+            
+            it("set & read global configuration options", function() {
+                rtab.config("a", 1);
+                assert.equal(rtab.config("a"), 1);
+            });
+            
+            it("local configuration does not override global", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                rtab.config("a", 1);
+                
+                var rt = rtab.bind("#test-table");
+                rt.config("a", 2);
+                
+                assert.equal(rtab.config("a"), 1);
+                assert.equal(rt.config("a"), 2);
+            });
+            
+            it("rtypes config can be set as array", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                rtab.config("rtypes", [1, 2, 3]);
+                
+                var rt = rtab.bind("#test-table");
+                rtypes = rt.getRTypes();
+                
+                assert.deepEqual(rtypes, [1, 2, 3]);     
+            });
+            
+            it("rtypes config can be set as function", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                rtab.config("rtypes", function() { return [1, 2, 3]; });
+                
+                var rt = rtab.bind("#test-table");
+                rtypes = rt.getRTypes();
+                
+                assert.deepEqual(rtypes, [1, 2, 3]);
+            });
+            
+            it("add new row to table", function() {
+                this.$fixture.append(createTable({"id": "test-table"})); 
+
+                var rt = rtab.bind("#test-table");
+                rt.addRow();
+                
+                assert.equal(this.$fixture.find("tbody tr").length, 1);
+            });
+            
+            it("populate row with data", function() {
+                this.$fixture.append(createTable({"id": "test-table"})); 
+
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "TEST", "uom": 1, "values": [1, 2]});
+                
+                assert.equal(this.$fixture.find(".record-rtype").text(), "TEST");
+                //assert.equal(this.$fixture.find(".record-uom").text(), "1");
+                assert.equal($(this.$fixture.find(".record-value")[0]).val(), 1);
+                assert.equal($(this.$fixture.find(".record-value")[1]).val(), 2);
+                assert.equal($(this.$fixture.find(".record-value")[2]).val(), undefined);
+            });
+            
+            it("add new column to table", function() {
+                this.$fixture.append(createTable({"id": "test-table"})); 
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [10, 20]});
+                
+                var column = rt.addColumn();
+                
+                var rows = $("#test-table tbody tr");
+                for (var i = 0; i < rows.length; i++) {
+                    assert.equal($(rows[i]).find(".record-value").length, 3);
+                }
+            });
+            
+            it("ncols returns proper number of columns with values", function() {
+                this.$fixture.append(createTable({"id": "test-table"})); 
+                var rt = rtab.bind("#test-table");
+                rt.addColumn();
+                rt.addColumn();
+                
+                assert.equal(rt.ncols, 4);
+            });
+            
+            it("nrows returns proper numbe of rows", function() {
+                this.$fixture.append(createTable({"id": "test-table"})); 
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [10, 20]});
+                
+                assert.equal(rt.nrows, 2);      
+            });
+            
+            it("set headers when adding new column", function() {
+                this.$fixture.append(createEmptyTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.addColumn({"timerange": 12, "timestamp": "2015-12"});
+                
+                var headers = $("#test-table").find("thead tr th.column-value");
+                assert.equal(headers.length, 1);
+            
+                assert.equal($(headers[0]).find(".timestamp").text(), "2015-12");
+                assert.equal($(headers[0]).find(".timerange").text(), "12")
+            });
+            
+            it("read headers from table", function() {
+                this.$fixture.append(createEmptyTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.addColumn({"timerange": 12, "timestamp": "2014-12"});
+                rt.addColumn({"timerange": 12, "timestamp": "2015-12"});
+                
+                var headers = rt.getDataHeaders();
+                
+                assert.equal(headers.length, 2);
+                assert.equal(headers[0]["timerange"], 12);
+                assert.equal(headers[0]["timestamp"], "2014-12");
+                assert.equal(headers[1]["timerange"], 12);
+                assert.equal(headers[1]["timestamp"], "2015-12");
+            });
+            
+            it("read data from table", function() {
+                this.$fixture.append(createEmptyTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.config("rtypes", [
+                    {"id": 10, "name": "FIXEDASSETS"},
+                    {"id": 20, "name": "CURRENTASSETS"}
+                ]);
+                rt.addColumn({"timerange": 12, "timestamp": "2014-12"});
+                rt.addColumn({"timerange": 12, "timestamp": "2015-12"}); 
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [10, 20]});
+                
+                var data = rt.getData(120);
+                
+                
+                assert.equal(data.length, 4);
+                assert.equal(data[0]["timerange"], "12");
+                assert.equal(data[0]["timestamp"], "2014-12-31");
+                assert.equal(data[0]["rtype_id"], "10");
+                assert.equal(data[0]["value"], "1");
+                
+                assert.equal(data[1]["timerange"], "12");
+                assert.equal(data[1]["timestamp"], "2015-12-31");
+                assert.equal(data[1]["rtype_id"], "10");
+                assert.equal(data[1]["value"], "2");   
+    
+                assert.equal(data[2]["timerange"], "12");
+                assert.equal(data[2]["timestamp"], "2014-12-31");
+                assert.equal(data[2]["rtype_id"], "20");
+                assert.equal(data[2]["value"], "10");   
+                
+                assert.equal(data[3]["timerange"], "12");
+                assert.equal(data[3]["timestamp"], "2015-12-31");
+                assert.equal(data[3]["rtype_id"], "20");
+                assert.equal(data[3]["value"], "20");                   
+            });
+
+            it("adding additional columns in new row", function() {
+                this.$fixture.append(
+                    wrapWith("table", [
+                        wrapWith("thead", wrapWith("tr", [
+                            $("<th class='column-btn'>Remove</th>"),
+                            $("<th class='column-rtype'>Record Type</th>"),
+                            $("<th class='column-uom'>UOM</th>"),
+                            $("<th class='column-value'>C1</th>"),
+                            $("<th class='column-value'>C2</th>")
+                        ])),
+                        $("<tbody></tbody>")
+                    ], {"id": "test-table"})
+                );
+
+                rtab.config("columns", [
+                    {
+                        "factory_method": function() {
+                            return wrapWith("button",
+                                $("<span>Remove</span>"), {
+                                    "class": "record-remove-btn", 
+                                    "type": "button", "tabindex": "-1"
+                                }); 
+                        },
+                        "attributes": {"class": "cell-btn"}
+                    }
+                ]);
+
+                var rt = rtab.bind("#test-table");
+                rt.addRow();
+
+                var row = $("#test-table tbody tr");
+                assert.equal(row.find("td").length, 5); 
+                assert.isTrue(row.find("td").first().hasClass("cell-btn"));
+                assert.equal(row.find("td").first().find("button").length, 1);
+            });
+            
+            it("remove colum from the table", function() {
+                this.$fixture.append(createTable({"id": "test-table"})); 
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [10, 20]});
+                
+                rt.removeColumn(0);
+
+                assert.equal(rt.ncols, 1);
+                assert.equal($("#test-table").find("thead th.column-value").first().text(), "C2");
+            });
+
+            it("validate headers in the table", function() {
+                this.$fixture.append(createEmptyTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.config("rtypes", [
+                    {"id": 10, "name": "FIXEDASSETS"},
+                    {"id": 20, "name": "CURRENTASSETS"}
+                ]);
+                rt.addColumn({"timerange": 12, "timestamp": "2014-12"});
+                rt.addColumn(); 
+
+                var outcome = rt.validateHeaders();
+
+                assert.isFalse(outcome.result);
+                assert.isTrue(outcome.details[0].timerange);
+                assert.isTrue(outcome.details[0].timestamp);
+                assert.isFalse(outcome.details[1].timerange);
+                assert.isFalse(outcome.details[1].timestamp);
+            });
+
+            it("validate records in the table", function() {
+                this.$fixture.append(createEmptyTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.config("rtypes", [
+                    {"id": 10, "name": "FIXEDASSETS"},
+                    {"id": 20, "name": "CURRENTASSETS"}
+                ]);
+                rt.addColumn({"timerange": 12, "timestamp": "2014-12"});
+                rt.addColumn({"timerange": 12, "timestamp": "2015-12"});
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, "bla"]});
+
+                var outcome = rt.validateRecords();
+
+                assert.isFalse(outcome.result);
+            });
         });
         </script>
 

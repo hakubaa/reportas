@@ -3,31 +3,15 @@ $(document).ready(function() {
     $("select.record-uom").bindUnitsOfMeasure();
     $("#company-select").applySelect2();
 
-    // Remove comment if you want to make rows draggable.
-    // $(".record-row").makeDraggable().makeDroppable();
-
-    $(document).on("click", ".record-remove-btn", function() {
-        var $table = $(this).closest("table");
-        $(this).closest("tr").remove();
-        toggleTable($table);
-    });
-    
-    $(document).on("click", ".record-rtype-btn", function() {
-        var $self = $(this);
-        var recordId = getIDforRType($self.closest("td").find(".record-rtype").text(), rtypes);
-        var dialog = createRTypeSelectionDialog({
-            data: rtypes, text: "name", 
-            initval: recordId,
-            callback: function(rtype) {
-                $self.closest("td").find(".record-rtype").text(rtype.text);
-                $self.closest("tr").attr("data-record-rtype", rtype.text);
-
-            }
-        });
-        dialog.open();
+    $("#report-disable-btn").change(function() {
+        if ($(this).is(":checked")) {
+            $("#report-data").hide();
+        } else {
+            $("#report-data").show();
+        }
     });
 
-    $(document).on("click", ".time-editor-btn", function() {
+    $(document).on("click", ".report-time-editor-btn", function() {
         var $timerange = $(this).parent().find(".timerange");
         var $timestamp = $(this).parent().find(".timestamp");
         var dialog = createTimeSelectionDialog({
@@ -37,7 +21,18 @@ $(document).ready(function() {
         dialog.open();
     });
 
-    activateFocusOnInputs("#identified-records");
+    rtab.config("rtypes", rtypes);
+    rtab.config("columns", [ 
+        {
+            "factory_method": createRecordRemoveButton,
+            "attributes": {"class": "no-right-padding cell-btn"}
+        }, 
+        {
+            "factory_method": createRecordScrollToRowButton,
+            "attributes": {"class": "no-left-padding cell-btn"}
+        }
+    ]);
+    rtab.bindEvents("#identified-records", rtypes);
 
     // Seting animation when user clisk record in rows-table
     $("tr").on( // remove class from row to enable next animation
@@ -46,12 +41,6 @@ $(document).ready(function() {
             $(this).removeClass("backgroundAnimated");
         }
     );
-
-    // $(document).on("change", ".record-row select", function() {
-    //     var recordType = $(this).find("option:selected").text();
-    //     var $row = $(this).closest("tr");
-    //     $row.attr("data-record-rtype", recordType);
-    // });
 
     $(document).on("click", ".btn-to-row", function() {
         var recordType = $(this).closest("tr").attr("data-record-rtype");
@@ -138,39 +127,41 @@ $(document).ready(function() {
             refreshReportUI();
         }
     );
-
-    $(document).on("click", ".data-export-btn", function(event) {
-        var data = createDataForExport(["#identified-records"], rtypes);
-        if (data.records === undefined || data.records.length === 0) {
-            BootstrapDialog.alert({
-                title: "Validation Data - Errors",
-                message: "Nothing to export. There are not any records in the table.",
-                type: BootstrapDialog.TYPE_DANGER
-            });
-        } else {
-            submitExportForm(JSON.stringify(data), validateData, function(result) {
-                if (result) {
-                    $("#export-data-form").submit();
-                }
-            });
-        }
-        event.preventDefault();
-        return false;       
-    });
-
-    $("#report-disable-btn").change(function() {
-        if ($(this).is(":checked")) {
-            $("#report-data").hide();
-        } else {
-            $("#report-data").show();
-        }
-    });
     
 });
 
 
+function addEmptyRow(selector) {
+    rtab.bind(selector).addRow();
+}
+
+
+function addEmptyColumn(selector) {
+    rtab.bind(selector).addColumn();
+}
+
+
+function exportData() {
+    var data = createDataForExport(rtab.bind("#identified-records"));
+    if (data.records === undefined || data.records.length === 0) {
+        BootstrapDialog.alert({
+            title: "Validation Data - Errors",
+            message: "Nothing to export. There are not any records in the table.",
+            type: BootstrapDialog.TYPE_DANGER
+        });
+    } else {
+        submitExportForm(JSON.stringify(data), validateData, function(result) {
+            if (result) {
+                $("#export-data-form").submit();
+            }
+        });
+    }
+    return false;
+}
+
+
 function validateData() {
-    var val_table = validateDataInTable($("#identified-records"));
+    var val_table = validateDataInTable(rtab.bind("#identified-records"));
     var alerts = val_table.alerts;
 
     var val_company = validateCompany();
@@ -187,42 +178,4 @@ function validateData() {
             return item !== null && item !== undefined 
         })
     };
-}
-
-
-function createNewRecordRow(numberOfValueInputs, attributes) {
-    if (numberOfValueInputs === undefined) {
-        throw "Undefined number of columns with inputs for values.";
-    }
-    if (attributes === undefined) attributes = {};
-
-    var defaultAttributes = {
-        "class": "record-row ui-widget-content",
-        "data-record-rtype": UNDEFINED_RTYPE
-    };
-    $.extend(defaultAttributes, attributes);
-
-    var $row = $("<tr></tr>", defaultAttributes);
-    $row.append(
-        wrapWith("td", 
-            createRecordRemoveButton(),
-            {"class": "no-right-padding cell-btn"}
-        )
-    );
-    $row.append(
-        wrapWith("td", 
-            createRecordScrollToRowButton(), 
-            {"class": "no-left-padding cell-btn"}
-        )
-    );  
-    $row.append(createRecordTypeCell());
-    $row.append(createUOMCell());
-    for (var i = 0; i < numberOfValueInputs; i++) {
-        $row.append(createInputValueCell());
-    }
-
-    // Remove comment if you want to make rows draggable.
-    $row.makeDraggable().makeDroppable();
-
-    return $row;
 }

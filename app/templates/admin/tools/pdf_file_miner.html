@@ -46,7 +46,7 @@
                 </div>
                 <dvi id="report-data"{% if not (report.timerange and report.timestamp) %} style="display: none;" {% endif %}>
                     <p>Financial report for <strong><span class="timerange" id="report-timerange">{% if report.timerange %}{{report.timerange}}{% else %}---{% endif %}</span></strong> months ended on <strong><span class="timestamp" id="report-timestamp">{% if report.timestamp %}{{report.timestamp.strftime('%Y-%m')}} {% else %}---{% endif %}</span></strong> 
-                    (<a href="javascript:void(0);" class="time-editor-btn">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
+                    (<a href="javascript:void(0);" class="report-time-editor-btn">Edit <span class="glyphicon glyphicon-edit"></span></a>).</p>
                     <p class="help-block">Financial report is optional. All uploaded records will be associated with specified report.</p>
                 </dvi>
             </div>
@@ -181,7 +181,7 @@
                                     <th class="column-value" data-column-id="{{loop.index}}">
                                         <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
                                         <a href="javascript:void(0);" class="time-editor-btn"><span class="glyphicon glyphicon-edit"></span></a>
-                                        <a href="javascript:void(0);" onclick="removeColumn('#bls-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                                        <a href="javascript:void(0);" class="column-remove-btn"><span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
                                 {% endfor %}
                             </tr>  
@@ -218,7 +218,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    <button class="btn btn-primary" onclick="addEmptyRow('#bls-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addEmptyRow('#bls-table');">Add Record</button>
                     <button class="btn btn-primary" onclick="addEmptyColumn('#bls-table');">Add Column</button>
                 </div>
 
@@ -245,7 +245,7 @@
                                     <th class="column-value" data-column-id="{{loop.index}}">
                                         <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
                                         <a href="javascript:void(0);" class="time-editor-btn"><span class="glyphicon glyphicon-edit"></span></a>
-                                        <a href="javascript:void(0);" onclick="removeColumn('#ics-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                                        <a href="javascript:void(0);" class="column-remove-btn"><span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
                                 {% endfor %}
                             </tr>  
@@ -282,7 +282,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    <button class="btn btn-primary" onclick="addEmptyRow('#ics-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addEmptyRow('#ics-table');">Add Record</button>
                     <button class="btn btn-primary" onclick="addEmptyColumn('#ics-table');">Add Column</button>
                 </div>
                 <div role="tabpanel" class="tab-pane" id="wrapper-cfs">
@@ -308,7 +308,7 @@
                                     <th class="column-value" data-column-id="{{loop.index}}">
                                         <span class="timerange">{{timerange}}</span> months ended on <span class="timestamp">{{timestamp}}</span>
                                         <a href="#" data-toggle="modal" data-target="#column-editor"><span class="glyphicon glyphicon-edit"></span></a>
-                                        <a href="javascript:void(0);" onclick="removeColumn('#cfs-table', {{loop.index}});" <span class="glyphicon glyphicon-remove"></span></a>
+                                        <a href="javascript:void(0);" class="column-remove-btn"><span class="glyphicon glyphicon-remove"></span></a>
                                     </th>
                                 {% endfor %}
                             </tr>  
@@ -345,7 +345,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    <button class="btn btn-primary" onclick="addEmptyRow('#cfs-table', rtypes);">Add Record</button>
+                    <button class="btn btn-primary" onclick="addEmptyRow('#cfs-table');">Add Record</button>
                     <button class="btn btn-primary" onclick="addEmptyColumn('#cfs-table');">Add Column</button>
                 </div>
             </div>
@@ -354,7 +354,7 @@
 
     <div class="container container-full">
         <div style="margin-top:30px"></div>
-        {{ utils.render_export_form(url_for('dbmd_tools.upload_data')) }}
+        {{ utils.render_export_form(url_for('dbmd_tools.upload_data'), onclick='exportData();') }}
     </div>
 {% endblock %}
 
@@ -363,9 +363,10 @@
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dbmd_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rtab.js') }}"></script>
 <script>
     var rtypes = {{ rtypes|tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/dbmd_tools.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pdf_file_miner.js') }}"></script>
 {% endblock %}

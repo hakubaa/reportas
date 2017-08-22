@@ -1,68 +1,6 @@
 $(document).ready(function() {
-
     $("select.record-uom").bindUnitsOfMeasure();
     $("#company-select").applySelect2();
-    // $(".record-row").makeDraggable().makeDroppable();
-
-    $(document).on("click", ".record-remove-btn", function() {
-        var $table = $(this).closest("table");
-        $(this).closest("tr").remove();
-        toggleTable($table);
-    });
-
-    $(document).on("click", ".record-rtype-btn", function() {
-        var $self = $(this);
-        var recordId = getIDforRType($self.closest("td").find(".record-rtype").text(), rtypes);
-        var dialog = createRTypeSelectionDialog({
-            data: rtypes, text: "name", 
-            initval: recordId,
-            callback: function(rtype) {
-                var $row = $self.closest("tr");
-                $self.closest("td").find(".record-rtype").text(rtype.text);
-                $row.attr("data-record-rtype", rtype.text);
-                $row.attr("data-record-id'", rtype.id);
-                $row.find("span.record-rtype-select-msg").remove();
-
-                if (rtype.text in fschema_formulas) {
-                    $row.find("td.cell-calculable input").prop("disabled", false);
-                }
-
-            }
-        });
-        dialog.open();
-    });
-
-    $(document).on("click", ".time-editor-btn", function() {
-        var $timerange = $(this).parent().find(".timerange");
-        var $timestamp = $(this).parent().find(".timestamp");
-        var dialog = createTimeSelectionDialog({
-            "timerange": $timerange,
-            "timestamp": $timestamp
-        });
-        dialog.open();
-    });
-
-    activateFocusOnInputs("#identified-records");
-
-    $(document).on("click", ".data-export-btn", function(event) {
-        var data = createDataForExport(["#identified-records"], rtypes);
-        if (data.records === undefined || data.records.length === 0) {
-            BootstrapDialog.alert({
-                title: "Validation Data - Errors",
-                message: "Nothing to export. There are not any records in the table.",
-                type: BootstrapDialog.TYPE_DANGER
-            });
-        } else {
-            submitExportForm(JSON.stringify(data), validateData, function(result) {
-                if (result) {
-                    $("#export-data-form").submit();
-                }
-            });
-        }
-        event.preventDefault();
-        return false;     
-    });
-
 
     $("#report-disable-btn").change(function() {
         if ($(this).is(":checked")) {
@@ -72,11 +10,99 @@ $(document).ready(function() {
         }
     });
 
+    $(document).on("click", ".report-time-editor-btn", function() {
+        var $timerange = $(this).parent().find(".timerange");
+        var $timestamp = $(this).parent().find(".timestamp");
+        var dialog = createTimeSelectionDialog({
+            "timerange": $timerange,
+            "timestamp": $timestamp
+        });
+        dialog.open();
+    });
+
+    rtab.config("rtypes", rtypes);
+    rtab.config("columns", [ 
+        {
+            "factory_method": createRecordRemoveButton,
+            "attributes": {"class": "cell-btn"}
+        }, 
+        {
+            "factory_method": createCalculableCheckbox,
+            "attributes": {"class": "cell-calculable"}
+        }
+    ]);
+    rtab.bindEvents("#identified-records", rtypes);
+
+
+    $(document).on("change", "td.cell-value > input", function() {
+        var rtype_trigger = $(this).closest("tr").attr("data-record-rtype");
+        var columnIndex = $(this).closest("td").index();
+        var table = $(this).closest("table");
+        updateRecords(rtype_trigger, table, columnIndex);
+    });
+
+
+    $(document).on("change", "td.cell-uom > select", function() {
+        var rtype_trigger = $(this).closest("tr").attr("data-record-rtype");
+        var columns = $(this).closest("tr").find("td.cell-value");
+        var table = $(this).closest("table");
+        for (var i = 0; i < columns.length; i++) {
+            updateRecords(rtype_trigger, table, $(columns[i]).index());
+        }
+    });
+
+
+    $(document).on("change", "td.cell-calculable > input", function() {
+        if ($(this).is(":checked")) {
+            $(this).closest("tr").addClass("row-calculable");
+            $(this).closest("tr").find("td.cell-value input").prop("disabled", true);
+
+            var rtype_trigger = $(this).closest("tr").attr("data-record-rtype");
+            var columns = $(this).closest("tr").find("td.cell-value");
+            var table = $(this).closest("table");
+            for (var i = 0; i < columns.length; i++) {
+                updateRecords(rtype_trigger, table, $(columns[i]).index());
+            }
+        } else {
+            $(this).closest("tr").removeClass("row-calculable");
+            $(this).closest("tr").find("td.cell-value input").prop("disabled", false);
+        }
+    });
+
 });
 
 
+function addEmptyRow(selector) {
+    rtab.bind(selector).addRow();
+}
+
+
+function addEmptyColumn(selector) {
+    rtab.bind(selector).addColumn();
+}
+
+
+function exportData() {
+    var data = createDataForExport(rtab.bind("#identified-records"));
+    if (data.records === undefined || data.records.length === 0) {
+        BootstrapDialog.alert({
+            title: "Validation Data - Errors",
+            message: "Nothing to export. There are not any records in the table.",
+            type: BootstrapDialog.TYPE_DANGER
+        });
+    } else {
+        submitExportForm(JSON.stringify(data), validateData, function(result) {
+            if (result) {
+                $("#export-data-form").submit();
+            }
+        });
+    }
+    return false;
+}
+
+
 function validateData() {
-    var val_table = validateDataInTable($("#identified-records"));
+    var val_table = validateDataInTable(rtab.bind("#identified-records"));
     var alerts = val_table.alerts;
 
     var val_company = validateCompany();
@@ -96,29 +122,63 @@ function validateData() {
 }
 
 
-function createNewRecordRow(numberOfValueInputs, attributes) {
-    if (numberOfValueInputs === undefined) {
-        throw "Undefined number of columns with inputs for values.";
+function updateRecords(rtype, table, columnIndex) {
+    if (rtype in fschema_formulas) {
+        var formulas = fschema_formulas[rtype];
+        var recordsInTable = getRTypesFromTable(table);
+
+        for (var i = 0; i < formulas.length; i++) {
+            // if (rtype === formulas[i].rtype) {
+            //     continue;
+            // }
+            if (recordsInTable.indexOf(formulas[i].rtype) < 0 || !isFormulaCalculable(formulas[i], table)) {
+                continue;
+            }
+            var value = calculateFormula(formulas[i], table, columnIndex);
+            setValueOfRecord(formulas[i].rtype, value, table, columnIndex);
+        }
     }
-    if (attributes === undefined) attributes = {};
+}
 
-    var defaultAttributes = {
-        "class": "record-row ui-widget-content",
-        "data-record-rtype": UNDEFINED_RTYPE
-    };
-    $.extend(defaultAttributes, attributes);
-
-    var $row = $("<tr></tr>", defaultAttributes);
-    $row.append(wrapWith("td", createRecordRemoveButton(), {"class": "cell-btn"}));
-    $row.append(wrapWith("td", createCalculableCheckbox() , {"class": "cell-calculable"}));
-    $row.append(createRecordTypeCell());
-    $row.append(createUOMCell());
-    for (var i = 0; i < numberOfValueInputs; i++) {
-        $row.append(createInputValueCell());
+function setValueOfRecord(rtype, value, table, columnIndex) {
+    var row = table.find("tbody tr[data-record-rtype='" + rtype + "']");
+    for (var i = 0; i < row.length; i++) {
+        if (!$(row[i]).find("td.cell-calculable input").is(":checked")) {
+            continue;
+        }
+        var uom = parseInt($(row[i]).find("td.cell-uom select").val());
+        $($(row[i]).children("td")[columnIndex]).find("input").val(value / uom);
     }
+}
 
-    // Remove comment if you want to make rows draggable.
-    $row.makeDraggable().makeDroppable();
+function calculateFormula(formula, table, columnIndex) {
+    var components = formula.components;
+    var value = 0;
+    for (var i = 0; i < components.length; i++) {
+        var row = table.find("tbody tr[data-record-rtype='" + components[i].rtype + "']");
+        for (var j = 0; j < row.length; j++) {
+            var rtype_value = parseFloat($($(row[j]).children("td")[columnIndex]).find("input").val());
+            var uom = parseInt($(row[j]).find("td.cell-uom select").val());
+            value += parseInt(components[i].sign) * rtype_value * uom;
+        }
+    }
+    return value;
+}
 
-    return $row;
+function isFormulaCalculable(formula, table) {
+    var components = formula.components;
+    var recordsInTable = getRTypesFromTable(table);
+    for (var i = 0; i < components.length; i++) {
+        if (recordsInTable.indexOf(components[i].rtype) < 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function getRTypesFromTable(table) {
+    var rtypes = table.find("tbody tr").map(function() { 
+        return $(this).attr("data-record-rtype"); 
+    }).get();
+    return rtypes;
 }

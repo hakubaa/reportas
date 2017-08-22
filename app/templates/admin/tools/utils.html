@@ -1,8 +1,8 @@
-{% macro render_export_form(action) %}
+{% macro render_export_form(action, onclick) %}
 <div>
     <form method="POST" action="{{action}}" id="export-data-form">
         <input type="hidden" name="data" value="" id="data-to-export">
-        <input class="btn btn-success data-export-btn" value="Export Data">
+        <input class="btn btn-success" value="Export Data" onclick={{onclick}}>
     </form>
     <div class="data-validation">
         <h4>Warnings & Errors</h4>
