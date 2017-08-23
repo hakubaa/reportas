@@ -328,6 +328,95 @@
 
                 assert.isFalse(outcome.result);
             });
+
+            it("get list of rtypes selected in table", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [10, 20]});
+                
+                var rtypes = rt.getRowsRTypes();
+                
+                assert.deepEqual(rtypes, ["FIXEDASSETS", "CURRENTASSETS"]);
+            });
+            
+            it("get index of row with rtype", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [10, 20]});
+                
+                var index = rt.indexOf("FIXEDASSETS");
+                
+                assert.equal(index, 0);
+            });
+            
+            it("get index of row with not existing rtype", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [1, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [10, 20]});
+                
+                var index = rt.indexOf("I_AM_NOT_THERE");
+                
+                assert.equal(index, -1);
+            });
+
+            it("get data from column", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [10, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [100, 20]});
+
+                var data = rt.getDataFromColumn(1);
+
+                assert.equal(data["FIXEDASSETS"], 2);
+                assert.equal(data["CURRENTASSETS"], 20);
+            });
+
+            it("set value of record", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [10, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [100, 20]});
+
+                rt.setValue("FIXEDASSETS", 1, 1200);
+
+                var data = rt.getDataFromColumn(1);
+                assert.equal(data["FIXEDASSETS"], 1200);
+            });
+
+            it("update related records from formulas", function() {
+                this.$fixture.append(createTable({"id": "test-table"}));
+                
+                rtab.config("formulas", {
+                    "CURRENTASSETS": [
+                        {"rtype": "TOTALASSETS", "components": [
+                            {"rtype": "CURRENTASSETS", "sign": 1},
+                            {"rtype": "FIXEDASSETS", "sign": 1}
+                        ]}
+                    ]
+                });
+                rtab.bindEvents("#test-table");
+                var rt = rtab.bind("#test-table");
+                rt.addRow({"rtype": "FIXEDASSETS", "uom": 1, "values": [10, 2]});
+                rt.addRow({"rtype": "CURRENTASSETS", "uom": 1, "values": [100, 20]});
+                rt.addRow(
+                    {"rtype": "TOTALASSETS", "uom": 1, "values": [0, 20]}, 
+                    {"class": "row-calculable"}
+                );
+
+                rt.updateRecords("CURRENTASSETS", 0);
+
+                assert.equal(
+                    rt.rowOf("TOTALASSETS").find("td.cell-value input").first().val(),
+                    110
+                );
+            });
+
         });
         </script>
 

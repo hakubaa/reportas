@@ -13,7 +13,7 @@
 - timestamp in dbmd.records - only years and months
 - timestamp/timerange report - empty option
 - delete action: use wrapping request to group many delete requests
-
+- ocr linux: https://openms.net/ocr-linux/ for reports wirtten in stupid format
 
 #DONE:
 - create synthetic records for financial records of ics/cfs and bls

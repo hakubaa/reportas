@@ -237,6 +237,35 @@ window.rtab = (function(selector) {
                 );
             }
         });
+
+        $(document).on("change", selector + " td.cell-value > input", function() {
+            var $row = $(this).closest("tr");
+            var rtype_trigger = $row.attr("data-record-rtype");
+            var cindex = $row.find("td.cell-value").index($(this).closest("td"));
+            rtab.bind($(this).closest("table")).updateRecords(rtype_trigger, cindex);
+        });
+
+        $(document).on("change", selector + " td.cell-uom > select", function() {
+            var $row = $(this).closest("tr");
+            var rtype_trigger = $row.attr("data-record-rtype");
+            var rt = rtab.bind($(this).closest("table"));
+            rt.updateRecords(rtype_trigger);
+        });
+
+        $(document).on("change", selector + " td.cell-calculable > input", function() {
+            if ($(this).is(":checked")) {
+                $(this).closest("tr").addClass("row-calculable");
+                $(this).closest("tr").find("td.cell-value input").prop("disabled", true);
+
+                var rtype_trigger = $(this).closest("tr").attr("data-record-rtype");
+                var rt = rtab.bind($(this).closest("table"));
+                rt.updateRecords(rtype_trigger);
+            } else {
+                $(this).closest("tr").removeClass("row-calculable");
+                $(this).closest("tr").find("td.cell-value input").prop("disabled", false);
+            }
+        });
+
     }
 
     function activateFocusOnInputs(selector) {
@@ -289,6 +318,42 @@ window.rtab = (function(selector) {
         return duplicatedRecords;
     }
 
+    function isFormulaCalculable(formula, records) {
+        var components = formula.components;
+        for (var i = 0; i < components.length; i++) {
+            if (records.indexOf(components[i].rtype) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function calculateFormula(formula, data) {
+        var value = formula.components.map(function(item) {
+            return parseInt(item.sign) * data[item.rtype];
+        }).reduce(function(x, y) { return x + y; }, 0);
+        return value;
+    }
+
+    function groupBy(array, f){
+        var groups = {};
+        array.forEach(function(o) {
+            var group = JSON.stringify(f(o));
+            groups[group] = groups[group] || [];
+            groups[group].push(o);  
+        });
+        return Object.keys(groups).map(function(group) {
+            return groups[group]; 
+        });
+    }
+
+    function isArrayHomo(array) {
+        var first = array[0];
+        return array.every(function(element) {
+            return element === first;
+        });
+    }
+
     /*--------------------------------------------------------------------------
       RecordTable
     --------------------------------------------------------------------------*/
@@ -306,27 +371,28 @@ window.rtab = (function(selector) {
     }
     
     RecordTable.prototype.getRTypes = function() {
-        if (this.rtypes !== undefined) return this.rtypes; // caching
-        if (this.config("rtypes") === undefined) return undefined;
-    
-        if (typeof this.config("rtypes") === "function") {
-            this.rtypes = this.config("rtypes")();
-        } else {
-            this.rtypes = this.config("rtypes");
-        }
-        return this.rtypes;
+        return this._get("rtypes");
     }
     
     RecordTable.prototype.getUOM = function() {
-        if (this.uom !== undefined) return this.uom;
-        if (this.config("uom") === undefined) return undefined;
-        
-        if (typeof this.config("uom") === "function") {
-            this.uom = this.config("uom")();
+        return this._get("uom");
+    }
+
+    RecordTable.prototype.getFormulas = function() {
+        return this._get("formulas");
+    }
+
+    RecordTable.prototype._get = function(name, cache_name) {
+        if (cache_name === undefined) cache_name = name;
+        if (this[cache_name] !== undefined) return this[cache_name];
+        if (this.config(name) === undefined) return undefined;
+
+        if (typeof this.config(name) === "function") {
+            this[cache_name] = this.config(name)();
         } else {
-            this.uom = this.config("uom");
+            this[cache_name] = this.config(name);
         }
-        return this.uom;
+        return this[cache_name];
     }
     
     RecordTable.prototype.addRow = function(data, attributes) {
@@ -392,6 +458,101 @@ window.rtab = (function(selector) {
                 $($(this).find("td.cell-value")[index]).remove();
             });
         }
+    }
+
+    RecordTable.prototype.getRowsRTypes = function() {
+        var rtypes = this.$table.find("tbody tr").map(function() { 
+            return $(this).attr("data-record-rtype"); 
+        }).get();
+        return rtypes;
+    }
+    
+    RecordTable.prototype.indexOf = function(rtype) {
+        var $row = this.rowOf(rtype);
+        if ($row.length === 0) {
+            return -1;
+        }
+        return this.$table.find("tbody tr").index($row);
+    }
+    
+    RecordTable.prototype.rowOf = function(rtype) {
+        return this.$table.find("tbody tr[data-record-rtype='" + rtype + "']");
+    }
+
+    RecordTable.prototype.getDataFromColumn = function(cindex) {
+        if (cindex > this.ncols) {
+            return {};
+        }
+        var rows = this.$table.find("tbody tr:not(.empty-row)");
+        var data = rows.map(function() { 
+            var rtype = $(this).attr("data-record-rtype");
+            var uom = parseInt($(this).find("td.cell-uom select").val());
+            if (isNaN(uom) || uom === undefined) uom = 1;
+            var value = uom * parseFloat($($(this).find("td.cell-value input")[cindex]).val());
+
+            var result = {};
+            result[rtype] = value;
+            return result;
+        }).get().reduce(function(x, y) {
+            return $.extend(x, y);
+        }, {});
+
+        return data;
+    }
+
+    RecordTable.prototype.setValue = function(rtype, cindex, value) {
+        var $row = this.rowOf(rtype);
+        $row.each(function() {
+            var uom = $(this).find("td.cell-uom select").val();
+            if (isNaN(uom) || uom === undefined) uom = 1;
+            $($(this).find("td.cell-value input")[cindex]).val(value / uom);
+        });
+    };
+
+    RecordTable.prototype.updateRecords = function(rtype_trigger, cindex, exclude) {
+        if (exclude === undefined) exclude = [];
+        if (cindex === undefined) {
+            cindex = Array.apply(null, {length: this.ncols}).map(Function.call, Number);
+        } else if (!$.isArray(cindex)) {
+            cindex = [cindex];
+        }
+        
+        var formulas = this.getFormulas();
+        if (formulas === undefined) return;
+        if (!(rtype_trigger in formulas)) return;
+
+        var self = this;
+        var rtype_formulas = formulas[rtype_trigger].filter(function(formula) {
+            return (isFormulaCalculable(formula, self.getRowsRTypes()) &&
+                self.isCalculable(formula.rtype));
+        });
+
+        for (var i in rtype_formulas) {
+            for (var j in cindex) {
+                var rid = rtype_formulas[i].rtype + "_" + cindex[j];
+                if (exclude.indexOf(rid) >= 0) continue;
+
+                var data = this.getDataFromColumn(cindex[j]);
+                this.setValue(
+                    rtype_formulas[i].rtype, cindex[j],
+                    calculateFormula(rtype_formulas[i], data)
+                );
+
+                exclude.push(rid);
+                this.updateRecords(rtype_formulas[i].rtype, cindex[j], exclude);
+            }
+        }
+    }
+
+    RecordTable.prototype.isCalculable = function(rtype) {
+        var $row = this.rowOf(rtype);
+        if ($row.length === 0) {
+            return false;
+        }
+
+        return $row.map(function() {
+            return $(this).hasClass("row-calculable");
+        }).get().reduce(function(x, y) { return x && y; }, true);
     }
 
     /*--------------------------------------------------------------------------
@@ -477,7 +638,7 @@ window.rtab = (function(selector) {
                 {id: 1, text: "PLN"},
                 {id: 1000, text: "k'PLN"},
                 {id: 1000000, text: "m'PLN"}
-            ]  
+            ]
         }, 
         config: function(key, value) {
             if (value === undefined) {
