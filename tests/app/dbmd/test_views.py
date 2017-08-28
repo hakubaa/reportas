@@ -749,3 +749,42 @@ class DBRequestViewTest(AppTestCase):
         )
 
         self.assertFalse(csr_mock.called)
+
+
+class RecordFormulaViewFormTest(AppTestCase):
+
+    def test_non_empty_fields(self):
+        view = views.RecordFormulaView(models.RecordFormula, db.session)
+        form = view.get_form()()
+
+        form.validate()
+
+        self.assertIn("rtype", form.errors)
+
+    def test_form_validate_with_proper_data(self):
+        rtype = create_rtype(name="A", ftype=create_ftype())
+
+        view = views.RecordFormulaView(models.RecordFormula, db.session)
+        form = view.get_form()()
+
+        form.process(formdata=MultiDict(dict(rtype=str(rtype.id))))
+       
+        self.assertTrue(form.validate())
+
+    def test_rtype_is_transformed_to_rtype_id(self):
+        rtype = create_rtype(name="A", ftype=create_ftype())
+
+        view = views.RecordFormulaView(models.RecordFormula, db.session)
+        view.get_user = types.MethodType(lambda self: create_user(), view)
+        form = view.get_form()()
+
+        form.process(formdata=MultiDict(dict(rtype=str(rtype.id))))
+        validation_outcome = form.validate() 
+
+        self.assertTrue(validation_outcome)
+
+        dbrequest = view.create_model(form)
+        data = json.loads(dbrequest.data)
+
+        self.assertIn("rtype_id", data)
+        self.assertEqual(data["rtype_id"], rtype.id)

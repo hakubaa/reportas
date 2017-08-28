@@ -109,6 +109,53 @@ def get_default_repr(view, context, model, name):
 # VIEWS
 #-------------------------------------------------------------------------------
 
+class RecordFormulaView(DBRequestBasedView):
+    column_list = ("rtype", "formula")
+    column_filters = ["rtype.name"]
+    column_labels = {"rtype": "Record Type", "rtype.name": "Record Type"}
+    can_view_details = False
+    column_formatters = {
+        "default_repr": get_default_repr,
+        "formula": lambda v, c, m, n: m.lhs_repr()
+    }
+
+    form_excluded_columns = ("version",)
+
+    inline_models = [
+        (
+            models.FormulaComponent, 
+            dict(
+                form_columns=["rtype", "sign", "id"], form_label="Component",
+                form_overrides=dict(sign=SelectField),
+                form_args = dict(
+                    sign=dict(
+                        choices=[
+                            ("1", "plus ( + )"),
+                            ("-1", "minus ( - )")
+                        ]
+                    )
+                ),
+                column_labels=dict(rtype="Record Type")
+            )
+        )
+    ]
+
+    def modify_data(self, data):
+        if "rtype" in data:
+            data["rtype_id"] = getattr(data["rtype"], "id", None)
+            del data["rtype"]
+        if "components" in data:
+            data["components"] = [
+                { 
+                    "rtype_id": getattr(comp["rtype"], "id", None), 
+                    "sign": comp["sign"]
+                }
+                for comp in data["components"]
+            ]
+            
+        return data
+
+
 class SectorView(DBRequestBasedView):
     form_excluded_columns = ("version",)
     column_searchable_list = ["name"]
@@ -147,7 +194,6 @@ class CompanyView(DBRequestBasedView):
 
 class RecordView(DBRequestBasedView):
     form_excluded_columns = ("version", "synthetic")
-
     column_searchable_list = ["company.name", "rtype.name"]
     column_filters = [
         "rtype.name", "company.name", "timerange", "timestamp", "rtype.ftype.name",
@@ -160,6 +206,7 @@ class RecordView(DBRequestBasedView):
         "rtype": "Record Type", "rtype.name": "Record Type",
         "company.name": "Company Name", "rtype.ftype.name": "Financial Statement"
     }
+    can_export = True
 
     def modify_data(self, data):
         if "rtype" in data:

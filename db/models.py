@@ -481,13 +481,16 @@ class RecordFormula(VersionedModel):
     def __repr__(self):
         cls_name = self.__class__.__name__
         right_side = self.rtype.name
+        return "%s<%s, %s>" % (cls_name, right_side, self.lhs_repr())
+
+    def lhs_repr(self):
         left_side = ''.join(
              (' - ' if component.sign == -1 else ' + ') + component.rtype.name
-            for component in self.components
+            for component in sorted(self.components, key=lambda x: -x.sign)
         )
         if left_side.startswith(" + "):
             left_side = left_side[3:]
-        return "%s<%s, %s>" % (cls_name, right_side, left_side)
+        return left_side
 
     def __hash__(self):
         return hash(self.rtype_id) ^ \

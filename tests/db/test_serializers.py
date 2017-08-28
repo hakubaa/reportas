@@ -853,6 +853,39 @@ class RecordFormulaTest(DbTestCase):
         self.assertEqual(len(data["components"]), 2)
         values = [ item["rtype"] for item in data["components"] ]
         self.assertCountEqual(values, ["CURRENT_ASSETS", "FIXED_ASSETS"])
+
+    def test_create_formula_with_components(self):
+        ftype = create_ftype(self.db.session)
+        rtype_a = models.RecordType(name="A", ftype=ftype)
+        rtype_b = models.RecordType(name="B", ftype=ftype)
+        rtype_c = models.RecordType(name="C", ftype=ftype)
+        self.db.session.add_all((rtype_a, rtype_b, rtype_c))
+        self.db.session.commit()
+
+        data = {
+            "rtype_id": rtype_a.id,
+            "components": [
+                {"rtype_id": rtype_b.id, "sign": 1},
+                {"rtype_id": rtype_c.id, "sign": -1}
+            ]
+        }
+        obj, errors = RecordFormulaSchema().load(data, session=self.db.session)
+
+        self.assertFalse(errors)
+
+        self.db.session.add(obj)
+        self.db.session.commit()
+        
+        formula = self.db.session.query(models.RecordFormula).one()
+        self.assertEqual(formula.rtype_id, rtype_a.id)
+        self.assertEqual(len(formula.components), 2)
+
+        components = dict((item.rtype_id, item.sign) for item in formula.components)
+        self.assertIn(rtype_b.id, components)
+        self.assertEqual(components[rtype_b.id], 1)
+        self.assertIn(rtype_c.id, components)
+        self.assertEqual(components[rtype_c.id], -1)
+
         
         
 class FormulaComponentTest(DbTestCase):
@@ -910,7 +943,7 @@ class FinancialStatementSchemaTest(DbTestCase):
         self.db.session.commit()
 
         fschema = models.FinancialStatementSchema()
-        fschema.append_rtype(total_assets, 2, formula=formula)
+        fschema.append_rtype(total_assets, 2)
         fschema.append_rtype(current_assets, 1)
         fschema.append_rtype(fixed_assets, 0)
 

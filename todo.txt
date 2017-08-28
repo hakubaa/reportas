@@ -1,13 +1,7 @@
 ﻿#TODO:
-- batch uploader!!!!!
-    - create FinancialStatement model - list of records constituting specific
-      financial statement like income statement
-        - user defined schemas ?
 - parser:
     - apply schema option
-
 - deploy on rhcloud with postgresql
-- formulas in database, create new formula and so on
 - order book d3.js (free delivery?)
 - delete multiple records with one dbrequest
 - timestamp in dbmd.records - only years and months
@@ -27,6 +21,12 @@
 - add unit of measure selection in form
 - optimize ui - try to remove all what is possible and redundant
 - think about moving logic concerning synthetic records to rparser
+- batch uploader!!!!!
+    - create FinancialStatement model - list of records constituting specific
+      financial statement like income statement
+        - user defined schemas ?
+- calculabe records in dbmd
+- formulas in database, create new formula and so on
 
 ################################################################################
 

@@ -23,3 +23,4 @@ dbmd.add_view(views.SectorView(models.Sector, db.session))
 dbmd.add_view(
     views.FinancialStatementTypeView(models.FinancialStatementType, db.session)
 )
+dbmd.add_view(views.RecordFormulaView(models.RecordFormula, db.session))
