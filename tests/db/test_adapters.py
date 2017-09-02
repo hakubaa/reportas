@@ -6,7 +6,7 @@ from db.models import (
 )
 from db.adapters.rparser import (
     convert_db_formula, convert_db_record, DictRecordsDataset,
-    convert_db_records, convert_rparser_record, FiscalYear,
+    convert_db_records, convert_rparser_record,
     project_timeframe_onto_fiscal_year, create_synthetic_records
 )
 import rparser.synthetic as rparser
@@ -127,7 +127,7 @@ class TestRParserAdapters(DbTestCase):
         
         record_db = convert_rparser_record(
             self.db.session, record, company, 
-            FiscalYear(start=date(2015, 1, 1), end=date(2015, 12, 31))
+            rparser.Timeframe(start=date(2015, 1, 1), end=date(2015, 12, 31))
         )
         
         self.assertIsInstance(record_db, Record)
@@ -140,7 +140,7 @@ class TestRParserAdapters(DbTestCase):
     def test_project_timeframe_onto_fiscal_year_test01(self):
         timestamp_range = project_timeframe_onto_fiscal_year(
             rparser.Timeframe(1, 3), 
-            FiscalYear(date(2015, 1, 1), date(2015, 12, 31))
+            rparser.Timeframe(date(2015, 1, 1), date(2015, 12, 31))
         )
         
         self.assertEqual(timestamp_range.start, date(2015, 1, 1))
@@ -149,7 +149,7 @@ class TestRParserAdapters(DbTestCase):
     def test_project_timeframe_onto_fiscal_year_test02(self):
         timestamp_range = project_timeframe_onto_fiscal_year(
             rparser.Timeframe(1, 6), 
-            FiscalYear(date(2014, 7, 1), date(2015, 6, 30))
+            rparser.Timeframe(date(2014, 7, 1), date(2015, 6, 30))
         )
         
         self.assertEqual(timestamp_range.start, date(2014, 7, 1))
@@ -158,7 +158,7 @@ class TestRParserAdapters(DbTestCase):
     def test_project_timeframe_onto_fiscal_year_test03(self):
         timestamp_range = project_timeframe_onto_fiscal_year(
             rparser.Timeframe(1, 12), 
-            FiscalYear(date(2014, 7, 1), date(2015, 6, 30))
+            rparser.Timeframe(date(2014, 7, 1), date(2015, 6, 30))
         )
         
         self.assertEqual(timestamp_range.start, date(2014, 7, 1))

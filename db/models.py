@@ -122,10 +122,14 @@ class Report(VersionedModel):
     )
 
     def __repr__(self):
-        return "<Report({!r}, {!r})>".format(self.timestamp, self.timerange)
+        output = "Report({}, {}, {:%Y-%m-%d})".format(
+            str(self.company), self.timerange, self.timestamp
+        )
+        return output
 
     def __str__(self):
-        output = "Report({}, {}, {:%Y-%m-%d})".format(
+        '''{company}: Report for {timerange} months ended on {timestamp}.'''
+        output = "{}: Report for {} months ended on {:%Y-%m-%d}".format(
             str(self.company), self.timerange, self.timestamp
         )
         return output

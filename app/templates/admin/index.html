@@ -33,21 +33,18 @@
 
                     <div class="row equal">
                         <div class="col-md-4">
-                            <div class="panel panel-info">
+                            <div class="panel panel-success">
                                 <div class="panel-heading">Financial Data</div>
                                 <div class="panel-body">
                                     <ul>
-                                        <li><a href="{{ url_for('record.index_view') }}">Records</a></li>
-                                        <li><a href="{{ url_for('recordtype.index_view') }}">Record Types</a></li>
-                                        <li><a href="{{ url_for('financialstatementtype.index_view') }}">Financial Statement Types</a></li>
+                                        <li><a href="{{ url_for('record.index_view') }}">Financial Records</a></li>
                                         <li><a href="{{ url_for('report.index_view') }}">Reports</a></li>
-                                        <li><a href="{{ url_for('recordformula.index_view') }}">Record Formulas</a></li>
                                     </ul>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="panel panel-info">
+                            <div class="panel panel-success">
                                 <div class="panel-heading">Companies & Sectors</div>
                                 <div class="panel-body">
                                     <ul>
@@ -58,39 +55,21 @@
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="panel panel-info">
-                                <div class="panel-heading">Macroeconomic Data</div>
+                            <div class="panel panel-success">
+                                <div class="panel-heading">Metadata</div>
                                 <div class="panel-body">
+                                    <ul>
+                                        <li><a href="{{ url_for('recordtype.index_view') }}">Record Types</a></li>
+                                        <li><a href="{{ url_for('financialstatementtype.index_view') }}">Financial Statement Types</a></li>
+                                        <li><a href="{{ url_for('recordformula.index_view') }}">Record Formulas</a></li>
+                                    </ul>
                                 </div>
-                            </div>
-                        </div>                   
+                            </div>                            
+                        </div>            
                     </div> <!-- #row -->
 
 
                     <div class="row equal top-buffer">
-                        <div class="col-md-4">
-                            <div class="panel panel-info">
-                                <div class="panel-heading">Stock Exchagne Data</div>
-                                <div class="panel-body">
-                                    <ul>
-                                        <li><a href="#">Quotations</a></li>
-                                        <li><a href="#">Indexes</a></li>
-                                        <li><a href="#">Stock Exchanges</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="panel panel-info">
-                                <div class="panel-heading">Geographic Data</div>
-                                <div class="panel-body">
-                                    <ul>
-                                        <li><a href="{{ url_for('company.index_view') }}">Countries</a></li>
-                                        <li><a href="{{ url_for('sector.index_view') }}">Districts</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
                         {% if current_user.is_administrator or current_user.has_role("moderator") %}
                             <div class="col-md-4">
                                 <div class="panel panel-danger">
@@ -115,9 +94,9 @@
             <div class="panel-heading">Tools</div>
             <div class="panel-body">
                 <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="panel panel-info">
+                    <div class="row equal">
+                        <div class="col-md-4">
+                            <div class="panel panel-success">
                                 <div class="panel-heading">Financial Data Miner</div>
                                 <div class="panel-body">
                                     <p>Extract financial data from reports with help of our parser.</p>
@@ -125,8 +104,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="panel panel-info">
+                        <div class="col-md-4">
+                            <div class="panel panel-success">
                                 <div class="panel-heading">Batch Uploader</div>
                                 <div class="panel-body">
                                     <p>Upload simultaneously data for many records concerning different periods.</p>

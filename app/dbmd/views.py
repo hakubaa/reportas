@@ -183,7 +183,20 @@ class CompanyView(DBRequestBasedView):
         "isin", "name", "webpage", "ticker", "debut", "fullname", "sector"
     )
     column_labels = {"fullname": "Full Name", "sector.name": "Sector"}
+    column_details_exclude_list = ["version"]
+
     form_excluded_columns = ("version", "reports", "records")
+    form_overrides = dict(fiscal_year_start_month=SelectField)
+    form_args = {
+        "fiscal_year_start_month": {
+            "choices": [ (str(i), str(i)) for i in range(1, 13) ]
+        }
+    }
+    form_widget_args = {
+        "fiscal_year_start_month": {
+            "data-role": "select2"
+        }
+    }
 
     def modify_data(self, data):
         if "sector" in data:
@@ -196,8 +209,8 @@ class RecordView(DBRequestBasedView):
     form_excluded_columns = ("version", "synthetic")
     column_searchable_list = ["company.name", "rtype.name"]
     column_filters = [
-        "rtype.name", "company.name", "timerange", "timestamp", "rtype.ftype.name",
-        "synthetic"
+        "rtype.name", "company.name", "timerange", "timestamp", 
+        "rtype.ftype.name", "synthetic"
     ]
     column_list = (
         "rtype",  "company", "timerange", "timestamp", "value"
@@ -206,7 +219,20 @@ class RecordView(DBRequestBasedView):
         "rtype": "Record Type", "rtype.name": "Record Type",
         "company.name": "Company Name", "rtype.ftype.name": "Financial Statement"
     }
+    column_details_exclude_list = ["version"]
     can_export = True
+
+    form_overrides = dict(timerange=SelectField)
+    form_args = {
+        "timerange": {
+            "choices": [("3", "3"), ("6", "6"), ("9", "9"), ("12", "12")]
+        }
+    }
+    form_widget_args = {
+        "timerange": {
+            "data-role": "select2"
+        }
+    }
 
     def modify_data(self, data):
         if "rtype" in data:
@@ -259,7 +285,8 @@ class RecordTypeView(DBRequestBasedView):
                         )[m.timeframe]
     }
 
-    form_excluded_columns = ("version", "records", "formulas", "revformulas")
+    form_excluded_columns = ("version", "records", "formulas", "revformulas",  
+                             "fschemas", "formula_components")
     form_overrides = dict(timeframe=SelectField)
     form_args = dict(
         timeframe=dict(
@@ -294,7 +321,7 @@ class FinancialStatementTypeView(DBRequestBasedView):
     column_list = ("name", "default_repr")
     column_formatters = dict(default_repr=get_default_repr)
     column_labels = dict(default_repr="Default Repr.")
-    form_excluded_columns = ("version", "records", "rtypes")
+    form_excluded_columns = ("version", "records", "rtypes", "fstatements")
 
 
 class ReportView(DBRequestBasedView):
@@ -305,7 +332,20 @@ class ReportView(DBRequestBasedView):
                 form_columns=[
                     "id", "value", "timerange", "timestamp", "rtype"
                 ], 
-                form_label="Record"
+                form_label="Record",
+                form_overrides = dict(timerange=SelectField),
+                form_args = {
+                    "timerange": {
+                        "choices": [
+                            ("3", "3"), ("6", "6"), ("9", "9"), ("12", "12")
+                        ]
+                    }
+                },
+                form_widget_args = {
+                    "timerange": {
+                        "data-role": "select2"
+                    }
+                }
             )
         )
     ]
@@ -320,14 +360,17 @@ class ReportView(DBRequestBasedView):
         "company.name": "Company Name", "company.ticker": "Company Ticker"
     }
 
-    form_args = dict(file=dict(validators=[]))
     form_columns = ["company", "timestamp", "timerange", "consolidated"]
     form_excluded_columns = ("version")
-    form_overrides = dict(file=FileUploadField)
-
+    form_overrides = dict(timerange=SelectField)
+    form_args = {
+        "timerange": {
+            "choices": [("3", "3"), ("6", "6"), ("9", "9"), ("12", "12")]
+        }
+    }
     form_widget_args = {
-        "file": {
-           "class": " "
+        "timerange": {
+            "data-role": "select2"
         }
     }
 
@@ -376,6 +419,10 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
 
     column_list = ("user", "model", "action", "timestamp", "moderator_action", "outcome")
     column_filters = ("user", "model", "action", "moderator_action")
+    column_formatters = {
+        "timestamp": lambda v, c, m, n: m.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "moderated_at": lambda v, c, m, n: m.moderated_at.strftime("%Y-%m-%d %H:%M:%S")
+    }
 
     list_template = "admin/model/dbrequest_list.html"
 

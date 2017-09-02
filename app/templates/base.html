@@ -10,7 +10,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {% endblock %}
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-  <title>Reportas - {% block title %}{% endblock %}</title>
+  <title>OpenStock - {% block title %}{% endblock %}</title>
 
   <!-- Bootstrap -->
 
@@ -53,11 +53,11 @@
 
         <div class="collapse navbar-collapse" id="navbar-collapse-1">
           <ul class="nav navbar-nav">
-            <li><a href="#">Analyses</a></li>
+            <li><a href="#"><s>Analyses</s></a></li>
             {% if current_user.is_authenticated %}
                 <li><a href="{{ url_for('admin.index') }}">Database</a></li>
-                <li><a href="#">Analytics</a></li>
-                <li><a href="#">Portfolio</a></li>
+                <li><a href="#"><s>Analytics</s></a></li>
+                <li><a href="#"><s>Portfolio</s></a></li>
             {% endif %}
           </ul>
           <ul class="nav navbar-nav navbar-right">

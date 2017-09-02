@@ -118,14 +118,20 @@ $.fn.bindDatePicker = function(attributes) {
 
     var defaultAttributes = {
         autoclose: true,
-        format: "yyyy-mm",
-          minViewMode: "months",
-          orientation: "top",
-          startView: "months"
+        format: {
+            toDisplay: function(date, format, language) {
+                return moment(date).endOf("month").format("YYYY-MM-DD"); 
+            },
+            toValue: function(date, format, language) {
+                var d = new Date(date);
+                return d;
+            }
+        },
+        minViewMode: "months",
+        orientation: "top",
+        startView: "months"
     };
-    for(var property in attributes) {
-        defaultAttributes[property] = attributes[property];
-    }
+    $.extend(defaultAttributes, attributes);
 
     for(var i = 0; i < this.length; i++) {
         $(this[i]).datepicker(defaultAttributes);

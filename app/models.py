@@ -84,6 +84,9 @@ class Role(Model):
     def __repr__(self):
         return "<Role %r>" % self.name
 
+    def __str__(self):
+        return self.name
+
 
 class User(UserMixin, Model):
     id = Column(Integer, primary_key=True)
@@ -145,6 +148,9 @@ class User(UserMixin, Model):
 
     def __repr__(self):
         return "<User %r>" % (self.name or self.email)
+
+    def __str__(self):
+        return self.name
         
 
 class AnonymousUser(AnonymousUserMixin):

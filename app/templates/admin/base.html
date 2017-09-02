@@ -6,6 +6,7 @@
 
 {% block head_css %}
     <link href="{{ admin_static.url(filename='admin/css/bootstrap3/admin.css', v='1.1.1') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
     {% if admin_view.extra_css %}
       {% for css_url in admin_view.extra_css %}
         <link href="{{ css_url }}" rel="stylesheet">
@@ -28,6 +29,8 @@
 {% block tail_js %}
   <script src="{{ admin_static.url(filename='vendor/select2/select2.min.js', v='3.5.2') }}" type="text/javascript"></script>
   <script src="{{ url_for('static', filename='admin/js/form.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dbmd_utils.js') }}"></script>
   {% if admin_view.extra_js %}
     {% for js_url in admin_view.extra_js %}
       <script src="{{ js_url }}" type="text/javascript"></script>

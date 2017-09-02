@@ -342,17 +342,7 @@
                 processAjaxWidget($el, name);
                 return true;
             case 'datepicker':
-                $el.daterangepicker({
-                    singleDatePicker: true,
-                    locale: {
-                        format: $el.attr("data-date-format"),
-                        cancelLabel: "Clear"
-                    },
-                    showDropdowns: true
-                },
-                function(start, end) {
-                    $('.filter-val').trigger("change");
-                });
+                $el.bindDatePicker(); // require dbmd_utils.js
                 return true;
             case 'daterangepicker':
                 $el.daterangepicker({
