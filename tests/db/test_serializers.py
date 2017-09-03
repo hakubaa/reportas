@@ -658,7 +658,30 @@ class RecordSchemaTest(DbTestCase):
 
         # despite 'different' timeranges error is being risen
         self.assertTrue(errors)
-        self.assertIn("record", errors)       
+        self.assertIn("record", errors)
+
+    def test_timerange_of_pit_records_is_set_to_zero(self):
+        company = models.Company(name="TEST", isin="TEST")
+        ftype = create_ftype(self.db.session)
+        rtype = models.RecordType(name="TEST", ftype=ftype, timeframe="pit") 
+        self.db.session.add_all((company, ftype, rtype))
+        self.db.session.commit()
+
+        data = {
+            "rtype_id": rtype.id, "company_id": company.id, 
+            "timerange": 12, "value": 345, 
+            "timestamp": "2015-03-31"
+        }
+
+        obj, errors = RecordSchema().load(data, session=self.db.session)
+
+        self.assertFalse(errors)
+
+        self.db.session.add(obj)
+        self.db.session.commit()
+
+        self.assertIsNotNone(obj.id)
+        self.assertEqual(obj.timerange, 0)
 
     def test_overridding_synthetic_records_doesnt_raise_errors(self):
         record = self.create_record(

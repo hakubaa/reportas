@@ -2,7 +2,7 @@
 <div>
     <form method="POST" action="{{action}}" id="export-data-form">
         <input type="hidden" name="data" value="" id="data-to-export">
-        <input class="btn btn-success" value="Export Data" onclick={{onclick}}>
+        <input id="data-export-btn" class="btn btn-success" value="Export Data" onclick={% if not onclick %} '' {% else %} {{onclick}} {% endif %}>
     </form>
     <div class="data-validation">
         <h4>Warnings & Errors</h4>

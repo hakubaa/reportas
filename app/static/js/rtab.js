@@ -58,7 +58,7 @@ window.rtab = (function(selector) {
 
         attributes = $.extend({
                 "class": "record-row",
-                "data-record-type": UNDEFINED_RTYPE
+                "data-record-rtype": UNDEFINED_RTYPE
             }, attributes
         );
         
@@ -399,7 +399,8 @@ window.rtab = (function(selector) {
         var $row = createNewRow(this.ncols, attributes, this.config("columns"));
         $row.find(".record-uom").bindUnitsOfMeasure(this.getUOM());
         if (data !== undefined) populateRowWithData($row, data);
-        this.$table.find("tbody").append($row); 
+        this.$table.find("tbody").append($row);
+        toggleTable(this.$table);
     }
     
     RecordTable.prototype.addColumn = function(data) {
@@ -598,10 +599,10 @@ window.rtab = (function(selector) {
 
     RecordTable.prototype.validateRTypes = function() {
         var result = true;
-        var details = this.$table.find("tbody tr").map(function(index) {
+        var details = this.$table.find("tbody tr:not(.empty-row)").map(function(index) {
             var rtype = $(this).attr("data-record-rtype");
             result = result && rtype !== UNDEFINED_RTYPE;
-            return {"index": index, "rtype": rtype};
+            return {"index": index, "rtype": rtype, "result": rtype !== UNDEFINED_RTYPE};
         }).get();
         return {"result": result, "details": details};
     }

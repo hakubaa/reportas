@@ -41,7 +41,7 @@ def upload_companies(session, data):
                 setattr(instance, key, value)               
 
 
-def upload_records_spec(session, spec):
+def upload_records_spec(session, spec, default_timeframe="pit"):
     '''
     Create RecordType & RecordTypeRepr records in db in accordance with 
     specification.
@@ -54,7 +54,10 @@ def upload_records_spec(session, spec):
     for record_spec in spec:
         ftype = session.query(FinancialStatementType).\
                     filter_by(name=record_spec["statement"]).one()
-        rtype = RecordType(name=record_spec["name"], ftype=ftype)
+        rtype = RecordType(
+            name=record_spec["name"], ftype=ftype,
+            timeframe=record_spec.get("timeframe", default_timeframe)
+        )
         session.add(rtype)
         for repr_spec in record_spec.get("repr", list()):
             repr_spec["rtype"] = rtype

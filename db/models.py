@@ -83,7 +83,7 @@ class Company(VersionedModel):
         tools.upload_companies(session, data_companies)
         session.commit()
 
-        import rparser.cspec as cspec
+        import rparser.specs.companies as cspec
 
         for comp in cspec.companies:
             company = session.query(Company).filter_by(isin=comp["isin"]).first()

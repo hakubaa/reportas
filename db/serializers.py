@@ -386,6 +386,19 @@ class RecordSchema(ModelSchema):
             models.Record.synthetic == True
         ).delete()
 
+    @post_load
+    def make_instance(self, data):
+        """Extend default make_instance method ensuing that point-in-time 
+        records will have set timerange to zero (0).
+        """
+        (pit_record, ), = self.session.query(exists().where(and_(
+            models.RecordType.id == data["rtype_id"], 
+            models.RecordType.timeframe == "pit"
+        )))
+        if pit_record:
+            data["timerange"] = 0
+        return super().make_instance(data)
+
 
 @records_factory.register_schema()
 class ReportSchema(ModelSchema):

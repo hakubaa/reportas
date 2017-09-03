@@ -46,7 +46,7 @@ function addEmptyColumn(selector) {
 }
 
 
-function exportData() {
+function exportData(event) {
     var data = createDataForExport(rtab.bind("#identified-records"));
     if (data.records === undefined || data.records.length === 0) {
         BootstrapDialog.alert({

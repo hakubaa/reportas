@@ -1,6 +1,3 @@
-var UNDEFINED_RTYPE = "undefined";
-
-
 //------------------------------------------------------------------------------
 // jQuery extension
 //------------------------------------------------------------------------------
@@ -550,7 +547,7 @@ function createAlertsForRecordsTypesValidation(validation, prefix) {
     var alerts = [];
     var msg;
     for(var i = 0; i < validation.length; i++) {
-        if (validation[i].rtype === UNDEFINED_RTYPE) {
+        if (!validation[i].result) {
             msg = prefix + "Row #" + (validation[i].index + 1) + ": " +
                   "type of record corrupted";
             alerts.push(createAlert(msg, "danger"));
@@ -640,10 +637,11 @@ function submitExportForm(data, validator, callback) {
                     }
                 }
             });
-        }
-        $("#data-to-export").val(data);
-        if (callback !== undefined) {
-            callback(true);
+        } else {
+            $("#data-to-export").val(data);
+            if (callback !== undefined) {
+                callback(true);
+            }
         }
     }
 }

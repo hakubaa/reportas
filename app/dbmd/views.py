@@ -421,7 +421,10 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
     column_filters = ("user", "model", "action", "moderator_action")
     column_formatters = {
         "timestamp": lambda v, c, m, n: m.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-        "moderated_at": lambda v, c, m, n: m.moderated_at.strftime("%Y-%m-%d %H:%M:%S")
+        "moderated_at": lambda v, c, m, n: 
+            m.moderated_at.strftime("%Y-%m-%d %H:%M:%S") \
+            if m.moderated_at is not None \
+            else None
     }
 
     list_template = "admin/model/dbrequest_list.html"
@@ -442,6 +445,8 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
                 requests_counter += self._count_requests(result)
                 successes_counter += self._count_successful_requests(result)
                 new_records.extend(self._extract_records(result))
+
+        new_records = [ record for record in new_records if record.id is not None ]
 
         synthetic_records = list()
         if len(new_records) > 0:

@@ -1,13 +1,21 @@
-﻿#TODO:
+﻿#DEPLOYMENTS ERRORS:
+- synthetic records have not been created (decora q1 i m1)
+- warnings when uploading record have not been shown
+- details for dbrequest error
+- financial statement type: change of default does not work (check other reprs)
+- CFS - column editor does not show
+
+
+#TODO:
+- default records (add information about point-in-time / period-of-time)
 - parser:
     - apply schema option
-- deploy on rhcloud with postgresql
 - order book d3.js (free delivery?)
 - delete multiple records with one dbrequest
-- timestamp in dbmd.records - only years and months
 - timestamp/timerange report - empty option
 - delete action: use wrapping request to group many delete requests
-- ocr linux: https://openms.net/ocr-linux/ for reports wirtten in stupid format
+- ocr linux: https://openms.net/ocr-linux/ for reports saved in stupid format
+
 
 #DONE:
 - create synthetic records for financial records of ics/cfs and bls
