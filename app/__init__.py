@@ -49,11 +49,15 @@ def create_app(config_name, **kwargs):
     from app.user import user as user_blueprint
     app.register_blueprint(user_blueprint, url_prefix="/user")
 
+    from app.analytics import analytics as analytics_blueprint
+    app.register_blueprint(analytics_blueprint, url_prefix="/analytics")
+    
     from app.dbmd import dbmd
     dbmd.init_app(app, endpoint="dbmd", url="/dbmd")
 
     from app.dbmd.tools import dbmd_tools
-    app.register_blueprint(dbmd_tools, endpoint="dmbd_tools", url_prefix="/dbmd/tools")
+    app.register_blueprint(dbmd_tools, endpoint="dmbd_tools", 
+                           url_prefix="/dbmd/tools")
     
     @app.errorhandler(401)
     def unathorized_access(error):

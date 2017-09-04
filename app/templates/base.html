@@ -56,7 +56,7 @@
             <li><a href="#"><s>Analyses</s></a></li>
             {% if current_user.is_authenticated %}
                 <li><a href="{{ url_for('admin.index') }}">Database</a></li>
-                <li><a href="#"><s>Analytics</s></a></li>
+                <li><a href="{{ url_for('analytics.index') }}">Analytics</a></li>
                 <li><a href="#"><s>Portfolio</s></a></li>
             {% endif %}
           </ul>

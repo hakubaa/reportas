@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
+    <style>
+        svg {
+            width: 600px;
+            height: 480px;
+            border: 1px solid black;
+        }
+        #controls {
+            margin-bottom: 20px;
+        }
+    </style>
+{% endblock %}
+
+{% block page_body %}
+<div class="container">
+    <div id="controls">
+        <select id="company" style="width: 200px;">
+            <option disabled>-- Select an option --</option>
+        </select>
+        <select id="rtype" style="width: 200px;">
+            <option disabled>-- Select an option --</option>
+        </select>
+    </div>
+    <div id="viz">
+        <svg/>
+    </svg>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+<script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
+<script>
+    jQuery.fn.fillSelect2WithAjax = function(url, attributes) {
+        var self = this;
+        $.getJSON(url).done(function(data) {
+            for(var i = 0; i < self.length; i++) {
+                $(self[i]).fillSelect2WithData(data, attributes);
+            }
+        });
+    }
+
+     jQuery.fn.fillSelect2WithData = function(data, attributes) {
+        var attrs = {id: "id", label: "text"};
+        $.extend(attrs, attributes);
+
+        attrs.data = $.map(data.results, function(obj) {
+            return {id: obj[attrs.id], text: obj[attrs.label]};
+        });
+        this.applySelect2(attrs);
+    }
+
+    jQuery.fn.applySelect2 = function(attributes) {
+        var attrs = {
+            dropdownAutoWidth: true,
+            placeholder: {
+                id: "none",
+                text: "Select an option",
+            },
+        };
+        $.extend(attrs, attributes);
+
+        for(var i = 0; i < this.length; i++) {
+            $(this[i]).select2(attrs);
+        }
+    }    
+
+    $("#company").fillSelect2WithAjax("/api/companies?fields=id,name", {"label": "name"});
+    $("#rtype").fillSelect2WithAjax("/api/rtypes?fields=id,name", {"label": "name"}); 
+</script>
+{% endblock %}

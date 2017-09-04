@@ -46,10 +46,17 @@ class TestingConfig(Config):
 	WTF_CSRF_ENABLED = False
 	
 
+# class ProductionConfig(Config):
+#     DEBUG = False
+#     UPLOAD_FOLDER = os.environ["UPLOAD_DIR"]
+#     SQLALCHEMY_DATABASE_URI = os.environ["DATABASE_URL"]
+
+
 config = {
-	"development": DevelopmentConfig,
-	"testing": TestingConfig,
-	"default": DevelopmentConfig
+    "development": DevelopmentConfig,
+    "testing": TestingConfig,
+    "default": DevelopmentConfig,
+    # "production": ProductionConfig
 }
 
 #export DATABASE_URL="postgresql:///reportas

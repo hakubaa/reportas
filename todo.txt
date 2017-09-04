@@ -1,12 +1,9 @@
 ﻿#DEPLOYMENTS ERRORS:
 - synthetic records have not been created (decora q1 i m1)
-- warnings when uploading record have not been shown
-- details for dbrequest error
 - financial statement type: change of default does not work (check other reprs)
-- CFS - column editor does not show
-
 
 #TODO:
+- rapi: filter by fields !!!
 - default records (add information about point-in-time / period-of-time)
 - parser:
     - apply schema option
