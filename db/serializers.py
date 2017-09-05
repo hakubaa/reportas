@@ -4,8 +4,10 @@ __all__ = [
     "RecordSchema", "ReportSchema", "RecordFormulaSchema",
     "FormulaComponentSchema", "SectorSchema", "FinancialStatementTypeSchema",
     "FinancialStatementTypeReprSchema", "FinancialStatementSchema",
-    "FinancialStatementSchemaSimple"
+    "FinancialStatementSchemaSimple", "DatetimeEncoder"
 ]
+
+import json
 
 from marshmallow import (
     validates, ValidationError, fields, validates_schema, post_load
@@ -16,6 +18,14 @@ from sqlalchemy import exists, and_
 
 import db.models as models
 from db import records_factory
+
+
+class DatetimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return super(DatetimeEncoder, obj).default(obj)
+        except TypeError:
+            return str(obj)
 
 
 class MyInteger(fields.Integer):

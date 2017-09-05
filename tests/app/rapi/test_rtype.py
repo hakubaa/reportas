@@ -5,7 +5,7 @@ from flask import url_for
 
 from app import db
 from app.rapi import api
-from app.rapi.util import DatetimeEncoder
+from db.serializers import DatetimeEncoder
 from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
     FinancialStatementType

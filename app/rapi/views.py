@@ -18,7 +18,6 @@ from app.user.auth import permission_required
 import db.models as models
 from app.rapi import serializers
 from app.rapi.base import DetailView, ListView
-from app.rapi import util as rutil
 
 
 class ReportListView(ListView):

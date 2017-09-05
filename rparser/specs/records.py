@@ -17,7 +17,7 @@ finrecords = [
 # CASH FLOW STATEMENT - CFS
 ################################################################################
     {
-        "statement": "cfs", "name": "CFS#TOTALNETCASHFLOWS", 
+        "statement": "cfs", "name": "CFS@TOTALNETCASHFLOWS", 
         "timeframe": "pot",
         "repr": [
             {
@@ -40,7 +40,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CASHOPENINGBALANCE", 
+        "statement": "cfs", "name": "CFS@CASHOPENINGBALANCE", 
         "timeframe": "pot",
         "repr": [
             {
@@ -63,7 +63,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CLOSINGBALANCEOFCASH",
+        "statement": "cfs", "name": "CFS@CLOSINGBALANCEOFCASH",
         "timeframe": "pot", 
         "repr": [
             {
@@ -87,7 +87,7 @@ finrecords = [
         ]
     },
     { 
-        "statement": "cfs", "name": "CFS#NETCFFROMOPERATINGACTIVITIES",
+        "statement": "cfs", "name": "CFS@NETCFFROMOPERATINGACTIVITIES",
         "timeframe": "pot",
         "repr": [ 
             { 
@@ -105,7 +105,7 @@ finrecords = [
         ] 
     }, 
     { 
-        "statement": "cfs", "name": "CFS#NETCFFROMINVESTMENTACTIVITIES",
+        "statement": "cfs", "name": "CFS@NETCFFROMINVESTMENTACTIVITIES",
         "timeframe": "pot",
         "repr": [ 
             { 
@@ -139,7 +139,7 @@ finrecords = [
         ] 
     }, 
     { 
-        "statement": "cfs", "name": "CFS#NETCFFROMFINANCIALACTIVITIES",
+        "statement": "cfs", "name": "CFS@NETCFFROMFINANCIALACTIVITIES",
         "timeframe": "pot", 
         "repr": [ 
             { 
@@ -157,7 +157,7 @@ finrecords = [
         ] 
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEINSHORTTERMLIABILITIES",
+        "statement": "cfs", "name": "CFS@CHANGEINSHORTTERMLIABILITIES",
         "timeframe": "pot",
         "repr": [
             {
@@ -191,7 +191,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEINCURRENTASSETS",
+        "statement": "cfs", "name": "CFS@CHANGEINCURRENTASSETS",
         "timeframe": "pot",
         "repr": [
             {
@@ -201,7 +201,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEINPREPAYMENTS",
+        "statement": "cfs", "name": "CFS@CHANGEINPREPAYMENTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -211,7 +211,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEINTAX",
+        "statement": "cfs", "name": "CFS@CHANGEINTAX",
         "timeframe": "pot",
         "repr": [
             {
@@ -221,7 +221,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#NETPROFIT",
+        "statement": "cfs", "name": "CFS@NETPROFIT",
         "timeframe": "pot",
         "repr": [
             {
@@ -255,7 +255,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#NETPROFITONRELATEDENTITIES",
+        "statement": "cfs", "name": "CFS@NETPROFITONRELATEDENTITIES",
         "timeframe": "pot",
         "repr": [
             {
@@ -266,7 +266,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#GROSSPROFIT",
+        "statement": "cfs", "name": "CFS@GROSSPROFIT",
         "timeframe": "pot",
         "repr": [
             {
@@ -292,7 +292,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#AMORTISATIONONFIXEDASSETS",
+        "statement": "cfs", "name": "CFS@AMORTISATIONONFIXEDASSETS",
         "timeframe": "pot",
         "repr": [
             {
@@ -304,7 +304,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#AMORTISATIONONINTANGIBLEASSETS",
+        "statement": "cfs", "name": "CFS@AMORTISATIONONINTANGIBLEASSETS",
         "timeframe": "pot",
         "repr": [
             {
@@ -313,7 +313,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#AMORTISATION",
+        "statement": "cfs", "name": "CFS@AMORTISATION",
         "timeframe": "pot",
         "repr": [
             {
@@ -330,7 +330,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#DISPOSALOFFIXEDASSETS",
+        "statement": "cfs", "name": "CFS@DISPOSALOFFIXEDASSETS",
         "timeframe": "pot",
         "repr": [
             {
@@ -357,7 +357,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#PURCHASEOFFIXEDASSETS",
+        "statement": "cfs", "name": "CFS@PURCHASEOFFIXEDASSETS",
         "timeframe": "pot",
         "repr": [
             {
@@ -387,7 +387,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#PURCHASEOFFINANCIALASSETS",
+        "statement": "cfs", "name": "CFS@PURCHASEOFFINANCIALASSETS",
         "timeframe": "pot",
         "repr": [
             {
@@ -405,7 +405,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#REVENEUSFROMSALEOFFINANCIALASSETS",
+        "statement": "cfs", "name": "CFS@REVENEUSFROMSALEOFFINANCIALASSETS",
         "timeframe": "pot",
         "repr": [
             {
@@ -419,7 +419,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#KPTO",
+        "statement": "cfs", "name": "CFS@KPTO",
         "timeframe": "pot",
         "repr": [
             {
@@ -429,7 +429,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#WTO",
+        "statement": "cfs", "name": "CFS@WTO",
         "timeframe": "pot",
         "repr": [
             {
@@ -443,7 +443,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#PROFITONINVESTMENTACTIVITIES",
+        "statement": "cfs", "name": "CFS@PROFITONINVESTMENTACTIVITIES",
         "timeframe": "pot",
         "repr": [
             {
@@ -465,7 +465,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEINPROVISIONS",
+        "statement": "cfs", "name": "CFS@CHANGEINPROVISIONS",
         "timeframe": "pot",
         "repr": [
             {
@@ -475,7 +475,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEININVETORY",
+        "statement": "cfs", "name": "CFS@CHANGEININVETORY",
         "timeframe": "pot",
         "repr": [
             {
@@ -497,7 +497,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEINRECEIVABLES",
+        "statement": "cfs", "name": "CFS@CHANGEINRECEIVABLES",
         "timeframe": "pot",
         "repr": [
             {
@@ -527,7 +527,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CHANGEINRECEIVABLESANDPREPAYAMENTS",
+        "statement": "cfs", "name": "CFS@CHANGEINRECEIVABLESANDPREPAYAMENTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -537,7 +537,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#WNNPZS",
+        "statement": "cfs", "name": "CFS@WNNPZS",
         "timeframe": "pot",
         "repr": [
             {
@@ -547,7 +547,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#INFLOWSFROMCREDITSANDLOANS",
+        "statement": "cfs", "name": "CFS@INFLOWSFROMCREDITSANDLOANS",
         "timeframe": "pot",
         "repr": [
             {
@@ -585,7 +585,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#REPAYMENTOFCREDITSANDLOANS",
+        "statement": "cfs", "name": "CFS@REPAYMENTOFCREDITSANDLOANS",
         "timeframe": "pot",
         "repr": [
             {
@@ -623,7 +623,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#SUP", # przepływy inwestycyjne
+        "statement": "cfs", "name": "CFS@SUP", # przepływy inwestycyjne
         "timeframe": "pot",
         "repr": [
             {
@@ -633,7 +633,7 @@ finrecords = [
         ]
     },
      {
-        "statement": "cfs", "name": "CFS#UP", # przepływy inwestycyjne
+        "statement": "cfs", "name": "CFS@UP", # przepływy inwestycyjne
         "timeframe": "pot",
         "repr": [
             {
@@ -643,7 +643,7 @@ finrecords = [
         ]
     },   
     {
-        "statement": "cfs", "name": "CFS#UN",
+        "statement": "cfs", "name": "CFS@UN",
         "timeframe": "pot",
         "repr": [
             {
@@ -657,7 +657,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#EXCHANGEGAINS",
+        "statement": "cfs", "name": "CFS@EXCHANGEGAINS",
         "timeframe": "pot",
         "repr": [
             {
@@ -667,7 +667,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#CURRENTINCOMETAX",
+        "statement": "cfs", "name": "CFS@CURRENTINCOMETAX",
         "timeframe": "pot",
         "repr": [
             {
@@ -681,7 +681,7 @@ finrecords = [
         ]
     },
     {   # Przepływy środków pieniężnych z działalności operacyjnej
-        "statement": "cfs", "name": "CFS#OID",
+        "statement": "cfs", "name": "CFS@OID",
         "timeframe": "pot",
         "repr": [
             {
@@ -707,7 +707,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#DIVIDENDGET",
+        "statement": "cfs", "name": "CFS@DIVIDENDGET",
         "timeframe": "pot",
         "repr": [
             {
@@ -717,7 +717,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "cfs", "name": "CFS#INCOMETAXPAID",
+        "statement": "cfs", "name": "CFS@INCOMETAXPAID",
         "timeframe": "pot",
         "repr": [
             {
@@ -731,7 +731,7 @@ finrecords = [
         ]        
     },
     {
-        "statement": "cfs", "name": "CFS#DIVIDENTSPAY",
+        "statement": "cfs", "name": "CFS@DIVIDENTSPAY",
         "timeframe": "pot",
         "repr": [
             {
@@ -757,7 +757,7 @@ finrecords = [
         ]        
     },
     {
-        "statement": "cfs", "name": "CFS#PURCHASEOFOWNSHARES",
+        "statement": "cfs", "name": "CFS@PURCHASEOFOWNSHARES",
         "timeframe": "pot",
         "repr": [
             {
@@ -767,7 +767,7 @@ finrecords = [
         ]   
     },
     {
-        "statement": "cfs", "name": "CFS#UAW",
+        "statement": "cfs", "name": "CFS@UAW",
         "timeframe": "pot",
         "repr": [
             {
@@ -777,7 +777,7 @@ finrecords = [
         ]   
     },
     { # Przepływy środków pieniężnych z działalności finansowej - Wydatki
-        "statement": "cfs", "name": "CFS#INTEREST",
+        "statement": "cfs", "name": "CFS@INTEREST",
         "timeframe": "pot",
         "repr": [
             {
@@ -810,7 +810,7 @@ finrecords = [
 # ursus_2016_y.pdf
 
     {
-        "statement": "ics", "name": "ICS#REVENUESFROMSALE",
+        "statement": "ics", "name": "ICS@REVENUESFROMSALE",
         "timeframe": "pot",
         "repr": [
             {
@@ -841,7 +841,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#REVENUESFROMSALESOFPRODUCTS",
+        "statement": "ics", "name": "ICS@REVENUESFROMSALESOFPRODUCTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -859,7 +859,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#REVENUESFROMSALESOFSERVICES",
+        "statement": "ics", "name": "ICS@REVENUESFROMSALESOFSERVICES",
         "timeframe": "pot",
         "repr": [
             {
@@ -869,7 +869,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#REVENUESFROMSALEOFGOODS",
+        "statement": "ics", "name": "ICS@REVENUESFROMSALEOFGOODS",
         "timeframe": "pot",
         "repr": [
             {
@@ -887,7 +887,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#REVENESFROMSALESOFPRODUCTSANDSERVICES",
+        "statement": "ics", "name": "ICS@REVENESFROMSALESOFPRODUCTSANDSERVICES",
         "timeframe": "pot",
         "repr": [
             {
@@ -905,7 +905,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#COSTOFSALE",
+        "statement": "ics", "name": "ICS@COSTOFSALE",
         "timeframe": "pot",
         "repr": [
             {
@@ -931,7 +931,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#COSTOFMATERIALS",
+        "statement": "ics", "name": "ICS@COSTOFMATERIALS",
         "timeframe": "pot",
         "repr": [
             {
@@ -941,7 +941,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#COSTOFGOODS",
+        "statement": "ics", "name": "ICS@COSTOFGOODS",
         "timeframe": "pot",
         "repr": [
             {
@@ -951,7 +951,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#COSTOFGOODSANDMATERIALS",
+        "statement": "ics", "name": "ICS@COSTOFGOODSANDMATERIALS",
         "timeframe": "pot",
         "repr": [
             {
@@ -969,7 +969,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#COSTOFPRODUCTS",
+        "statement": "ics", "name": "ICS@COSTOFPRODUCTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -983,7 +983,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#COSTOFSERVICES",
+        "statement": "ics", "name": "ICS@COSTOFSERVICES",
         "timeframe": "pot",
         "repr": [
             {
@@ -993,7 +993,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#COSTPOFRODUCTSANDSERVICES",
+        "statement": "ics", "name": "ICS@COSTPOFRODUCTSANDSERVICES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1007,7 +1007,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#GROSSPROFITONSALES",
+        "statement": "ics", "name": "ICS@GROSSPROFITONSALES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1025,7 +1025,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#SELLINGCOSTS",
+        "statement": "ics", "name": "ICS@SELLINGCOSTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -1039,7 +1039,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#ADMINISTRATIVECOSTS",
+        "statement": "ics", "name": "ICS@ADMINISTRATIVECOSTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -1052,8 +1052,8 @@ finrecords = [
             }
         ]
     },
-    { # ICS#COSTSELLING + ICS#COSTOFMANAGEMENT"
-        "statement": "ics", "name": "ICS#SELLINGANDADMINISTRATIVECOSTS",
+    { # ICS@COSTSELLING + ICS@COSTOFMANAGEMENT"
+        "statement": "ics", "name": "ICS@SELLINGANDADMINISTRATIVECOSTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -1063,7 +1063,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#NETPROFITONSALE",
+        "statement": "ics", "name": "ICS@NETPROFITONSALE",
         "timeframe": "pot",
         "repr": [
             {
@@ -1085,7 +1085,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "ics", "name": "ICS#OPERATINGREVENUES",
+        "statement": "ics", "name": "ICS@OPERATINGREVENUES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1095,7 +1095,7 @@ finrecords = [
         ]
     },  
     {
-        "statement": "ics", "name": "ICS#OPERATINGEXPENSES",
+        "statement": "ics", "name": "ICS@OPERATINGEXPENSES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1105,7 +1105,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "ics", "name": "ICS#PROFITONOPERATINGACTIVITIES",
+        "statement": "ics", "name": "ICS@PROFITONOPERATINGACTIVITIES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1119,7 +1119,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "ics", "name": "ICS#FINANCIALREVENUES",
+        "statement": "ics", "name": "ICS@FINANCIALREVENUES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1129,7 +1129,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "ics", "name": "ICS#FINANCIALEXPENSES",
+        "statement": "ics", "name": "ICS@FINANCIALEXPENSES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1139,7 +1139,7 @@ finrecords = [
         ]
     },   
     {
-        "statement": "ics", "name": "ICS#PROFITONRELATEDPARTIES",
+        "statement": "ics", "name": "ICS@PROFITONRELATEDPARTIES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1169,7 +1169,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#NETABANDONED",
+        "statement": "ics", "name": "ICS@NETABANDONED",
         "timeframe": "pot",
         "repr": [
             {
@@ -1187,7 +1187,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#GROSSPROFIT",
+        "statement": "ics", "name": "ICS@GROSSPROFIT",
         "timeframe": "pot",
         "repr": [
             {
@@ -1209,7 +1209,7 @@ finrecords = [
         ]
     },  
     {
-        "statement": "ics", "name": "ICS#INCOMETAX",
+        "statement": "ics", "name": "ICS@INCOMETAX",
         "timeframe": "pot",
         "repr": [
             {
@@ -1227,7 +1227,7 @@ finrecords = [
         ]
     }, 
     {
-        "statement": "ics", "name": "ICS#NETPROFIT",
+        "statement": "ics", "name": "ICS@NETPROFIT",
         "timeframe": "pot",
         "repr": [
             {
@@ -1253,7 +1253,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#NETPROFITPERSHARE",
+        "statement": "ics", "name": "ICS@NETPROFITPERSHARE",
         "timeframe": "pot",
         "reprs": [
             {
@@ -1299,7 +1299,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#NETPROFITCONT",
+        "statement": "ics", "name": "ICS@NETPROFITCONT",
         "timeframe": "pot",
         "repr": [
             {
@@ -1317,7 +1317,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "ics", "name": "ICS#NETPROFITTOOWNERS",
+        "statement": "ics", "name": "ICS@NETPROFITTOOWNERS",
         "timeframe": "pot",
         "repr": [
             {
@@ -1339,7 +1339,7 @@ finrecords = [
         ]
     },    
     {
-        "statement": "ics", "name": "ICS#NETPROFITTONONOWNERS",
+        "statement": "ics", "name": "ICS@NETPROFITTONONOWNERS",
         "timeframe": "pot",
         "repr": [
             {
@@ -1369,7 +1369,7 @@ finrecords = [
         ]
     },   
     {
-        "statement": "ics", "name": "ICS#SHARESCOUNT",
+        "statement": "ics", "name": "ICS@SHARESCOUNT",
         "timeframe": "pot",
         "repr": [
             {
@@ -1391,7 +1391,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#EXTRAORDINARYGAINS",
+        "statement": "ics", "name": "ICS@EXTRAORDINARYGAINS",
         "timeframe": "pot",
         "repr": [
             {
@@ -1401,7 +1401,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#EXTRAORDINARYLOSSES",
+        "statement": "ics", "name": "ICS@EXTRAORDINARYLOSSES",
         "timeframe": "pot",
         "repr": [
             {
@@ -1411,7 +1411,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "ics", "name": "ICS#RESULTONEXTRAORDINARYEVENTS",
+        "statement": "ics", "name": "ICS@RESULTONEXTRAORDINARYEVENTS",
         "timeframe": "pot",
         "repr": [
             {
@@ -1436,7 +1436,7 @@ finrecords = [
 # ursus_2016_y.pdf
 
     {
-        "statement": "bls", "name": "BLS#INTANGIBLEASSETS",
+        "statement": "bls", "name": "BLS@INTANGIBLEASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1450,7 +1450,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#RDEXPENSES",
+        "statement": "bls", "name": "BLS@RDEXPENSES",
         "timeframe": "pit",
         "repr": [
             {
@@ -1460,7 +1460,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#GOODWILL",
+        "statement": "bls", "name": "BLS@GOODWILL",
         "timeframe": "pit",
         "repr": [
             {
@@ -1474,7 +1474,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#OTHERINTANGIBLEASSETS",
+        "statement": "bls", "name": "BLS@OTHERINTANGIBLEASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1484,7 +1484,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#ADVANCESINTANGIBLEASSETS",
+        "statement": "bls", "name": "BLS@ADVANCESINTANGIBLEASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1494,7 +1494,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#TANGIBLEFIXEDASSETS",
+        "statement": "bls", "name": "BLS@TANGIBLEFIXEDASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1504,7 +1504,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#TANGIBLEFIXEDASSETSINUSE",
+        "statement": "bls", "name": "BLS@TANGIBLEFIXEDASSETSINUSE",
         "timeframe": "pit",
         "repr": [
             {
@@ -1514,7 +1514,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#TANGIBLEFIXEDASSETSUNDERCONSTRUCTION",
+        "statement": "bls", "name": "BLS@TANGIBLEFIXEDASSETSUNDERCONSTRUCTION",
         "timeframe": "pit",
         "repr": [
             {
@@ -1524,7 +1524,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#ADVANCESFORTANGIBLEFIXEDASSETS",
+        "statement": "bls", "name": "BLS@ADVANCESFORTANGIBLEFIXEDASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1534,7 +1534,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LONGTERMRECEIVABLES",
+        "statement": "bls", "name": "BLS@LONGTERMRECEIVABLES",
         "timeframe": "pit",
         "repr": [
             {
@@ -1544,7 +1544,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LONGTERMINVESTMENTS",
+        "statement": "bls", "name": "BLS@LONGTERMINVESTMENTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1554,7 +1554,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#REALPROPERTY",
+        "statement": "bls", "name": "BLS@REALPROPERTY",
         "timeframe": "pit",
         "repr": [
             {
@@ -1568,7 +1568,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LONGTERMFINANCIALASSETS",
+        "statement": "bls", "name": "BLS@LONGTERMFINANCIALASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1578,7 +1578,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#OTHERLONGTERMINVESTMENTS",
+        "statement": "bls", "name": "BLS@OTHERLONGTERMINVESTMENTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1588,7 +1588,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LONGTERMPREPAYMENTS",
+        "statement": "bls", "name": "BLS@LONGTERMPREPAYMENTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1598,7 +1598,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#FIXEDASSETS",
+        "statement": "bls", "name": "BLS@FIXEDASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1620,7 +1620,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#CURRENTASSETS",
+        "statement": "bls", "name": "BLS@CURRENTASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1642,7 +1642,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#INVENTORY",
+        "statement": "bls", "name": "BLS@INVENTORY",
         "timeframe": "pit",
         "repr": [
             {
@@ -1652,7 +1652,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#MATERIALS",
+        "statement": "bls", "name": "BLS@MATERIALS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1662,7 +1662,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SEMIFINISHEDPRODUCTS",
+        "statement": "bls", "name": "BLS@SEMIFINISHEDPRODUCTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1672,7 +1672,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#FINISHEDPRODUCTS",
+        "statement": "bls", "name": "BLS@FINISHEDPRODUCTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1682,7 +1682,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#GOODS",
+        "statement": "bls", "name": "BLS@GOODS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1692,7 +1692,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#ADVANCESFORDELIVIERIES",
+        "statement": "bls", "name": "BLS@ADVANCESFORDELIVIERIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -1702,7 +1702,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHORTTERMRECEIVABLES",
+        "statement": "bls", "name": "BLS@SHORTTERMRECEIVABLES",
         "timeframe": "pit",
         "repr": [
             {
@@ -1724,7 +1724,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHORTTERMINVESTMENTS",
+        "statement": "bls", "name": "BLS@SHORTTERMINVESTMENTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1734,7 +1734,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHORTTERMFINANCIALASSETS",
+        "statement": "bls", "name": "BLS@SHORTTERMFINANCIALASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1744,7 +1744,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#CASHINHAND",
+        "statement": "bls", "name": "BLS@CASHINHAND",
         "timeframe": "pit",
         "repr": [
             {
@@ -1762,7 +1762,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#OTHERSHORTTERMINVESTMENTS",
+        "statement": "bls", "name": "BLS@OTHERSHORTTERMINVESTMENTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1772,7 +1772,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHORTTERMPREPAYMENTS",
+        "statement": "bls", "name": "BLS@SHORTTERMPREPAYMENTS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1786,7 +1786,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#TOTALASSETS",
+        "statement": "bls", "name": "BLS@TOTALASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1800,7 +1800,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#DEFERREDTAXASSETS",
+        "statement": "bls", "name": "BLS@DEFERREDTAXASSETS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1814,7 +1814,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#EQUITY",
+        "statement": "bls", "name": "BLS@EQUITY",
         "timeframe": "pit",
         "repr": [
             {
@@ -1848,7 +1848,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#EQUITYOWNERS",
+        "statement": "bls", "name": "BLS@EQUITYOWNERS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1874,7 +1874,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#EQUITYNOTOWNERS",
+        "statement": "bls", "name": "BLS@EQUITYNOTOWNERS",
         "timeframe": "pit",
         "repr": [
             {
@@ -1900,7 +1900,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SURPLUSFROMSOLDSHARES",
+        "statement": "bls", "name": "BLS@SURPLUSFROMSOLDSHARES",
         "timeframe": "pit",
         "repr": [
             {
@@ -1922,7 +1922,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#OWNSHARES",
+        "statement": "bls", "name": "BLS@OWNSHARES",
         "timeframe": "pit",
         "repr": [
             {
@@ -1936,7 +1936,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHARECAPITAL",
+        "statement": "bls", "name": "BLS@SHARECAPITAL",
         "timeframe": "pit",
         "repr": [
             {
@@ -1962,7 +1962,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SUPPLEMENTARYCAPITAL",
+        "statement": "bls", "name": "BLS@SUPPLEMENTARYCAPITAL",
         "timeframe": "pit",
         "repr": [
             {
@@ -1980,7 +1980,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#REVALUATIONRESERVE",
+        "statement": "bls", "name": "BLS@REVALUATIONRESERVE",
         "timeframe": "pit",
         "repr": [
             {
@@ -1994,7 +1994,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#OTHERRESERVECAPITALS",
+        "statement": "bls", "name": "BLS@OTHERRESERVECAPITALS",
         "timeframe": "pit",
         "repr": [
             {
@@ -2008,7 +2008,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#RESERVECAPITALS",
+        "statement": "bls", "name": "BLS@RESERVECAPITALS",
         "timeframe": "pit",
         "repr": [
             {
@@ -2018,7 +2018,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#PREVIOUSYEARSPROFIT",
+        "statement": "bls", "name": "BLS@PREVIOUSYEARSPROFIT",
         "timeframe": "pit",
         "repr": [
             {
@@ -2028,7 +2028,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#NETPROFIT",
+        "statement": "bls", "name": "BLS@NETPROFIT",
         "timeframe": "pit",
         "repr": [
             {
@@ -2042,7 +2042,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#PREVIOUSANDCURRENTNETPROFIT",
+        "statement": "bls", "name": "BLS@PREVIOUSANDCURRENTNETPROFIT",
         "timeframe": "pit",
         "repr": [
             {
@@ -2061,7 +2061,7 @@ finrecords = [
     },
 
     {
-        "statement": "bls", "name": "BLS#WRITEOFFNETPROFIT",
+        "statement": "bls", "name": "BLS@WRITEOFFNETPROFIT",
         "timeframe": "pit",
         "repr": [
             {
@@ -2071,7 +2071,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LIABILITIESANDPROVISIONS",
+        "statement": "bls", "name": "BLS@LIABILITIESANDPROVISIONS",
         "timeframe": "pit",
         "repr": [
             {
@@ -2081,7 +2081,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#PROVISIONSFORLIABILITIES",
+        "statement": "bls", "name": "BLS@PROVISIONSFORLIABILITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2091,7 +2091,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#PROVISIONSFORTAX",
+        "statement": "bls", "name": "BLS@PROVISIONSFORTAX",
         "timeframe": "pit",
         "repr": [
             {
@@ -2101,7 +2101,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LONGTERMLIABILITIES",
+        "statement": "bls", "name": "BLS@LONGTERMLIABILITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2123,7 +2123,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#TRADELIABILITIES",
+        "statement": "bls", "name": "BLS@TRADELIABILITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2137,7 +2137,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LONGTERMCREDITSANDLOANS",
+        "statement": "bls", "name": "BLS@LONGTERMCREDITSANDLOANS",
         "timeframe": "pit",
         "repr": [
             {
@@ -2163,7 +2163,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHORTTERMCREDITSANDLOANS",
+        "statement": "bls", "name": "BLS@SHORTTERMCREDITSANDLOANS",
         "timeframe": "pit",
         "repr": [
             {
@@ -2181,7 +2181,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#DEBTSECURITIES",
+        "statement": "bls", "name": "BLS@DEBTSECURITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2191,7 +2191,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHORTTERMLIABILITIES",
+        "statement": "bls", "name": "BLS@SHORTTERMLIABILITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2209,7 +2209,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#SHORTTERMTRADELIABILITIES",
+        "statement": "bls", "name": "BLS@SHORTTERMTRADELIABILITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2223,7 +2223,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#ACCRUALS",
+        "statement": "bls", "name": "BLS@ACCRUALS",
         "timeframe": "pit",
         "repr": [
             {
@@ -2233,7 +2233,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#NEGATIVEGOODWILL",
+        "statement": "bls", "name": "BLS@NEGATIVEGOODWILL",
         "timeframe": "pit",
         "repr": [
             {
@@ -2243,7 +2243,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#TOTALLIABILITIES",
+        "statement": "bls", "name": "BLS@TOTALLIABILITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2257,7 +2257,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#LONGANDSHORTERMLIABILITIES",
+        "statement": "bls", "name": "BLS@LONGANDSHORTERMLIABILITIES",
         "timeframe": "pit",
         "repr": [
             {
@@ -2279,7 +2279,7 @@ finrecords = [
         ]
     },
     {
-        "statement": "bls", "name": "BLS#FIXEDASSETSFORSALE",
+        "statement": "bls", "name": "BLS@FIXEDASSETSFORSALE",
         "timeframe": "pit",
         "repr": [
             {

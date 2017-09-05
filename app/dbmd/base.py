@@ -6,9 +6,9 @@ from flask_admin.contrib import sqla
 from flask_admin.babel import gettext
 
 from app.models import DBRequest
-from app.rapi.util import DatetimeEncoder
+from db.serializers import DatetimeEncoder
 
-
+            
 class PermissionRequiredMixin(object):
     default_permissions = 0x00
     create_view_permissions = None

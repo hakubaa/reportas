@@ -3,7 +3,7 @@ import json
 from flask import jsonify, request, g, abort
 from flask.views import MethodView
 
-from app.rapi.util import apply_query_parameters
+from app.rapi.utils import apply_query_parameters
 from app.models import DBRequest, Permission
 from app.user import auth
 from app.user.auth import permission_required
