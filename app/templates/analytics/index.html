@@ -10,9 +10,8 @@
     <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
     <style>
         svg {
-            width: 600px;
+            width: 1024px;
             height: 480px;
-            border: 1px solid black;
         }
         #controls {
             margin-bottom: 20px;
@@ -23,11 +22,11 @@
 {% block page_body %}
 <div class="container">
     <div id="controls">
-        <select id="company" style="width: 200px;">
-            <option disabled>-- Select an option --</option>
+        <select class="chart-control" id="company" style="width: 200px;">
+            <option disabled selected>-- Select an option --</option>
         </select>
-        <select id="rtype" style="width: 200px;">
-            <option disabled>-- Select an option --</option>
+        <select class="chart-control" id="rtype" style="width: 200px;">
+            <option disabled selected>-- Select an option --</option>
         </select>
     </div>
     <div id="viz">
@@ -38,6 +37,8 @@
 
 {% block body_scripts %}
 <script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/d3.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/moment.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
@@ -51,7 +52,7 @@
         });
     }
 
-     jQuery.fn.fillSelect2WithData = function(data, attributes) {
+    jQuery.fn.fillSelect2WithData = function(data, attributes) {
         var attrs = {id: "id", label: "text"};
         $.extend(attrs, attributes);
 
@@ -66,6 +67,7 @@
             dropdownAutoWidth: true,
             placeholder: {
                 id: "none",
+                value: "-1",
                 text: "Select an option",
             },
         };
@@ -78,5 +80,158 @@
 
     $("#company").fillSelect2WithAjax("/api/companies?fields=id,name", {"label": "name"});
     $("#rtype").fillSelect2WithAjax("/api/rtypes?fields=id,name", {"label": "name"}); 
+
+
+    $(".chart-control").change(function() {
+        var company = $("#company").val();
+        var rtype = $("#rtype").val();
+        
+        if (rtype !== null && company !== null) {
+            loadData(company, rtype, refreshChart);
+        }
+    });
+
+    function loadData(company, rtype, callback) {
+        var request_url = "http://localhost:5000/api/companies/" + 
+                          company + "/records?filter=rtype_id=" + rtype;
+        $.getJSON(request_url).done(function(data) {
+            data.results.forEach(function(item) {
+                item.timestamp = moment(item.timestamp);
+            });
+            callback(data.results);
+        });
+    }
+
+    loadData(37, 69, refreshChart);
+
+    function refreshChart(data) {
+        var svg = d3.select("svg");
+        svg.selectAll("g").remove();
+        svg.selectAll("circle").remove();
+
+        var canvasSize = svg.node().getBoundingClientRect();
+        var margin = {left: 0, top: 0, right: 30, bottom: 50};
+
+        var height = canvasSize.height - margin.top - margin.bottom;
+        var width = canvasSize.width - margin.left - margin.right;
+
+        var valueExtent = d3.extent(data, function(d) { return d.value; });
+        valueExtent[0] *= valueExtent[0] < 0 ? 1.1 : 0.9;
+        valueExtent[1] *= 1.1;
+
+        var heightBase = valueExtent[0] < 0 ? 0 : valueExtent[0];
+
+        var valueScale = d3.scaleLinear().domain(valueExtent).range([height, 0]);
+        var valueAxis = d3.axisRight().scale(valueScale)
+            .tickSize(width).ticks(10);
+        svg.append("g").attr("id", "valueAxisG").call(valueAxis);
+
+        var xExtent = d3.extent(data, function(d) { return d.timestamp; });
+        xExtent[0] = moment(xExtent[0]).subtract(3, "months");
+
+        var xScale = d3.scaleTime().domain(xExtent).range([0, width]);
+
+        var xAxis = d3.axisBottom().scale(xScale)
+            .tickSize(height).ticks(d3.timeYear);
+        svg.append("g").attr("id", "xAxisG")
+            .call(xAxis);
+
+        // svg.selectAll("circle")
+        //     .data(data).enter().append("circle")
+        //     .attr("r", 5)
+        //     .attr("cx", function(d, i) { return xScale(d.timestamp); })
+        //     .attr("cy", function(d, i) { return valueScale(d.value); })
+        //     .style("fill", "grey");
+
+        var barMargin = 8;
+        var barWidth = width / data.length - barMargin;
+
+        var bars = svg.selectAll("g.record")
+            .data(data).enter().append("g")
+            .attr("class", "record")
+            .attr("transform", function(d, i) {
+                var dx = xScale(d.timestamp) - barWidth - barMargin*0.5;
+                var dy = d.value > 0 ? valueScale(d.value) : valueScale(0);
+                return "translate(" + dx + ", " + dy + ")";
+            });
+
+
+        bars.append("rect")
+            .attr("width", barWidth)
+            .attr("height", function(d, i) {
+                if (d.value > 0) { 
+                    return valueScale(heightBase) - valueScale(d.value); 
+                } else {
+                    return valueScale(d.value) - valueScale(heightBase);
+                }
+            })    
+            .style("fill", function(d, i) {
+                if (d.value > 0) {
+                    return "limegreen";
+                } else {
+                    return "red";
+                }
+            })
+            .style("opacity", 0.75)
+            .attr("stroke", "black")
+            .attr("stroke-width", 1);
+
+
+        var m2q = {
+            0: 1, 1: 1, 2: 1, 
+            3: 2, 4: 2, 5: 2,
+            6: 3, 7: 3, 8: 3,
+            9: 4, 10: 4, 11: 4
+        };
+
+        bars.append("text")
+            .style("text-anchor", "middle")
+            .attr("y", function(d, i) {
+                if (d.value > 0) {
+                    return valueScale(0) - valueScale(d.value) + 16;
+                } else {
+                    return 0 + 16;
+                }
+            })
+            .attr("x", barWidth*0.5)
+            .style("font-size", "16px")
+            .text(function(d) {
+                var month = d.timestamp.month();
+                return "Q" + m2q[month];
+            });
+
+        // svg.selectAll("rect")
+        //     .data(data).enter().append("rect")
+        //     .attr("width", barWidth)
+        //     .attr("height", function(d, i) {
+        //         if (d.value > 0) { 
+        //             return valueScale(0) - valueScale(d.value); 
+        //         } else {
+        //             return valueScale(d.value) - valueScale(0);
+        //         }
+        //     })
+        //     .attr("x", function(d, i) { return xScale(d.timestamp) - 0.5*barWidth; })
+        //     .attr("y", function(d, i) { 
+        //         if (d.value > 0) {
+        //             return valueScale(d.value); 
+        //         } else {
+        //             return valueScale(0);    
+        //         }
+        //     })
+        //     .style("fill", function(d, i) {
+        //         if (d.value > 0) {
+        //             return "green";
+        //         } else {
+        //             return "red";
+        //         }
+        //     })
+        //     .style("opacity", 0.5)
+        //     .attr("stroke", "black")
+        //     .attr("stroke-width", 1);
+
+        svg.selectAll("rect").on("click", function(data) {
+            alert(moment(data.timestamp).format("YYYY-MM-DD"));
+        });
+    }
 </script>
 {% endblock %}
