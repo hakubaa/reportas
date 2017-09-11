@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+    <head>
+        <title>chart test</title>
+        <link rel="stylesheet" href="mocha.css">
+    </head>
+
+    <body>
+        <div id="fixture"></div>
+        <div id="mocha"></div>
+
+        <script src="jquery-1.7.1.min.js"></script>
+        <script src="../../app/static/vendors/moment.min.js"></script>
+        <script src="../../app/static/vendors/select2/js/select2.full.min.js"></script>
+        <script src="../../app/static/vendors/d3.min.js"></script>
+
+        <script src="mocha.js"></script>
+        <script src="chai.js"></script>
+        <script src="sinon-1.17.6.js"></script>
+        <script>mocha.setup("bdd");</script>
+
+        <!-- load code you want to test heere -->
+        <script src="../../app/static/js/chart.js"></script>
+
+        <!-- load your test files here -->
+        <script>
+
+        var assert = chai.assert;
+        
+        describe("Testing chart.js", function() {
+
+            it("appendSeries saves data under increasing indexes", function() {
+                var chart = new Chart();
+
+                var series1 = chart.appendSeries([]);
+                var series2 = chart.appendSeries([]);
+
+                assert.equal(series1, 0);
+                assert.equal(series2, 1);
+            });      
+
+            it("appendSeries saves data under specified key", function() {
+                var chart = new Chart();
+
+                var series = chart.appendSeries({"data": [], "key": "test"});
+
+                assert.equal(series, "test");
+            });
+
+            it("getSeries returns previously append series", function() {
+                var chart = new Chart();
+                chart.appendSeries({"data": [1, 2, 3], "key": "test"});
+
+                var series = chart.getSeries("test");
+
+                assert.deepEqual(series, [1, 2, 3]);
+            });
+
+            it("x-scale covers all points in series", function() {
+                var cf = new Chart({
+                    "x-scale": d3.scaleLinear
+                });
+                cf.appendSeries({
+                    "data": [ {"x": 4, "y": 0}, {"x": 5, "y": 1}]
+                });
+                 cf.appendSeries({
+                    "data": [ {"x": -3, "y": 0}, {"x": -2, "y": 1}]
+                });
+
+                 var xScale = cf.getXScale();
+
+                 assert.deepEqual(xScale.domain(), [-3, 5]);           
+            });
+
+            it("right-scale covers all points in series", function() {
+                var cf = new Chart({
+                    "right-scale": d3.scaleLinear
+                });
+                cf.appendSeries({
+                    "data": [ {"x": 4, "y": -2}, {"x": 5, "y": 1}],
+                    "axis": "right"
+                });
+                 cf.appendSeries({
+                    "data": [ {"x": -3, "y": 0}, {"x": -2, "y": 1}]
+                });
+
+                 var rightScale = cf.getRightScale();
+
+                 assert.deepEqual(rightScale.domain(), [-2, 1]);           
+            });           
+        });
+
+        </script>
+
+        <script>
+            mocha.run();
+        </script>
+    </body>
+
+</html>

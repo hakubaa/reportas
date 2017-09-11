@@ -12,6 +12,7 @@
         svg {
             width: 1024px;
             height: 480px;
+            /*border: 1px solid black;*/
         }
         #controls {
             margin-bottom: 20px;
@@ -28,26 +29,32 @@
         <select class="chart-control" id="rtype" style="width: 200px;">
             <option disabled selected>-- Select an option --</option>
         </select>
+        <select disabled class="chart-control" id="timerange" style="width: 200px;">
+            <option value="3" >3</option>
+            <option value="6" >6</option>
+            <option value="9" >9</option>
+            <option value="12" >12</option>
+        </select>
     </div>
-    <div id="viz">
-        <svg/>
-    </svg>
+    <div>
+        <svg></svg>
+    </div>
 </div>
 {% endblock %}
 
 {% block body_scripts %}
 <script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/d3.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendors/moment.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
 <script>
     jQuery.fn.fillSelect2WithAjax = function(url, attributes) {
         var self = this;
         $.getJSON(url).done(function(data) {
             for(var i = 0; i < self.length; i++) {
-                $(self[i]).fillSelect2WithData(data, attributes);
+                $(self[i]).fillSelect2WithData(data.results, attributes);
             }
         });
     }
@@ -56,8 +63,16 @@
         var attrs = {id: "id", label: "text"};
         $.extend(attrs, attributes);
 
-        attrs.data = $.map(data.results, function(obj) {
-            return {id: obj[attrs.id], text: obj[attrs.label]};
+        if ($(this).hasClass("select2-hidden-accessible")) {
+            $(this).select2("destroy");
+        }
+
+        var select = this;
+        $.each(data, function() {
+            $(select).append(
+                $("<option/>").val(this.id).text(this.name)
+                    .attr("data-timeframe", this.timeframe)
+            );
         });
         this.applySelect2(attrs);
     }
@@ -78,160 +93,84 @@
         }
     }    
 
-    $("#company").fillSelect2WithAjax("/api/companies?fields=id,name", {"label": "name"});
-    $("#rtype").fillSelect2WithAjax("/api/rtypes?fields=id,name", {"label": "name"}); 
+    function distinct(array, key) {
+        if (key === undefined) key = function(item) { return item; };
+        var flags = [];
+        var output = [];
+        for(var i = 0; i < array.length; i++) {
+            if (flags[key(array[i])]) continue;
+            flags[key(array[i])] = true;
+            output.push(array[i]);
+        }
+        return output;
+    }
 
+    $("#timerange").select2();
+    $("#company").fillSelect2WithAjax("/api/companies?fields=id,name", {"label": "name"});
+    $("#rtype").fillSelect2WithAjax("/api/rtypes?fields=id,name,timeframe", {"label": "name"}); 
 
     $(".chart-control").change(function() {
         var company = $("#company").val();
         var rtype = $("#rtype").val();
-        
+        var timerange;
+
+        if (rtype !== null) {
+            var timeframe = $("#rtype").find(":selected").data("timeframe");
+            if (timeframe == "pot") {
+                $("#timerange").prop("disabled", false); 
+                timerange = $("#timerange").val();
+            } else {
+                $("#timerange").val("0");
+                $("#timerange").prop("disabled", true);
+                timerange = 0;
+            }
+        }
+
         if (rtype !== null && company !== null) {
-            loadData(company, rtype, refreshChart);
+            alert(timerange);
+            loadData(company, rtype, timerange, plotData);
         }
     });
 
-    function loadData(company, rtype, callback) {
+    function loadData(company, rtype, timerange, callback) {
         var request_url = "http://localhost:5000/api/companies/" + 
-                          company + "/records?filter=rtype_id=" + rtype;
+            company + "/records?filter=rtype_id=" + rtype + ";timerange=" + 
+            timerange;
+
         $.getJSON(request_url).done(function(data) {
             data.results.forEach(function(item) {
                 item.timestamp = moment(item.timestamp);
             });
-            callback(data.results);
+            callback(
+                data.results, 
+                {company: company, rtype: rtype, timerange: timerange}
+            );
         });
     }
 
-    loadData(37, 69, refreshChart);
+    // loadData(106, 94, refreshChart);
+    loadData(37, 69, 6, updateChart);
 
-    function refreshChart(data) {
-        var svg = d3.select("svg");
-        svg.selectAll("g").remove();
-        svg.selectAll("circle").remove();
-
-        var canvasSize = svg.node().getBoundingClientRect();
-        var margin = {left: 0, top: 0, right: 30, bottom: 50};
-
-        var height = canvasSize.height - margin.top - margin.bottom;
-        var width = canvasSize.width - margin.left - margin.right;
-
-        var valueExtent = d3.extent(data, function(d) { return d.value; });
-        valueExtent[0] *= valueExtent[0] < 0 ? 1.1 : 0.9;
-        valueExtent[1] *= 1.1;
-
-        var heightBase = valueExtent[0] < 0 ? 0 : valueExtent[0];
-
-        var valueScale = d3.scaleLinear().domain(valueExtent).range([height, 0]);
-        var valueAxis = d3.axisRight().scale(valueScale)
-            .tickSize(width).ticks(10);
-        svg.append("g").attr("id", "valueAxisG").call(valueAxis);
-
-        var xExtent = d3.extent(data, function(d) { return d.timestamp; });
-        xExtent[0] = moment(xExtent[0]).subtract(3, "months");
-
-        var xScale = d3.scaleTime().domain(xExtent).range([0, width]);
-
-        var xAxis = d3.axisBottom().scale(xScale)
-            .tickSize(height).ticks(d3.timeYear);
-        svg.append("g").attr("id", "xAxisG")
-            .call(xAxis);
-
-        // svg.selectAll("circle")
-        //     .data(data).enter().append("circle")
-        //     .attr("r", 5)
-        //     .attr("cx", function(d, i) { return xScale(d.timestamp); })
-        //     .attr("cy", function(d, i) { return valueScale(d.value); })
-        //     .style("fill", "grey");
-
-        var barMargin = 8;
-        var barWidth = width / data.length - barMargin;
-
-        var bars = svg.selectAll("g.record")
-            .data(data).enter().append("g")
-            .attr("class", "record")
-            .attr("transform", function(d, i) {
-                var dx = xScale(d.timestamp) - barWidth - barMargin*0.5;
-                var dy = d.value > 0 ? valueScale(d.value) : valueScale(0);
-                return "translate(" + dx + ", " + dy + ")";
-            });
-
-
-        bars.append("rect")
-            .attr("width", barWidth)
-            .attr("height", function(d, i) {
-                if (d.value > 0) { 
-                    return valueScale(heightBase) - valueScale(d.value); 
-                } else {
-                    return valueScale(d.value) - valueScale(heightBase);
-                }
-            })    
-            .style("fill", function(d, i) {
-                if (d.value > 0) {
-                    return "limegreen";
-                } else {
-                    return "red";
-                }
-            })
-            .style("opacity", 0.75)
-            .attr("stroke", "black")
-            .attr("stroke-width", 1);
-
-
-        var m2q = {
-            0: 1, 1: 1, 2: 1, 
-            3: 2, 4: 2, 5: 2,
-            6: 3, 7: 3, 8: 3,
-            9: 4, 10: 4, 11: 4
-        };
-
-        bars.append("text")
-            .style("text-anchor", "middle")
-            .attr("y", function(d, i) {
-                if (d.value > 0) {
-                    return valueScale(0) - valueScale(d.value) + 16;
-                } else {
-                    return 0 + 16;
-                }
-            })
-            .attr("x", barWidth*0.5)
-            .style("font-size", "16px")
-            .text(function(d) {
-                var month = d.timestamp.month();
-                return "Q" + m2q[month];
-            });
-
-        // svg.selectAll("rect")
-        //     .data(data).enter().append("rect")
-        //     .attr("width", barWidth)
-        //     .attr("height", function(d, i) {
-        //         if (d.value > 0) { 
-        //             return valueScale(0) - valueScale(d.value); 
-        //         } else {
-        //             return valueScale(d.value) - valueScale(0);
-        //         }
-        //     })
-        //     .attr("x", function(d, i) { return xScale(d.timestamp) - 0.5*barWidth; })
-        //     .attr("y", function(d, i) { 
-        //         if (d.value > 0) {
-        //             return valueScale(d.value); 
-        //         } else {
-        //             return valueScale(0);    
-        //         }
-        //     })
-        //     .style("fill", function(d, i) {
-        //         if (d.value > 0) {
-        //             return "green";
-        //         } else {
-        //             return "red";
-        //         }
-        //     })
-        //     .style("opacity", 0.5)
-        //     .attr("stroke", "black")
-        //     .attr("stroke-width", 1);
-
-        svg.selectAll("rect").on("click", function(data) {
-            alert(moment(data.timestamp).format("YYYY-MM-DD"));
+    // https://bl.ocks.org/mbostock/3887051
+    // https://bl.ocks.org/mbostock/2368837
+    function updateChart(data, metdata) {
+        var cf = new Chart({
+            "svg": "svg",
+            "left-scale": d3.scaleLinear,
+            "right-scale": d3.scaleLinear,
+            "x-scale": d3.scaleTime
         });
+        cf.appendSeries({
+            "data": data.map(function(item) { 
+                return {
+                    "x": item.timestamp,
+                    "y": item.value
+                };
+            })
+        });
+        cf.update();
     }
+
+
 </script>
 {% endblock %}
