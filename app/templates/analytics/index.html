@@ -36,8 +36,12 @@
             <option value="12" >12</option>
         </select>
     </div>
-    <div>
-        <svg></svg>
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">Panel Heading</div>
+        <div class="panel-body" id="chart-wrapper" data-width="200" data-height="100">
+            <!-- <canvas id="myChart" width="400" height="200"></canvas> -->
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -48,7 +52,8 @@
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/Chart.min.js') }}"></script>
+
 <script>
     jQuery.fn.fillSelect2WithAjax = function(url, attributes) {
         var self = this;
@@ -110,67 +115,121 @@
     $("#rtype").fillSelect2WithAjax("/api/rtypes?fields=id,name,timeframe", {"label": "name"}); 
 
     $(".chart-control").change(function() {
-        var company = $("#company").val();
-        var rtype = $("#rtype").val();
+        var company_id = $("#company").val();
+        var rtype_id = $("#rtype").val();
         var timerange;
 
-        if (rtype !== null) {
+        if (rtype_id !== null) {
             var timeframe = $("#rtype").find(":selected").data("timeframe");
+            var $timerange = $("#timerange");
             if (timeframe == "pot") {
-                $("#timerange").prop("disabled", false); 
-                timerange = $("#timerange").val();
+                if ($timerange.prop("disabled")) {
+                    $timerange.prop("disabled", false); 
+                    $timerange.val($timerange.children("option:first-child").val());
+                }
+                timerange = $timerange.val();
             } else {
-                $("#timerange").val("0");
-                $("#timerange").prop("disabled", true);
+                if (!$timerange.prop("disabled")) {
+                    $timerange.val("0");
+                    $timerange.prop("disabled", true);
+                }
                 timerange = 0;
             }
         }
 
-        if (rtype !== null && company !== null) {
-            alert(timerange);
-            loadData(company, rtype, timerange, plotData);
+        if (rtype_id !== null && company_id !== null) {
+            var company_name = $("#company option:selected").text();
+            var rtype_name = $("#rtype option:selected").text();
+
+            loadData({
+                company: company_id, rtype: rtype_id, 
+                timerange: timerange
+            }, updateChart, {
+                company: company_name, rtype: rtype_name,
+                timerange: timerange 
+            });
         }
     });
 
-    function loadData(company, rtype, timerange, callback) {
+    function loadData(request, callback, metadata) {
         var request_url = "http://localhost:5000/api/companies/" + 
-            company + "/records?filter=rtype_id=" + rtype + ";timerange=" + 
-            timerange;
+            request.company + "/records?filter=rtype_id=" + 
+            request.rtype + ";timerange=" + request.timerange;
 
         $.getJSON(request_url).done(function(data) {
             data.results.forEach(function(item) {
                 item.timestamp = moment(item.timestamp);
             });
-            callback(
-                data.results, 
-                {company: company, rtype: rtype, timerange: timerange}
-            );
+            callback(data.results, metadata);
         });
     }
 
-    // loadData(106, 94, refreshChart);
-    loadData(37, 69, 6, updateChart);
+    // loadData(106, 107, 0, updateChart);
+    // loadData({company: 37, rtype: 69, timerange: 3}, updateChart);
 
-    // https://bl.ocks.org/mbostock/3887051
-    // https://bl.ocks.org/mbostock/2368837
-    function updateChart(data, metdata) {
-        var cf = new Chart({
-            "svg": "svg",
-            "left-scale": d3.scaleLinear,
-            "right-scale": d3.scaleLinear,
-            "x-scale": d3.scaleTime
-        });
-        cf.appendSeries({
-            "data": data.map(function(item) { 
-                return {
-                    "x": item.timestamp,
-                    "y": item.value
-                };
-            })
-        });
-        cf.update();
+
+    function formatTimestamp(timestamp, format) {
+        if (format === undefined) format = "YYYY-MM";
+        return timestamp.format(format);
     }
 
 
+    function updateChart(data, metadata) {
+        if (data.length === 0) {
+            alert("No data");
+            return;
+        }
+
+        var $wrapper = $("#chart-wrapper");
+        $wrapper.empty();
+
+        var $canvas = $("<canvas><canvas>");
+        $canvas.prop("width", $wrapper.attr("data-width"));
+        $canvas.prop("height", $wrapper.attr("data-height"));
+        $wrapper.append($canvas);
+
+        // var ctx = document.getElementById("myChart").getContext("2d");
+        var ctx = $canvas[0].getContext("2d");
+
+        var labels = data.map(function(item) { return item.timestamp; })
+            .sort().reverse().map(function(item) { return formatTimestamp(item); });
+        var data = data.map(function(item) { 
+            return {
+                "y": item.value,
+                "x": formatTimestamp(item.timestamp)
+            }
+        });
+
+        var myChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: metadata.company + ": " + metadata.rtype,
+                    data: data,
+                    backgroundColor: data.map(function(d) {
+                        if (d.y > 0) {
+                            return "limegreen";
+                        } else {
+                            return "red";
+                        }
+                    }),
+                    borderColor: "black",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero:true
+                        }
+                    }]
+                }
+            }
+        });
+
+
+    }
 </script>
 {% endblock %}

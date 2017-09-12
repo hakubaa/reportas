@@ -11,7 +11,7 @@ function Chart(config) {
         "left-scale-reverse": true,
         "right-scale": d3.scaleLinear,
         "x-scale": d3.scaleLinear,
-        "margin": { left: 50, top: 50, right: 50, bottom: 25 }
+        "margin": { left: 100, top: 20, right: 20, bottom: 20 }
     }
     $.extend(this.config, config);
 }
@@ -40,77 +40,59 @@ Chart.prototype.getSeries = function(key) {
     return this.series[key].data;
 }
 
+function formatTimestamp(timestamp, format) {
+    if (format === undefined) format = "YYYY-MM";
+    return timestamp.format(format);
+}
+
 Chart.prototype.update = function() {
     var margin = this.config.margin;
     var g = this.svg.append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    var xScale = this.getXScale();
+    var values = this.getValues(Object.values(this.series), "x")
+        .sort().reverse().map(function(x) { return formatTimestamp(x); });
+    var xScale = d3.scaleBand().domain(values).range([0, this.width])
+        .round(0.1).paddingInner(0.05).round(true);
+
     var yScale = this.getLeftScale();
 
-    g.selectAll("circle")
-        .data(this.series["0"].data, function(d) { return d.id; })
-        .enter().append("circle")
-        .attr("r", 5)
-        .attr("cx", function(d, i) { return xScale(d.x); })
-        .attr("cy", function(d, i) { return yScale(d.y); })
-        .style("fill", "grey");
+    var xAxis = d3.axisBottom().scale(xScale)
+        .tickPadding(5);
+    
+    var rightAxis = d3.axisLeft().scale(yScale)
+        .tickSize(this.width).ticks(10).tickSize(10)
+        .tickPadding(5);
 
-    var xAxis = d3.axisBottom().scale(xScale).tickSize(this.height).ticks(d3.timeYear);
-    g.append("g").attr("id", "xAxisG").call(xAxis);
+    g.append("g")
+        .attr("id", "xAxisG")
+        .attr("transform", "translate(0," + this.height + ")")
+        .call(xAxis);
 
-    var rightAxis = d3.axisRight().scale(yScale).tickSize(this.width).ticks(10);
-    g.append("g").attr("id", "valueAxisG").call(rightAxis);
+    g.append("g")
+        .attr("id", "valueAxisG")
+        .attr("transform", "translate(0, 0)")
+        .call(rightAxis);
 
+    var baseLevel = Math.max(0, yScale.domain()[0]);
 
-        // .append("g")
-        // .selectAll("g")
-        // .data(data.series["0"].data)
-        // .enter().append("g")
-        //     .attr("transform", function(d) { 
-        //         return "translate(" + yScale(d.y) + ",0)"; 
-        //     })
-    var height = this.height;
     g.selectAll("rect")
         .data(this.series["0"].data)
         .enter().append("rect")
-            .attr("x", function(d) { return xScale(d.x); })
-            .attr("y", function(d) { return yScale(d.y); })
-            .attr("width", 10)
-            .attr("height", function(d) { return height - yScale(d.y); })
-            .attr("fill", "red");
-
-
-    var bars = svg.selectAll("g.record")
-        .data(data).enter().append("g")
-        .attr("class", "record")
-        .attr("transform", function(d, i) {
-            var dx = xScale(d.y);
-            var dy = d.x > 0 ? valueScale(d.x) : valueScale(0);
-            return "translate(" + dx + ", " + dy + ")";
-        });
-
-    bars.append("rect")
-        .attr("width", barWidth)
-        .attr("height", function(d, i) {
-            if (d.value > 0) { 
-                return valueScale(heightBase) - valueScale(d.value); 
-            } else {
-                return valueScale(d.value) - valueScale(heightBase);
-            }
-        })    
-        .style("fill", function(d, i) {
-            if (d.value > 0) {
-                return "limegreen";
-            } else {
-                return "red";
-            }
-        })
-        .style("opacity", 0.75)
-        .attr("stroke", "black")
-        .attr("stroke-width", 1);
-
+            .attr("x", function(d) { return xScale(formatTimestamp(d.x)); })
+            .attr("y", function(d) { return yScale(Math.max(baseLevel, d.y)); })
+            .attr("width", xScale.bandwidth())
+            .attr("height", function(d) { return Math.abs(yScale(baseLevel) - yScale(d.y)); })
+            .attr("fill", function(d) {
+                if (d.y < baseLevel) {
+                    return "red";
+                } else {
+                    return "limegreen";
+                }
+            })
+            .attr("opacity", 0.5);
 }
+
 
 Chart.prototype.getLeftScale = function() {
     var values = this.getValues(
@@ -118,8 +100,12 @@ Chart.prototype.getLeftScale = function() {
             return series.axis == "left";
         }), "y"
     );
-    var extent = d3.extent(values);
-    var scale = this.config["left-scale"]().domain(extent);
+    var maxValue = d3.max(values);
+    var minValue = d3.min(values);
+    if (minValue > 0) {
+        minValue = 0;
+    }
+    var scale = this.config["left-scale"]().domain([minValue, maxValue]);
     if (this.config["left-scale-reverse"]) {
         scale.range([this.height, 0]);
     } else {
