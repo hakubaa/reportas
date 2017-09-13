@@ -14,13 +14,13 @@ class ViewUtilMixin(object):
     schema = None
     schema_post = None
 
-    def get_schema(self):
+    def get_schema(self, *args, **kwargs):
         if request.method in ("GET", "HEAD"):
             fields = request.values.get("fields", None)
             if fields: fields = "".join(fields.split()).split(",")
             schema = self.schema(only=fields)
         else:
-            schema = (self.schema_post or self.schema)()
+            schema = (self.schema_post or self.schema)(*args, **kwargs)
         return schema
 
     def modify_data(self, data):

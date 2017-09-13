@@ -12,7 +12,7 @@ from app import db
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
     FinancialStatementType, FinancialStatementSchema, RTypeFSchemaAssoc,
-    FinancialStatementSchemaRepr
+    FinancialStatementSchemaRepr, FinancialStatementSchema
 )
 from db.core import Model, VersionedModel
 import db.utils as utils
@@ -61,7 +61,7 @@ def create_record(**kwargs):
     return record
 
 
-def create_rtypes(ftype, timeframe="pot"):
+def create_rtypes(ftype=None, timeframe="pot"):
     if not ftype:
         ftype = create_ftype(name="bls")
     total_assets = RecordType(
@@ -77,6 +77,17 @@ def create_rtypes(ftype, timeframe="pot"):
     db.session.commit()    
     return total_assets, current_assets, fixed_assets
 
+
+def create_records(data):
+    records = list()
+    for item in data:
+        records.append(
+            create_record(
+                company=item[0], rtype=item[1], timerange=item[2], 
+                timestamp=item[3], value=item[4]
+            )
+        )
+    return records
 
 def create_db_formula(left, right):
     formula = RecordFormula(rtype=left)
@@ -576,7 +587,7 @@ class SyntheticReccordsTest(AppTestCase):
         # self.assertEqual(call_2nd_args[2], (fy_1, fy_2))
         # self.assertCountEqual(call_2nd_args[3], (records[1],))     
         
-    def test_get_records_for_company_within_fiscal_year(self):
+    def test_get_data_for_company_within_fiscal_year(self):
         company1 = create_company()
         company2 = create_company()
         ftype = create_ftype(name="ics")
@@ -591,7 +602,7 @@ class SyntheticReccordsTest(AppTestCase):
         fiscal_year = utils.FiscalYear(
             start=date(2015, 1, 1), end=date(2015, 12, 31)
         )
-        records_ = Record.get_records_for_company_within_fiscal_year(
+        records_ = Record.get_data_for_company_within_fiscal_year(
             db.session, company1, fiscal_year
         )
 
@@ -847,3 +858,66 @@ class FinancialStatementTest(DbTestCase):
 
         self.assertEqual(fs_repr.lang, "EN")
         self.assertEqual(fs_repr.value, "Balance Sheet")
+
+
+class FinancialSchemaTest(AppTestCase):
+
+    def test_for_retrieving_records_in_accordance_with_schema(self):
+        company = create_company(name="Test", isin="#TEST")
+        company_fake = create_company(name="Fake", isin="#FAKSE")
+        ta, ca, fa = create_rtypes()
+        records = create_records([
+            (company, ta, 0, date(2015, 12, 31), 100),
+            (company, fa, 0, date(2015, 12, 31), 50),
+            (company_fake, fa, 0, date(2014, 12, 31), 100),
+            (company_fake, ca, 0, date(2014, 12, 31), 50)
+        ])  
+        db.session.add_all(records)
+        schema = FinancialStatementSchema()
+        schema.append_rtype(fa, 0)
+        schema.append_rtype(ca, 1)
+        schema.append_rtype(ta, 2)
+        db.session.add(schema)
+        db.session.commit()
+
+        data = schema.get_data(company=company, timerange=0)
+
+        exp_data = [
+            {
+                "timestamp": date(2015, 12, 31),
+                "data": [
+                    {"position": 0, "record": records[1], "rtype": fa},
+                    {"position": 2, "record": records[0], "rtype": ta},
+                    {"position": 1, "record": None, "rtype": ca}
+                ]
+            }
+        ]
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["timestamp"], date(2015, 12, 31))
+        self.assertEqual(len(data[0]["data"]), 3)
+
+        data_pos1 = next(item for item in data[0]["data"] if item["position"] == 0)
+        self.assertEqual(data_pos1["record"].value, records[1].value)
+
+        data_pos2 = next(item for item in data[0]["data"] if item["position"] == 1)
+        self.assertEqual(data_pos2["record"], None)
+
+        data_pos3 = next(item for item in data[0]["data"] if item["position"] == 2)
+        self.assertEqual(data_pos3["record"].value, records[0].value)
+
+    def test_get_data_returns_empty_list_when_no_records(self):
+        company = create_company(name="Test", isin="#TEST")
+        db.session.add(company)
+        ta, ca, fa = create_rtypes()
+        schema = FinancialStatementSchema()
+        schema.append_rtype(fa, 0)
+        schema.append_rtype(ca, 1)
+        schema.append_rtype(ta, 2)
+        db.session.add(schema)
+        db.session.commit()
+
+        data = schema.get_data(company=company, timerange=0)
+
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 0)

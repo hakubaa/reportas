@@ -3,6 +3,7 @@ import datetime
 import collections
 from datetime import date, timedelta
 from functools import reduce
+import itertools
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, Float,
@@ -615,9 +616,9 @@ class FinancialStatementSchema(Model):
         {
             "ftype": "bls",
             "rtypes": [ 
-                "BLS#FIXEDASSETS", "BLS#CURRENTASSETS", "BLS#TOTALASSETS",
-                "BLS#EQUITY", "BLS#LONGANDSHORTERMLIABILITIES", 
-                "BLS#TOTALLIABILITIES"
+                "BLS@FIXEDASSETS", "BLS@CURRENTASSETS", "BLS@TOTALASSETS",
+                "BLS@EQUITY", "BLS@LONGANDSHORTERMLIABILITIES", 
+                "BLS@TOTALLIABILITIES"
             ],
             "reprs": [
                 {"lang": "PL", "value": "Uproszczony bilans", "default": False},
@@ -651,6 +652,55 @@ class FinancialStatementSchema(Model):
             {"rtype": assoc.rtype, "position": assoc.position}
             for assoc in self.rtypes
         ]
+
+    def get_data(self, company, timerange, session=None, record_schema=None):
+        dump_record = lambda record: record
+        if record_schema:
+            dump_record = lambda record: record_schema.dump(record).data
+
+        records = self.get_records(company, timerange, session)
+        return self._dump_records(records, dump_record)
+
+    def get_records(self, company, timerange, session=None):
+        session = session or inspect(self).session
+        rtypes_ids = [ item["rtype"].id for item in self.get_rtypes() ]
+        records = session.query(Record).filter(
+            Record.company == company,
+            Record.rtype_id.in_(rtypes_ids),
+            Record.timerange == timerange
+        ).all()
+        return records
+
+    def _dump_records(self, records, dump_record):
+        rtypes = self.get_rtypes()
+        grouped_records = itertools.groupby(records, key=lambda x: x.timestamp)
+        output = [
+            {
+                "timestamp": timestamp,
+                "data": [
+                    { 
+                        "record": dump_record(record) if record else None, 
+                        "position": posrtype["position"],
+                        "rtype": posrtype["rtype"].name,
+                        "rtype_id": posrtype["rtype"].id
+                    }
+                    for record, posrtype in self._zip_by_keys(
+                        records, rtypes, key1=lambda x: x.rtype, 
+                        key2=lambda x: x["rtype"]
+                    )
+                ]
+            }
+            for timestamp, records in grouped_records
+        ]
+        return output 
+
+    def _zip_by_keys(self, it1, it2, key1, key2):
+        dict1 = { key1(item): item for item in it1 }
+        dict2 = { key2(item): item for item in it2 }
+        return (
+            (dict1.get(key, None), dict2.get(key, None))
+            for key in set(itertools.chain(dict1, dict2))
+        )
 
     @property
     def default_repr(self):

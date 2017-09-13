@@ -567,6 +567,12 @@ class RTypeFSchemaAssocSchema(ModelSchema):
         return True
 
 
+class FinancialStatementSchemaRepr(ModelSchema):
+    class Meta:
+        model = models.FinancialStatementSchemaRepr
+        fields = ("id", "lang", "value", "default")
+
+
 @records_factory.register_schema() 
 class FinancialStatementSchema(ModelSchema):
     class Meta:
@@ -576,6 +582,7 @@ class FinancialStatementSchema(ModelSchema):
         RTypeFSchemaAssocSchema, many=True,
         only=("position", "rtype", "calculable", "rtype_id"), 
     )
+    reprs = fields.Nested(FinancialStatementSchemaRepr, many=True)
 
 
 class FinancialStatementSchemaSimple(ModelSchema):

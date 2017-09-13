@@ -330,6 +330,63 @@ class ReportRecordDetailView(DetailView):
         return data
 
 
+class FSchemaListView(ListView):
+    model = models.FinancialStatementSchema
+    schema = serializers.FinancialStatementSchemaSimple
+
+
+class FSchemaDetailView(DetailView):
+    model = models.FinancialStatementSchema
+    schema = serializers.FinancialStatementSchema
+
+
+class FSchemaRecordsView(ListView):
+    model = None
+    schema = serializers.RecordSchema
+
+    def get_fschema(self, id):
+        fschema = db.session.query(models.FinancialStatementSchema).get(id)
+        if not fschema:
+            abort(404)
+        return fschema
+
+    def get_formated_data(self, fschema, company, timerange):
+        return fschema.get_data(
+            company, timerange, db.session,
+            self.get_schema(
+                only=("id", "value", "timestamp", "timerange", "company_id")
+            )
+        )
+
+    def get_records(self, fschema, company, timerange):
+        records = fschema.get_records(company, timerange, db.session)
+        return self.get_schema(only=(
+            "id", "rtype", "rtype_id", "value", "timestamp", 
+            "timerange", "company_id")
+        ).dump(records, many=True).data
+
+    def get_data(self, fschema, company, timerange, format_data):
+        if format_data in ("T", "TRUE", "Y", "YES"):
+            data_method = self.get_formated_data
+        else:
+            data_method = self.get_records
+        return data_method(fschema, company, timerange)
+
+    @auth.login_required
+    @permission_required(Permission.BROWSE_DATA)
+    def get(self, id):
+        fschema = self.get_fschema(id)
+        company_id = request.args.get("company", None)
+        timerange = request.args.get("timerange", 0)
+        format_data = request.args.get("format", "F").upper()
+
+        if company_id is None:
+            abort(400)
+        company = db.session.query(models.Company).get(company_id)
+
+        data = self.get_data(fschema, company, timerange, format_data)
+        return jsonify({"results": data, "count": len(data)}), 200
+
 
 @rapi.route("/")
 @auth.login_required
@@ -339,7 +396,8 @@ def root():
         "companies": url_for("rapi.company_list"),
         "reports": url_for("rapi.report_list"),
         "records": url_for("rapi.record_list"),
-        "rtypes": url_for("rapi.rtype_list")
+        "rtypes": url_for("rapi.rtype_list"),
+        "fschemas": url_for("rapi.fschema_list")
     })
 
 rapi.add_url_rule(
@@ -423,6 +481,12 @@ rapi.add_url_rule("/records", view_func=RecordListView.as_view("record_list"))
 rapi.add_url_rule("/records/<int:id>", 
                   view_func=RecordDetailView.as_view("record_detail"))
 
+
+rapi.add_url_rule("/fschemas", view_func=FSchemaListView.as_view("fschema_list"))
+rapi.add_url_rule("/fschemas/<int:id>", 
+                  view_func=FSchemaDetailView.as_view("fschema_detail"))
+rapi.add_url_rule("/fschemas/<int:id>/records", methods=["GET"],
+                  view_func=FSchemaRecordsView.as_view("fschema_records"))
 
 # @rapi.after_request
 # def after_request(response):
