@@ -1,3 +1,4 @@
+import itertools
 import json
 import os
 
@@ -344,6 +345,10 @@ class FSchemaRecordsView(ListView):
     model = None
     schema = serializers.RecordSchema
 
+    def get_schema(self, *args, **kwargs):
+        schema = self.schema(*args, **kwargs)
+        return schema
+
     def get_fschema(self, id):
         fschema = db.session.query(models.FinancialStatementSchema).get(id)
         if not fschema:
@@ -351,21 +356,35 @@ class FSchemaRecordsView(ListView):
         return fschema
 
     def get_formated_data(self, fschema, company, timerange):
-        return fschema.get_data(
-            company, timerange, db.session,
-            self.get_schema(
-                only=("id", "value", "timestamp", "timerange", "company_id")
+        records = fschema.get_records(company, timerange, db.session)
+        return {
+            "company": serializers.CompanySimpleSchema().dump(company).data,
+            "timerange": timerange,
+            "count": len(records),
+            "schema": [
+                {  
+                    "position": item["position"],
+                    "rtype": serializers.RecordTypeSchema(only=("id", "name")).\
+                                 dump(item["rtype"]).data
+                }
+                for item in fschema.get_rtypes()
+            ],
+            "data": self._dump_records(
+                fschema, records, self.get_schema(only=("id", "value"))
             )
-        )
+        }
 
     def get_records(self, fschema, company, timerange):
         records = fschema.get_records(company, timerange, db.session)
-        return self.get_schema(only=(
-            "id", "rtype", "rtype_id", "value", "timestamp", 
-            "timerange", "company_id")
-        ).dump(records, many=True).data
+        return {
+            "count": len(records),
+            "records": self.get_schema(only=(
+                "id", "rtype", "rtype_id", "value", "timestamp", 
+                "timerange", "company_id")
+            ).dump(records, many=True).data
+        }
 
-    def get_data(self, fschema, company, timerange, format_data):
+    def create_response_body(self, fschema, company, timerange, format_data):
         if format_data in ("T", "TRUE", "Y", "YES"):
             data_method = self.get_formated_data
         else:
@@ -384,8 +403,43 @@ class FSchemaRecordsView(ListView):
             abort(400)
         company = db.session.query(models.Company).get(company_id)
 
-        data = self.get_data(fschema, company, timerange, format_data)
-        return jsonify({"results": data, "count": len(data)}), 200
+        return jsonify(self.create_response_body(
+            fschema, company, timerange, format_data
+        )), 200
+
+    def _dump_records(self, fschema, records, record_schema):
+        rtypes = fschema.get_rtypes()
+        record_key = lambda x: x.timestamp
+        grouped_records = itertools.groupby(
+            sorted(records, key=record_key), key=record_key
+        )
+        output = [
+            {
+                "timestamp": timestamp,
+                "records": [
+                    { 
+                        "record": record_schema.dump(record).data if record else None, 
+                        "position": posrtype["position"],
+                        # "rtype": posrtype["rtype"].name,
+                        # "rtype_id": posrtype["rtype"].id
+                    }
+                    for record, posrtype in self._zip_by_keys(
+                        records, rtypes, key1=lambda x: x.rtype, 
+                        key2=lambda x: x["rtype"]
+                    )
+                ]
+            }
+            for timestamp, records in grouped_records
+        ]
+        return output 
+
+    def _zip_by_keys(self, it1, it2, key1, key2):
+        dict1 = { key1(item): item for item in it1 }
+        dict2 = { key2(item): item for item in it2 }
+        return (
+            (dict1.get(key, None), dict2.get(key, None))
+            for key in set(itertools.chain(dict1, dict2))
+        )
 
 
 @rapi.route("/")

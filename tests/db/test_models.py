@@ -880,33 +880,12 @@ class FinancialSchemaTest(AppTestCase):
         db.session.add(schema)
         db.session.commit()
 
-        data = schema.get_data(company=company, timerange=0)
+        data = schema.get_records(company=company, timerange=0)
 
-        exp_data = [
-            {
-                "timestamp": date(2015, 12, 31),
-                "data": [
-                    {"position": 0, "record": records[1], "rtype": fa},
-                    {"position": 2, "record": records[0], "rtype": ta},
-                    {"position": 1, "record": None, "rtype": ca}
-                ]
-            }
-        ]
+        self.assertCountEqual(data, records[:2])
 
-        self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]["timestamp"], date(2015, 12, 31))
-        self.assertEqual(len(data[0]["data"]), 3)
 
-        data_pos1 = next(item for item in data[0]["data"] if item["position"] == 0)
-        self.assertEqual(data_pos1["record"].value, records[1].value)
-
-        data_pos2 = next(item for item in data[0]["data"] if item["position"] == 1)
-        self.assertEqual(data_pos2["record"], None)
-
-        data_pos3 = next(item for item in data[0]["data"] if item["position"] == 2)
-        self.assertEqual(data_pos3["record"].value, records[0].value)
-
-    def test_get_data_returns_empty_list_when_no_records(self):
+    def test_get_records_returns_empty_list_when_no_records(self):
         company = create_company(name="Test", isin="#TEST")
         db.session.add(company)
         ta, ca, fa = create_rtypes()
@@ -917,7 +896,7 @@ class FinancialSchemaTest(AppTestCase):
         db.session.add(schema)
         db.session.commit()
 
-        data = schema.get_data(company=company, timerange=0)
+        data = schema.get_records(company=company, timerange=0)
 
         self.assertIsInstance(data, list)
         self.assertEqual(len(data), 0)

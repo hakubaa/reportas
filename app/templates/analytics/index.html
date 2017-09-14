@@ -9,14 +9,20 @@
     <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
     <style>
-        svg {
-            width: 1024px;
-            height: 480px;
-            /*border: 1px solid black;*/
-        }
         #controls {
             margin-bottom: 20px;
         }
+
+    .table-responsive {
+        width: 100%;
+        margin-bottom: 15px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        -ms-overflow-style: -ms-autohiding-scrollbar;
+        border: 1px solid #DDD;
+    }
+
     </style>
 {% endblock %}
 
@@ -29,18 +35,25 @@
         <select class="chart-control" id="rtype" style="width: 200px;">
             <option disabled selected>-- Select an option --</option>
         </select>
-        <select disabled class="chart-control" id="timerange" style="width: 200px;">
-            <option value="3" >3</option>
-            <option value="6" >6</option>
-            <option value="9" >9</option>
-            <option value="12" >12</option>
+        <select class="chart-control" id="timerange" style="width: 200px;">
+            <option value="0">0</option>
+            <option value="3">3</option>
+            <option value="6">6</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
         </select>
     </div>
 
-    <div class="panel panel-primary">
-        <div class="panel-heading">Panel Heading</div>
-        <div class="panel-body" id="chart-wrapper" data-width="200" data-height="100">
-            <!-- <canvas id="myChart" width="400" height="200"></canvas> -->
+    <div id="fintable-wrapper" class="table-responsive"></div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Panel Heading</div>
+                <div class="panel-body" id="chart-wrapper" data-width="50" data-height="25">
+                    <!-- <canvas id="myChart" width="400" height="200"></canvas> -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -53,7 +66,7 @@
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/Chart.min.js') }}"></script>
-
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
 <script>
     jQuery.fn.fillSelect2WithAjax = function(url, attributes) {
         var self = this;
@@ -117,25 +130,25 @@
     $(".chart-control").change(function() {
         var company_id = $("#company").val();
         var rtype_id = $("#rtype").val();
-        var timerange;
 
-        if (rtype_id !== null) {
-            var timeframe = $("#rtype").find(":selected").data("timeframe");
-            var $timerange = $("#timerange");
-            if (timeframe == "pot") {
-                if ($timerange.prop("disabled")) {
-                    $timerange.prop("disabled", false); 
-                    $timerange.val($timerange.children("option:first-child").val());
-                }
-                timerange = $timerange.val();
-            } else {
-                if (!$timerange.prop("disabled")) {
-                    $timerange.val("0");
-                    $timerange.prop("disabled", true);
-                }
-                timerange = 0;
-            }
-        }
+        // if (rtype_id !== null) {
+        //     var timeframe = $("#rtype").find(":selected").data("timeframe");
+        //     var $timerange = $("#timerange");
+        //     if (timeframe == "pot") {
+        //         if ($timerange.prop("disabled")) {
+        //             $timerange.prop("disabled", false); 
+        //             $timerange.val($timerange.children("option:first-child").val());
+        //         }
+                
+        //     } else {
+        //         if (!$timerange.prop("disabled")) {
+        //             $timerange.val("0");
+        //             $timerange.prop("disabled", true);
+        //         }
+        //     }
+        // }
+
+        var timerange = $("#timerange").val();
 
         if (rtype_id !== null && company_id !== null) {
             var company_name = $("#company option:selected").text();
@@ -149,7 +162,21 @@
                 timerange: timerange 
             });
         }
+
+        if (company_id !== null) {
+            loadSchema({
+                fschema: 4, company: company_id, timerange: timerange
+            }, function(data) {
+                var $table = createTable(data, {
+                    "class": "table table-striped table-bordered table-hover"
+                });
+                $("#fintable-wrapper").empty();
+                $("#fintable-wrapper").append($table);
+            });
+        }
+
     });
+
 
     function loadData(request, callback, metadata) {
         var request_url = "http://localhost:5000/api/companies/" + 
@@ -163,6 +190,15 @@
             callback(data.results, metadata);
         });
     }
+
+    // loadSchema({
+    //     fschema: 4, company: 37, timerange: 0
+    // }, function(data) {
+    //     var $table = createTable(data, {
+    //         "class": "table table-striped table-bordered table-hover"
+    //     });
+    //     $("#fintable-wrapper").append($table);
+    // });
 
     // loadData(106, 107, 0, updateChart);
     // loadData({company: 37, rtype: 69, timerange: 3}, updateChart);
@@ -188,17 +224,19 @@
         $canvas.prop("height", $wrapper.attr("data-height"));
         $wrapper.append($canvas);
 
-        // var ctx = document.getElementById("myChart").getContext("2d");
         var ctx = $canvas[0].getContext("2d");
 
         var labels = data.map(function(item) { return item.timestamp; })
             .sort().reverse().map(function(item) { return formatTimestamp(item); });
-        var data = data.map(function(item) { 
-            return {
-                "y": item.value,
-                "x": formatTimestamp(item.timestamp)
-            }
-        });
+        var data = data.sort(function(x, y) {
+                return moment(x.timestamp) - moment(y.timestamp);
+            })
+            .map(function(item) { 
+                return {
+                    "y": item.value,
+                    "x": formatTimestamp(item.timestamp)
+                }
+            });
 
         var myChart = new Chart(ctx, {
             type: "bar",

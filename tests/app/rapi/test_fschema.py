@@ -97,12 +97,28 @@ class TestRecordsView(AppTestCase):
             },
         )
 
-        data = response.json["results"]
+        data = response.json["records"]
         self.assertEqual(len(data), 2)
 
         rtypes = [ item["rtype"] for item in data ]
         self.assertCountEqual(rtypes, ["TOTAL_ASSETS", "FIXED_ASSETS"])
 
+    @create_and_login_user()
+    def test_get_request_returns_formatted_data(self):
+        schema = create_schema_with_records()
+
+        response = self.client.get(
+            url_for("rapi.fschema_records", id=schema.id),
+            query_string={
+                "company": db.session.query(Company).first().id,
+                "timerange": 0, "format": "T"
+            },
+        )
+
+        self.assertIn("company", response.json)
+        self.assertIn("timerange", response.json)
+
+        self.assertEqual(response.json["count"], 2)
 
     @create_and_login_user()
     def test_get_request_raises_400_when_no_company(self):

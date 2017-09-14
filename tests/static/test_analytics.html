@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+    <head>
+        <title>rtab test</title>
+        <link rel="stylesheet" href="mocha.css">
+    </head>
+
+    <body>
+        <div id="fixture"></div>
+        <div id="mocha"></div>
+
+        <script src="jquery-1.7.1.min.js"></script>
+        <script src="../../app/static/vendors/moment.min.js"></script>
+        <script src="../../app/static/vendors/select2/js/select2.full.min.js"></script>
+        <script src="mocha.js"></script>
+        <script src="chai.js"></script>
+        <script src="sinon-1.17.6.js"></script>
+        <script>mocha.setup("bdd");</script>
+
+        <!-- load code you want to test heere -->
+        <script src="../../app/static/js/analytics.js"></script>
+
+        <!-- load your test files here -->
+        <script>
+
+        var assert = chai.assert;
+
+        describe("Testing Loading Data - Schema", function() {
+
+            describe("Sending Requests", function() {
+                var xhr = null;
+                var requests = null;
+
+                beforeEach(function() {
+                    xhr = sinon.useFakeXMLHttpRequest();
+                    requests = [];
+                    xhr.onCreate = function(xhr) {
+                        requests.push(xhr);
+                    };
+                });
+
+                afterEach(function() {
+                    xhr.restore();
+                });
+
+                it("test for sending request to server", function() {
+                    loadSchema({
+                        fschema: 4, company: 37, timerange: 0
+                    });
+                    assert.equal(requests.length, 1);
+                });
+
+                it("test for raising exception when no full request", function() {
+                    chai.expect(function(){
+                        loadSchema({});
+                    }).to.throw();
+                });
+
+            });
+
+            describe("Handling Responses", function() {
+
+                var server = null;
+
+                beforeEach(function () {
+                    server = sinon.fakeServer.create();
+                });
+
+                afterEach(function () {
+                    server.restore();
+                });
+
+                it("test for calling callback", function() {
+                    var spy = sinon.spy();
+                    loadSchema({fschema: 4, company: 37, timerange: 0}, spy);
+
+                    server.requests[0].respond(
+                        200,
+                        { "Content-Type": "application/json" },
+                        JSON.stringify({ count: 0, results: [1, 2, 3]})
+                    );
+      
+                    assert.isTrue(spy.called);
+                });
+
+                it("test for passing results to callback", function() {
+                    var spy = sinon.spy();
+                    loadSchema({fschema: 4, company: 37, timerange: 0}, spy);
+
+                    server.requests[0].respond(
+                        200,
+                        { "Content-Type": "application/json" },
+                        JSON.stringify([1, 2, 3])
+                    );
+      
+                    assert.isTrue(spy.calledWith([1, 2, 3]));
+                });
+
+            });
+
+        });
+
+        describe("Creating Table with Financial Records", function() {
+            var data = {
+                timerange: 0,
+                company: {
+                    "id": 1,
+                    "name": "JAGO"
+                },
+                schema: [
+                    {
+                        "position": 1,
+                        "rtype": {
+                            "id": 2,
+                            "name": "BLS@EQUITY"
+                        }
+                    },
+                    {
+                        "position": 0,
+                        "rtype": {
+                            "id": 1,
+                            "name": "BLS@TOTALLIABILITIES"
+                        }
+                    }
+                ],
+                data: [
+                    {
+                        "timestamp": "Sat, 31 Dec 2016 00:00:00 GMT",
+                        "records": [
+                            {
+                                "position": 0,
+                                "record": null
+                            },
+                            {
+                                "position": 1,
+                                "record": {
+                                    "id": 5,
+                                    "value": 100
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "timestamp": "Wed, 31 Dec 2014 00:00:00 GMT",
+                        "records": [
+                            {
+                                "position": 1,
+                                "record": {
+                                    "id": 12,
+                                    "value": 150
+                                }
+                            },
+                            {
+                                "position": 0,
+                                "record": {
+                                    "id": 32,
+                                    "value": 150
+                                }
+                            }
+                        ]
+                    },                
+                ]
+            };
+
+            before(function() {
+                this.$fixture = $("#fixture");
+            });
+
+            afterEach(function() {
+                this.$fixture.empty();
+            });
+
+            it("create table", function() {
+                this.$fixture.append(createTable(data));
+                assert.equal(this.$fixture.find("table").length, 1);
+            });
+
+            it("create table with proper number of columns", function() {
+                this.$fixture.append(createTable(data));
+                assert.equal(this.$fixture.find("table thead th").length, 3);
+            });
+
+            it("create table with proper number of rows", function() {
+                this.$fixture.append(createTable(data));
+                assert.equal(this.$fixture.find("table tbody tr").length, 2);
+            });
+
+            it("rows in table are order in accordance with schema", function() {
+                this.$fixture.append(createTable(data));
+                var rows = this.$fixture.find("table tbody tr");
+                assert.equal($(rows[0]).attr("data-rtype"), "BLS@TOTALLIABILITIES");
+                assert.equal($(rows[1]).attr("data-rtype"), "BLS@EQUITY");
+            });
+
+            it("created rows have proper number of cells", function() {
+                this.$fixture.append(createTable(data));
+                var rows = this.$fixture.find("table tbody tr");
+
+                assert.equal($(rows[0]).find("td").length, 3);
+                assert.equal($(rows[1]).find("td").length, 3);
+            });
+
+            it("records are properly positioned inside table", function() {
+                this.$fixture.append(createTable(data));
+                var rows = this.$fixture.find("table tbody tr");
+
+                assert.equal($($(rows[0]).find("td")[1]).attr("data-id"), 32);
+                assert.equal($($(rows[0]).find("td")[2]).attr("data-id"), undefined);
+                assert.equal($($(rows[1]).find("td")[1]).attr("data-id"), 12);
+                assert.equal($($(rows[1]).find("td")[2]).attr("data-id"), 5);
+            });
+        });
+
+        </script>
+
+        <script>
+            mocha.run();
+        </script>
+    </body>
+
+</html>

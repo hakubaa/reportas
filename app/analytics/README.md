@@ -11,3 +11,5 @@ analytics-0.2.0:
   record type are selected in table)
 - user can remove selected records from bar chart
 - user can switch view from rtype-time to time-rtype
+- show empty columns and empty bars in chart
+- fix labels on chart
