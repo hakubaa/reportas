@@ -1,12 +1,14 @@
 import itertools
-from datetime import datetime
+from datetime import datetime, date
 from collections import UserDict
 import unittest
 import operator
 
 from tests.db import DbTestCase
+from tests.db.utils import *
 
 import db.tools as tools
+import db.utils as utils
 import db.models as models
 
 
@@ -129,3 +131,65 @@ class CompaniesReprsTest(DbTestCase):
 		self.assertIn("test", voc)
 		self.assertIn("create", voc)
 		self.assertIn("vocabulary", voc)
+
+
+class MissingRecordsTest(DbTestCase):
+
+    def test_create_missing_records(self):
+        company = create_company(self.db.session, name="Test", isin="#TEST")
+        ta, ca, fa = create_rtypes(self.db.session)
+        self.db.session.add_all(create_records(self.db.session, [
+            (company, ta, 0, date(2015, 12, 31), 100),
+            (company, fa, 0, date(2017, 12, 31), 50)
+        ]))
+        schema = FinancialStatementSchema()
+        schema.append_rtype(fa, 0)
+        schema.append_rtype(ca, 1)
+        schema.append_rtype(ta, 2)
+        self.db.session.add(schema)
+        self.db.session.commit()
+
+        records = schema.get_records(company=company, timerange=0)
+        records.extend(tools.create_missing_records(records, company, 12))
+
+        self.assertEqual(len(records), 6)
+
+        records = utils.group_objects(records, key=lambda x: x.rtype)
+        records = sorted(records[ta], key=lambda x: x.timestamp)
+        self.assertEqual(records[0].timestamp, date(2015, 12, 31))
+        self.assertEqual(records[1].timestamp, date(2016, 12, 31))
+        self.assertEqual(records[2].timestamp, date(2017, 12, 31))
+
+    def test_end_of_month_test01(self):
+        ref_date = date(2015, 3, 15)
+        
+        eom_date = utils.end_of_month(ref_date)        
+        
+        self.assertEqual(eom_date, date(2015, 3, 31))
+
+    def test_end_of_month_plus_new_months(self):
+        ref_date = date(2015, 3, 15)
+
+        eom_date = utils.end_of_month(ref_date, 5)
+
+        self.assertEqual(eom_date, date(2015, 8, 31))
+
+    def test_datesrange_test01(self):
+        start_date = date(2015, 3, 31)
+        end_date = date(2015, 12, 31)
+
+        dates = list(utils.datesrange(start_date, end_date, 3))
+
+        self.assertEqual(len(dates), 4)
+        self.assertCountEqual(dates, [date(2015, 3, 31), date(2015, 6, 30), 
+            date(2015, 9, 30), date(2015, 12, 31)])
+
+    def test_daterange_test02(self):
+        start_date = date(2014, 9, 30)
+        end_date = date(2015, 3, 31)
+
+        dates = list(utils.datesrange(start_date, end_date, 3))
+
+        self.assertEqual(len(dates), 3)
+        self.assertCountEqual(dates, [date(2014, 9, 30), date(2014, 12, 31), 
+            date(2015, 3, 31)])

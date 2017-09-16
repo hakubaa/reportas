@@ -19,6 +19,7 @@ from app.user.auth import permission_required
 import db.models as models
 from app.rapi import serializers
 from app.rapi.base import DetailView, ListView
+from db import tools
 
 
 class ReportListView(ListView):
@@ -356,7 +357,10 @@ class FSchemaRecordsView(ListView):
         return fschema
 
     def get_formated_data(self, fschema, company, timerange):
-        records = fschema.get_records(company, timerange, db.session)
+        records = fschema.get_records(company, timerange, session=db.session)
+        records.extend(
+            tools.create_missing_records(records, company, int(timerange))
+        )
         return {
             "company": serializers.CompanySimpleSchema().dump(company).data,
             "timerange": timerange,
@@ -375,7 +379,10 @@ class FSchemaRecordsView(ListView):
         }
 
     def get_records(self, fschema, company, timerange):
-        records = fschema.get_records(company, timerange, db.session)
+        records = fschema.get_records(company, timerange, session=db.session)
+        records.extend(
+            tools.create_missing_records(records, company, int(timerange))
+        )
         return {
             "count": len(records),
             "records": self.get_schema(only=(
@@ -424,8 +431,8 @@ class FSchemaRecordsView(ListView):
                         # "rtype_id": posrtype["rtype"].id
                     }
                     for record, posrtype in self._zip_by_keys(
-                        records, rtypes, key1=lambda x: x.rtype, 
-                        key2=lambda x: x["rtype"]
+                        records, rtypes, key1=lambda x: x.rtype_id, 
+                        key2=lambda x: x["rtype"].id
                     )
                 ]
             }

@@ -3,6 +3,7 @@ import datetime
 import collections
 from datetime import date, timedelta
 from functools import reduce
+import itertools
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, Float,
@@ -652,9 +653,14 @@ class FinancialStatementSchema(Model):
             for assoc in self.rtypes
         ]
 
-    def get_records(self, company, timerange, session=None):
+    def get_records(self, company, timerange, *, session=None):
         session = session or inspect(self).session
         rtypes_ids = [ item["rtype"].id for item in self.get_rtypes() ]
+        if not any( # adjust timerange when all records are point-in-time
+            item for item in self.get_rtypes() 
+                 if item["rtype"].timeframe == "pot"
+        ):
+            timerange = 0
         records = session.query(Record).filter(
             Record.company == company,
             Record.rtype_id.in_(rtypes_ids),

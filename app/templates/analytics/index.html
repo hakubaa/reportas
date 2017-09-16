@@ -36,10 +36,8 @@
             <option disabled selected>-- Select an option --</option>
         </select>
         <select class="chart-control" id="timerange" style="width: 200px;">
-            <option value="0">0</option>
             <option value="3">3</option>
             <option value="6">6</option>
-            <option value="9">9</option>
             <option value="12">12</option>
         </select>
     </div>
@@ -191,16 +189,17 @@
         });
     }
 
-    // loadSchema({
-    //     fschema: 4, company: 37, timerange: 0
-    // }, function(data) {
-    //     var $table = createTable(data, {
-    //         "class": "table table-striped table-bordered table-hover"
-    //     });
-    //     $("#fintable-wrapper").append($table);
-    // });
+    loadSchema({
+        fschema: 4, company: 37, timerange: 0
+    }, function(data) {
+        var $table = createTable(data, {
+            "class": "table table-striped table-bordered table-hover"
+        });
+        $("#fintable-wrapper").append($table);
+    });
 
     // loadData(106, 107, 0, updateChart);
+    loadData({company: 37, rtype: 93, timerange: 0}, updateChart);
     // loadData({company: 37, rtype: 69, timerange: 3}, updateChart);
 
 
@@ -238,12 +237,16 @@
                 }
             });
 
+        var label = "";
+        if (metadata !== undefined) {
+            label = metadata.company + ": " + metadata.rtype;
+        }
         var myChart = new Chart(ctx, {
             type: "bar",
             data: {
                 labels: labels,
                 datasets: [{
-                    label: metadata.company + ": " + metadata.rtype,
+                    label: label,
                     data: data,
                     backgroundColor: data.map(function(d) {
                         if (d.y > 0) {

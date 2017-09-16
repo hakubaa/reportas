@@ -13,3 +13,7 @@ analytics-0.2.0:
 - user can switch view from rtype-time to time-rtype
 - show empty columns and empty bars in chart
 - fix labels on chart
+
+- think about moving timeframe 'rtype' to financial statement type which is used
+  by schemas also and create property inside recordtype with the same name and
+  add this to FinancialStatementSchema

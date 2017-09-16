@@ -12,6 +12,7 @@ from db.models import (
     Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr, Sector,
     FinancialStatementType
 )
+import db.utils as utils
 from rparser.nlp import find_ngrams
 import rparser.utils as putil
 
@@ -130,3 +131,31 @@ def create_vocabulary(session, min_len=2, remove_non_alphabetic=True,
         voc.update(text.split(" "))
 
     return voc
+
+
+def create_missing_records(records, company, fillrange):
+    if not records: 
+        return []
+
+    min_date = min(record.timestamp for record in records)
+    max_date = max(record.timestamp for record in records)
+    if min_date == max_date: 
+        return []
+
+    if fillrange < 1: fillrange = 3
+    dates = list(utils.datesrange(min_date, max_date, fillrange))
+    records_by_rtype = utils.group_objects(records, key=lambda x: x.rtype_id)
+
+    new_records = list()
+    for rtype_id, records in records_by_rtype.items():
+        records_timestamps = [record.timestamp for record in records]
+        new_timestamps = set(dates) - set(records_timestamps)
+        new_records.extend(
+            Record(
+                value=None, rtype_id=rtype_id, company_id=company.id, 
+                timerange=fillrange, timestamp=timestamp
+            )
+            for timestamp in new_timestamps
+        )
+
+    return new_records
