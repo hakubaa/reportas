@@ -589,7 +589,7 @@ class FormulaComponent(VersionedModel):
     rtype = relationship(
         "RecordType",
         backref=backref(
-            "formula_components", lazy="noload", cascade="all, delete-orphan"
+            "formula_components", lazy="joined", cascade="all, delete-orphan"
         )
     )
     

@@ -404,7 +404,6 @@ class RecordSchema(ModelSchema):
         records will have set timerange to zero (0).
         """
 
-
         pit_record = self.session.query(models.RecordType.id)\
             .join(models.FinancialStatement)\
             .filter(

@@ -264,38 +264,20 @@ class RecordTypeView(DBRequestBasedView):
     can_view_details = False
 
     column_searchable_list = ["name"]
-    column_filters = (
-        "ftype.name",
-        FilterEqual(
-            models.RecordType.timeframe, "Time Frame", 
-            options=(("pit", "Point-in-time"), ("pot", "Period-of-time"))
-        )
-    )
-    column_list = ("name", "timeframe", "ftype", "default_repr")
+    column_filters = ("ftype.name",)
+    column_list = ("name", "ftype", "default_repr")
     column_labels = {
         "ftype": "Financial Statement", 
         "ftype.name": "Financial Statement",
-        "default_repr": "Default Repr.",
-        "timeframe": "Time Frame"
+        "default_repr": "Default Repr."
     }
     column_formatters = {
-        "default_repr": get_default_repr,
-        "timeframe": lambda v, c, m, n: dict(
-                            pit= "Point-in-time", pot="Period-of-time"
-                        )[m.timeframe]
+        "default_repr": get_default_repr
     }
 
     form_excluded_columns = ("version", "records", "formulas", "revformulas",  
                              "fschemas", "formula_components")
-    form_overrides = dict(timeframe=SelectField)
-    form_args = dict(
-        timeframe=dict(
-            choices=[
-                ("pit", "Point-in-time"),
-                ("pot", "Period-of-time")
-            ]
-        )
-    )
+
 
     def modify_data(self, data):
         if "ftype" in data:
@@ -318,11 +300,35 @@ class FinancialStatementView(DBRequestBasedView):
     can_view_details = False
 
     column_searchable_list = ["name"]
-    column_list = ("name", "default_repr")
-    column_formatters = dict(default_repr=get_default_repr)
-    column_labels = dict(default_repr="Default Repr.")
-    form_excluded_columns = ("version", "records", "rtypes", "fstatements")
+    column_list = ("name", "timeframe", "default_repr")
+    column_labels = dict(default_repr="Default Repr.", timeframe="Time Frame")
+    column_formatters = {
+        "timeframe": lambda v, c, m, n:  \
+            "PIT - Point-in-time" if m.timeframe else "POT - Period-of-time",
+        "default_repr": get_default_repr
+    }
+    column_filters = (
+        FilterEqual(
+            models.FinancialStatement.timeframe, "Time Frame", 
+            options=(("1", "Point-in-time"), ("0", "Period-of-time"))
+        ),
+    )
 
+    form_excluded_columns = ("version", "records", "rtypes", "fstatements")
+    form_overrides=dict(timeframe=SelectField)
+    form_args = dict(
+        timeframe=dict(
+            choices=[
+                ("1", "PIT - Point-in-time"),
+                ("0", "POT - Period-of-time")
+            ]
+        )
+    )
+    form_widget_args = {
+        "timeframe": {
+            "data-role": "select2"
+        }
+    }
 
 class ReportView(DBRequestBasedView):
     inline_models = [
@@ -450,9 +456,7 @@ class DBRequestView(PermissionRequiredMixin, sqla.ModelView):
 
         synthetic_records = list()
         if len(new_records) > 0:
-            synthetic_records = models.Record.create_synthetic_records(
-                db.session, new_records
-            )
+            synthetic_records = models.Record.create_synthetic_records(db.session, new_records)
         db.session.commit()
 
         msg = "%d of %d requests have been successfuly executed."
