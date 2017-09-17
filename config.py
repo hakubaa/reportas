@@ -59,4 +59,4 @@ config = {
     # "production": ProductionConfig
 }
 
-#export DATABASE_URL="postgresql:///reportas
+#export DATABASE_URL_TEST="postgresql:///reportas_test

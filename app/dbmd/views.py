@@ -304,10 +304,10 @@ class RecordTypeView(DBRequestBasedView):
         return data
 
 
-class FinancialStatementTypeView(DBRequestBasedView):
+class FinancialStatementView(DBRequestBasedView):
     inline_models = [
         (
-            models.FinancialStatementTypeRepr,
+            models.FinancialStatementRepr,
             dict(
                 form_columns=["value", "id", "default", "lang"], 
                 form_label="Representation"

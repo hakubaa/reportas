@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 from db.models import (
     Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr, Sector,
-    FinancialStatementType
+    FinancialStatement
 )
 import db.utils as utils
 from rparser.nlp import find_ngrams
@@ -42,7 +42,7 @@ def upload_companies(session, data):
                 setattr(instance, key, value)               
 
 
-def upload_records_spec(session, spec, default_timeframe="pit"):
+def upload_records_spec(session, spec):
     '''
     Create RecordType & RecordTypeRepr records in db in accordance with 
     specification.
@@ -53,12 +53,9 @@ def upload_records_spec(session, spec, default_timeframe="pit"):
         spec = [spec]
 
     for record_spec in spec:
-        ftype = session.query(FinancialStatementType).\
+        ftype = session.query(FinancialStatement).\
                     filter_by(name=record_spec["statement"]).one()
-        rtype = RecordType(
-            name=record_spec["name"], ftype=ftype,
-            timeframe=record_spec.get("timeframe", default_timeframe)
-        )
+        rtype = RecordType(name=record_spec["name"], ftype=ftype)
         session.add(rtype)
         for repr_spec in record_spec.get("repr", list()):
             repr_spec["rtype"] = rtype

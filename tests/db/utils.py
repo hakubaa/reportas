@@ -1,19 +1,19 @@
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatementType, FinancialStatementSchema, RTypeFSchemaAssoc,
-    FinancialStatementSchemaRepr, FinancialStatementSchema
+    FinancialStatement, FinancialStatementLayout, RTypeFSchemaAssoc,
+    FinancialStatementLayoutRepr
 )
 
 
-def create_ftype(session, name="bls"):
-    ftype = FinancialStatementType(name=name)
+def create_ftype(session, name="bls", timeframe=FinancialStatement.POT):
+    ftype = FinancialStatement(name=name, timeframe=timeframe)
     session.add(ftype)
     session.commit()
     return ftype
 
 
-def create_rtype(session, ftype, name="TOTAL_ASSETS", timeframe="pot"):
-    total_assets = RecordType(name=name, ftype=ftype, timeframe=timeframe)
+def create_rtype(session, ftype, name="TOTAL_ASSETS"):
+    total_assets = RecordType(name=name, ftype=ftype)
     session.add(total_assets)
     session.commit()    
     return total_assets
@@ -46,18 +46,16 @@ def create_record(session, **kwargs):
     return record
 
 
-def create_rtypes(session, ftype=None, timeframe="pot"):
+def create_rtypes(session, ftype=None):
     if not ftype:
-        ftype = create_ftype(session, name="bls")
-    total_assets = RecordType(
-        name="TOTAL_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    current_assets = RecordType(
-        name="CURRENT_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    fixed_assets = RecordType(
-        name="FIXED_ASSETS", ftype=ftype, timeframe=timeframe
-    )
+        ftype = session.query(FinancialStatement).filter_by(name="bls").first()
+        if not ftype:
+            ftype = create_ftype(
+                session, name="bls", timeframe=FinancialStatement.POT
+            )
+    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
+    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
+    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
     session.add_all((total_assets, current_assets, fixed_assets))
     session.commit()    
     return total_assets, current_assets, fixed_assets

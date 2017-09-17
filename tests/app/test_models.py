@@ -9,7 +9,7 @@ from marshmallow_sqlalchemy import field_for, ModelSchema
 from marshmallow import fields
 
 from app.models import User, Role, Permission, AnonymousUser, DBRequest
-from tests.app import AppTestCase
+from tests.app import AppTestCase, NoAutoflushMeta
 from app import db, ma
 
 from db import records_factory
@@ -289,7 +289,7 @@ class DBRequestTest(AppTestCase):
         user = self.create_user()
         main_request, subrequest = create_related_requests(db.session, user)
         
-        main_request.execute(user, records_factory)    
+        main_request.execute(user, records_factory) 
         
         student = db.session.query(Student).one()
         account = db.session.query(Account).one()
