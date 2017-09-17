@@ -12,10 +12,10 @@ from app import db
 from app.models import File, User, DBRequest
 from app.dbmd.tools import forms
 from db import models
-from app.rapi.util import DatetimeEncoder
+from db.serializers import DatetimeEncoder
 
 from tests.app import AppTestCase, create_and_login_user
-from tests.app.dbmd.tools.utils import (
+from tests.app.utils import (
     create_company, create_ftype, create_fschema, create_rtype
 )
 

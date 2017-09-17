@@ -5,7 +5,7 @@ from app.dbmd.tools.forms import (
 # from app import db
 
 from tests.app import AppTestCase, create_and_login_user
-from tests.app.dbmd.tools.utils import (
+from tests.app.utils import (
     create_company, create_ftype, create_fschema
 )
 

@@ -1,20 +1,20 @@
 from app import db
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatementType, FinancialStatementSchema, RTypeFSchemaAssoc,
-    FinancialStatementSchemaRepr, FinancialStatementSchema
+    FinancialStatement, FinancialStatementLayout, RTypeFSchemaAssoc,
+    FinancialStatementLayoutRepr
 )
 
 
-def create_ftype(name="bls"):
-    ftype = FinancialStatementType(name=name)
+def create_ftype(name="bls", timeframe=FinancialStatement.POT):
+    ftype = FinancialStatement(name=name, timeframe=timeframe)
     db.session.add(ftype)
     db.session.commit()
     return ftype
 
 
-def create_rtype(ftype, name="TOTAL_ASSETS", timeframe="pot"):
-    total_assets = RecordType(name=name, ftype=ftype, timeframe=timeframe)
+def create_rtype(ftype, name="TOTAL_ASSETS"):
+    total_assets = RecordType(name=name, ftype=ftype)
     db.session.add(total_assets)
     db.session.commit()    
     return total_assets
@@ -47,18 +47,12 @@ def create_record(**kwargs):
     return record
 
 
-def create_rtypes(ftype=None, timeframe="pot"):
+def create_rtypes(ftype=None, timeframe=FinancialStatement.POT):
     if not ftype:
-        ftype = create_ftype(name="bls")
-    total_assets = RecordType(
-        name="TOTAL_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    current_assets = RecordType(
-        name="CURRENT_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    fixed_assets = RecordType(
-        name="FIXED_ASSETS", ftype=ftype, timeframe=timeframe
-    )
+        ftype = create_ftype(name="bls", timeframe=timeframe)
+    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
+    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
+    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
     db.session.add_all((total_assets, current_assets, fixed_assets))
     db.session.commit()    
     return total_assets, current_assets, fixed_assets
@@ -82,3 +76,18 @@ def create_db_formula(left, right):
         formula.add_component(rtype=item[1], sign=item[0])
     db.session.commit()
     return formula
+
+
+def create_company(name="TEST", isin="#TEST"):
+    company = Company(name=name, isin=isin)
+    db.session.add(company)
+    db.session.commit()
+    return company
+
+def create_fschema(ftype, **kwargs):
+    fs = FinancialStatementLayout(ftype=ftype)
+    kwargs.update(dict(default=1))
+    fs.reprs.append(FinancialStatementLayoutRepr(**kwargs))
+    db.session.add(fs)
+    db.session.commit()
+    return fs

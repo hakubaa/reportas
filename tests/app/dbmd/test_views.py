@@ -15,6 +15,7 @@ from flask_login import current_user
 from werkzeug.datastructures import MultiDict
 
 from tests.app import AppTestCase, create_and_login_user
+from tests.app.utils import *
 
 from app import db
 from db.core import Model
@@ -68,29 +69,6 @@ def create_user(name="Test", email="test@test.test", password="test"):
     db.session.add(user)
     db.session.commit()
     return user
-
-def create_company(name="TEST", isin="#TEST"):
-    company = models.Company(name=name, isin=isin)
-    db.session.add(company)
-    db.session.commit()
-    return company
-
-def create_ftype(name="ics"):
-    ftype = models.FinancialStatementType(name=name)
-    db.session.add(ftype)
-    db.session.commit()
-    return ftype
-
-def create_rtype(name="TEST", ftype=None, timeframe="pot"):
-    if not ftype:
-        ftype = db.session.query(models.FinancialStatementType).one()
-    rtype = models.RecordType(name=name, ftype=ftype, timeframe=timeframe)
-    rtype.reprs.append(
-        models.RecordTypeRepr(value="TEST REPR", lang="PL")
-    )
-    db.session.add(rtype)
-    db.session.commit()
-    return rtype
 
 #-------------------------------------------------------------------------------
 
@@ -377,7 +355,9 @@ class CreateRecordTypeViewTest(AppTestCase):
         self.assertInContent(response, "TEST NAME")
 
     def test_ftype_is_transformed_to_ftype_id(self):
-        ftype = models.FinancialStatementType(name="bls")
+        ftype = models.FinancialStatement(
+            name="bls", timeframe=models.FinancialStatement.POT
+        )
         db.session.add(ftype)
         db.session.commit()
 
@@ -730,7 +710,8 @@ class DBRequestViewTest(AppTestCase):
         self.assertTrue(csr_mock.called)
         
         record = db.session.query(models.Record).one()
-        self.assertEqual(csr_mock.call_args[0], (db.session, [record]))
+        self.assertEqual(csr_mock.call_args[0][0], db.session)
+        self.assertEqual(csr_mock.call_args[0][1][0].rtype_id, record.rtype_id)
 
 
     @create_and_login_user(role_name="Moderator", pass_user=True)

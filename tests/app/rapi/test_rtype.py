@@ -8,15 +8,15 @@ from app.rapi import api
 from db.serializers import DatetimeEncoder
 from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
-    FinancialStatementType
+    FinancialStatement
 )
 from app.models import Permission, Role, User, DBRequest
 
 from tests.app import AppTestCase, create_and_login_user
 
 
-def create_ftype(name="bls"):
-    return FinancialStatementType.create(db.session, name=name)
+def create_ftype(name="bls", timeframe=FinancialStatement.POT):
+    return FinancialStatement.create(db.session, name=name, timeframe=timeframe)
 
 
 class TestRecordTypeList(AppTestCase):

@@ -10,8 +10,10 @@ from app.rapi.serializers import *
 import db.models as models
 
 
-def create_ftype(name="bls"):
-    return models.FinancialStatementType.create(db.session, name=name)
+def create_ftype(name="bls", timeframe=models.FinancialStatement.PIT):
+    return models.FinancialStatement.create(
+        db.session, name=name, timeframe=timeframe
+    )
 
 
 class CompanySchemaTest(AppTestCase):
