@@ -11,7 +11,7 @@ import db.models as models
 
 
 def create_ftype(name="bls"):
-    return models.FinancialStatementType.create(db.session, name=name)
+    return models.FinancialStatement.create(db.session, name=name)
 
 
 class CompanySchemaTest(AppTestCase):
@@ -44,7 +44,10 @@ class CompanySimpleSchemaTest(AppTestCase):
 class RecordTypeSimpleSchemaTest(AppTestCase):
 
     def test_deserialized_data_contains_uri_to_full_version(self):
-        rtype = models.RecordType(name="TEST", ftype=create_ftype("bls"))
+        rtype = models.RecordType(
+            name="TEST", ftype=create_ftype("bls"),
+            timeframe=models.RecordType.PIT
+        )
         db.session.add(rtype)
         db.session.commit()
         data = RecordTypeSimpleSchema().dump(rtype).data
@@ -57,7 +60,10 @@ class RecordSchemaTest(AppTestCase):
 
     def test_deserialized_data_contains_hyperlinks(self):
         company = models.Company(name="TEST", isin="TEST")
-        rtype = models.RecordType(name="TEST", ftype=create_ftype("bls"))
+        rtype = models.RecordType(
+            name="TEST", ftype=create_ftype("bls"),
+            timeframe=models.RecordType.PIT
+        )
         report = models.Report(
             timerange=12, timestamp=datetime(2012, 12, 31), company=company
         )

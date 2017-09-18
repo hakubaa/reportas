@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 from db.models import (
     Report, RecordType, RecordTypeRepr, Record, Company, CompanyRepr, Sector,
-    FinancialStatementType
+    FinancialStatement
 )
 import db.utils as utils
 from rparser.nlp import find_ngrams
@@ -52,12 +52,16 @@ def upload_records_spec(session, spec, default_timeframe="pit"):
     except TypeError:
         spec = [spec]
 
+    timeframe_mapper = {
+        "pit": RecordType.PIT, "pot": RecordType.POT
+    }
+
     for record_spec in spec:
-        ftype = session.query(FinancialStatementType).\
+        ftype = session.query(FinancialStatement).\
                     filter_by(name=record_spec["statement"]).one()
         rtype = RecordType(
             name=record_spec["name"], ftype=ftype,
-            timeframe=record_spec.get("timeframe", default_timeframe)
+            timeframe=timeframe_mapper[record_spec.get("timeframe", default_timeframe)]
         )
         session.add(rtype)
         for repr_spec in record_spec.get("repr", list()):

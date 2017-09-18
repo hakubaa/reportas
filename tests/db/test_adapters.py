@@ -2,7 +2,7 @@ from datetime import date
 
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatementType
+    FinancialStatement
 )
 from db.adapters.rparser import (
     convert_db_formula, convert_db_record, DictRecordsDataset,
@@ -28,13 +28,13 @@ def create_db_formula(session, left, right):
 
 
 def create_ftype(session, name="bls"):
-    fst = FinancialStatementType(name=name)
+    fst = FinancialStatement(name=name)
     session.add(fst)
     session.commit()
     return fst
 
 
-def create_rtypes(session, ftype=None, timeframe="pot"):
+def create_rtypes(session, ftype=None, timeframe=RecordType.POT):
     if not ftype:
         ftype = create_ftype(session)
     total_assets = RecordType(
@@ -76,7 +76,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(formula.rhs[1].spec, fa)
 
     def test_convert_db_record(self):
-        ta, ca, fa = create_rtypes(self.db.session, timeframe="pot") 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe=RecordType.POT) 
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         record_db = Record(
             company=company, rtype=ta, value=100, timerange=6,
@@ -91,7 +91,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(record.value, 100)
 
     def test_create_dataset_from_records(self):
-        ta, ca, fa = create_rtypes(self.db.session, timeframe="pot") 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe=RecordType.POT) 
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         r1 = Record(company=company, rtype=ta, value=100, timerange=6,
                     timestamp=date(2016, 6, 30))
@@ -116,7 +116,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(dataset[index]["value"], 60)
         
     def test_convert_rparser_record_into_db_record(self):
-        ta, ca, fa = create_rtypes(self.db.session, timeframe="pot") 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe=RecordType.POT) 
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         
         record = rparser.Record(
@@ -165,7 +165,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(timestamp_range.end, date(2015, 6, 30))  
         
     def test_create_synthetic_records(self):
-        ta, ca, fa = create_rtypes(self.db.session, timeframe="pit") 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe=RecordType.PIT) 
         db_formula = create_db_formula(self.db.session, ta, ((1, ca), (1, fa)))
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         record_fa = Record(

@@ -7,7 +7,7 @@ from app import db
 from app.rapi import api
 from db.serializers import DatetimeEncoder
 import db.models as models
-from db.models import Company, RecordType, Record, FinancialStatementType
+from db.models import Company, RecordType, Record, FinancialStatement
 from app.models import Permission, Role, User, DBRequest
 
 from tests.app import AppTestCase, create_and_login_user
@@ -16,9 +16,10 @@ from tests.app import AppTestCase, create_and_login_user
 
 def generate_data(name="TEST"):
     company = Company.create(db.session, name=name, isin="#"+name)
-    ftype = FinancialStatementType.get_or_create(db.session, name="bls")
+    ftype = FinancialStatement.get_or_create(db.session, name="bls")
     rtype = RecordType.get_or_create(
-        db.session, {"ftype": ftype}, name="NET_PROFIT"
+        db.session, {"ftype": ftype, "timeframe": RecordType.POT}, 
+        name="NET_PROFIT"
     )
     rec1 = Record.create(
         db.session, value=10, timerange=3, timestamp=datetime(2015, 3, 31),

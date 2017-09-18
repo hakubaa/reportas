@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, backref
 
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatementType
+    FinancialStatement
 )
 from db.core import Model, VersionedModel
 import db.utils as utils
@@ -21,7 +21,7 @@ from tests.db import DbTestCase
 #-------------------------------------------------------------------------------
 
 def create_ftype(session, name="bls"):
-    fst = FinancialStatementType(name=name)
+    fst = FinancialStatement(name=name)
     session.add(fst)
     session.commit()
     return fst

@@ -8,7 +8,7 @@ from app.rapi import api
 from db.serializers import DatetimeEncoder
 from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
-    FinancialStatementType
+    FinancialStatement
 )
 from app.models import Permission, Role, User, DBRequest
 
@@ -16,15 +16,21 @@ from tests.app import AppTestCase, create_and_login_user
 
 
 def create_ftype(name="bls"):
-    return FinancialStatementType.create(db.session, name=name)
+    return FinancialStatement.create(db.session, name=name)
 
 
 class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_list_of_records_types(self):
-        RecordType.create(db.session, name="TEST1", ftype=create_ftype("ics"))
-        RecordType.create(db.session, name="TEST2", ftype=create_ftype("bls"))
+        RecordType.create(
+            db.session, name="TEST1", ftype=create_ftype("ics"),
+            timeframe=RecordType.PIT
+        )
+        RecordType.create(
+            db.session, name="TEST2", ftype=create_ftype("bls"),
+            timeframe=RecordType.PIT
+        )
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_list"))
         data = response.json["results"]
@@ -32,8 +38,10 @@ class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_proper_data(self):
-        rtype = RecordType.create(db.session, name="TEST1", 
-                                  ftype=create_ftype("ics"))
+        rtype = RecordType.create(
+            db.session, name="TEST1", ftype=create_ftype("ics"),
+            timeframe=RecordType.PIT
+        )
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_list"))
         data = response.json["results"][0]
@@ -42,8 +50,10 @@ class TestRecordTypeList(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_hyperlinks_to_detail_view(self):
-        rtype = RecordType.create(db.session, name="TEST1", 
-                                  ftype=create_ftype("ics"))
+        rtype = RecordType.create(
+            db.session, name="TEST1", ftype=create_ftype("ics"),
+            timeframe=RecordType.PIT
+        )
         RecordTypeRepr.create(db.session, value="TEST Repr", lang="PL", 
                               rtype=rtype)
         db.session.commit()
@@ -115,8 +125,10 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user()
     def test_get_request_returns_recordtype_data(self):
-        rtype = RecordType.create(db.session, name="TEST1", 
-                                  ftype=create_ftype("ics"))
+        rtype = RecordType.create(
+            db.session, name="TEST1", ftype=create_ftype("ics"),
+            timeframe=RecordType.PIT
+        )
         db.session.commit()
         response = self.client.get(url_for("rapi.rtype_detail", id=rtype.id))
         data = response.json
@@ -130,8 +142,10 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_delete_request_creates_dbrequest(self, user):
-        rtype = RecordType.create(db.session, name="TEST1", 
-                                  ftype=create_ftype("ics"))
+        rtype = RecordType.create(
+            db.session, name="TEST1", ftype=create_ftype("ics"),
+            timeframe=RecordType.PIT
+        )
         db.session.commit() 
         response = self.client.delete(url_for("rapi.rtype_detail", id=rtype.id))
         self.assertEqual(db.session.query(DBRequest).count(), 1)
@@ -143,8 +157,10 @@ class TestRecordTypeAPI(AppTestCase):
 
     @create_and_login_user(pass_user=True)
     def test_put_request_creates_dbrequest(self, user):
-        rtype = RecordType.create(db.session, name="TEST1", 
-                                  ftype=create_ftype("bls"))
+        rtype = RecordType.create(
+            db.session, name="TEST1", ftype=create_ftype("bls"),
+            timeframe=RecordType.PIT
+        )
         db.session.commit()
         response = self.client.put(
             url_for("rapi.rtype_detail", id=rtype.id), 

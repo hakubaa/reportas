@@ -17,7 +17,7 @@ class UploadingSpecTest(DbTestCase):
 
 	def setUp(self):
 		super().setUp()
-		models.FinancialStatementType.insert_defaults(self.db.session)
+		models.FinancialStatement.insert_defaults(self.db.session)
 
 	def test_for_creating_records_types(self):
 		testspec = [ 
@@ -75,7 +75,7 @@ class UploadingSpecTest(DbTestCase):
 			} 
 		]
 		tools.upload_records_spec(self.db.session, testspec)
-		ftype = self.db.session.query(models.FinancialStatementType).\
+		ftype = self.db.session.query(models.FinancialStatement).\
 		            filter_by(name="cfs").one()	
 		spec = tools.get_records_reprs(self.db.session, ftype=ftype)
 		self.assertEqual(len(spec), 1)
@@ -86,7 +86,7 @@ class CompaniesReprsTest(DbTestCase):
 
 	def setUp(self):
 		super().setUp()
-		models.FinancialStatementType.insert_defaults(self.db.session)
+		models.FinancialStatement.insert_defaults(self.db.session)
 		
 	def test_get_companies_reprs_returns_isins_and_fullnames(self):
 		company = models.Company.get_or_create(
@@ -137,25 +137,25 @@ class MissingRecordsTest(DbTestCase):
 
     def test_create_missing_records(self):
         company = create_company(self.db.session, name="Test", isin="#TEST")
-        ta, ca, fa = create_rtypes(self.db.session)
+        ta, ca, fa = create_rtypes(self.db.session, timeframe=models.RecordType.PIT)
         self.db.session.add_all(create_records(self.db.session, [
             (company, ta, 0, date(2015, 12, 31), 100),
             (company, fa, 0, date(2017, 12, 31), 50)
         ]))
-        schema = FinancialStatementSchema()
+        schema = FinancialStatementLayout()
         schema.append_rtype(fa, 0)
         schema.append_rtype(ca, 1)
         schema.append_rtype(ta, 2)
         self.db.session.add(schema)
         self.db.session.commit()
 
-        records = schema.get_records(company=company, timerange=0)
+        records = schema.get_records(company=company, timerange=12)
         records.extend(tools.create_missing_records(records, company, 12))
 
         self.assertEqual(len(records), 6)
 
-        records = utils.group_objects(records, key=lambda x: x.rtype)
-        records = sorted(records[ta], key=lambda x: x.timestamp)
+        records = utils.group_objects(records, key=lambda x: x.rtype_id)
+        records = sorted(records[ta.id], key=lambda x: x.timestamp)
         self.assertEqual(records[0].timestamp, date(2015, 12, 31))
         self.assertEqual(records[1].timestamp, date(2016, 12, 31))
         self.assertEqual(records[2].timestamp, date(2017, 12, 31))

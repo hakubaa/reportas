@@ -268,7 +268,10 @@ class RecordTypeView(DBRequestBasedView):
         "ftype.name",
         FilterEqual(
             models.RecordType.timeframe, "Time Frame", 
-            options=(("pit", "Point-in-time"), ("pot", "Period-of-time"))
+            options=(
+                (str(models.RecordType.PIT), "PIT - Point-in-time"), 
+                (str(models.RecordType.POT), "POT - Period-of-time")
+            )
         )
     )
     column_list = ("name", "timeframe", "ftype", "default_repr")
@@ -280,9 +283,10 @@ class RecordTypeView(DBRequestBasedView):
     }
     column_formatters = {
         "default_repr": get_default_repr,
-        "timeframe": lambda v, c, m, n: dict(
-                            pit= "Point-in-time", pot="Period-of-time"
-                        )[m.timeframe]
+        "timeframe": lambda v, c, m, n: {
+            models.RecordType.PIT: "PIT - Point-in-time", 
+            models.RecordType.POT: "POT - Period-of-time"
+        }[m.timeframe]
     }
 
     form_excluded_columns = ("version", "records", "formulas", "revformulas",  
@@ -291,8 +295,8 @@ class RecordTypeView(DBRequestBasedView):
     form_args = dict(
         timeframe=dict(
             choices=[
-                ("pit", "Point-in-time"),
-                ("pot", "Period-of-time")
+                (str(models.RecordType.PIT), "PIT - Point-in-time"), 
+                (str(models.RecordType.POT), "POT - Period-of-time")
             ]
         )
     )
@@ -304,10 +308,10 @@ class RecordTypeView(DBRequestBasedView):
         return data
 
 
-class FinancialStatementTypeView(DBRequestBasedView):
+class FinancialStatementView(DBRequestBasedView):
     inline_models = [
         (
-            models.FinancialStatementTypeRepr,
+            models.FinancialStatementRepr,
             dict(
                 form_columns=["value", "id", "default", "lang"], 
                 form_label="Representation"

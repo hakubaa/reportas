@@ -8,7 +8,7 @@ from app.rapi import api
 from db.serializers import DatetimeEncoder
 from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
-    FinancialStatementType
+    FinancialStatement
 )
 from app.models import Permission, Role, User, DBRequest
 
@@ -16,8 +16,10 @@ from tests.app import AppTestCase, create_and_login_user
 
 
 def create_rtype_with_reprs(n=2, name="TEST"):
-    ftype = FinancialStatementType.get_or_create(db.session, name="nls")
-    rtype = RecordType.create(db.session, name=name, ftype=ftype)
+    ftype = FinancialStatement.get_or_create(db.session, name="ics")
+    rtype = RecordType.create(
+        db.session, name=name, ftype=ftype, timeframe=RecordType.POT
+    )
     for i in range(n):
         rtype.reprs.append(
             RecordTypeRepr.create(

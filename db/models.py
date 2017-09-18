@@ -4,13 +4,14 @@ import collections
 from datetime import date, timedelta
 from functools import reduce
 import itertools
+import calendar
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, Float,
-    UniqueConstraint, CheckConstraint, Date
+    UniqueConstraint, CheckConstraint, Date, SmallInteger
 )
 from sqlalchemy.orm.query import Query
-from sqlalchemy import func, bindparam, cast, inspect, event
+from sqlalchemy import func, cast, inspect, event, and_, or_, extract
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.dialects.postgresql import INTERVAL 
@@ -56,7 +57,27 @@ class Company(VersionedModel):
 
     def __str__(self):
         return self.name
+        
+    def determine_fiscal_year(self, start_year):
+        fy_start = date(start_year, self.fiscal_year_start_month, 1)
+        fy_end = fy_start + relativedelta(years=1, days=-1)
+        return utils.FiscalYear(start=fy_start, end=fy_end)
+        
+    def determine_fiscal_months(self, timerange):
+        timerange = int(timerange)
+        if timerange < 1: return []
+        
+        months = list()
+        next_month = self.fiscal_year_start_month - 1 or 12
 
+        while next_month not in months:
+            months.append(next_month)
+            next_month += timerange
+            if next_month > 12:
+                next_month = next_month - 12
+
+        return months
+            
     @staticmethod
     def insert_companies(session):
         from scraper.util import get_info_about_companies, get_list_of_companies
@@ -142,13 +163,13 @@ class Report(VersionedModel):
         return record
 
 
-class FinancialStatementType(VersionedModel):
+class FinancialStatement(VersionedModel):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
 
     DEFAULT_FTYPES = [
         {
-            "name": "bls",
+            "name": "bls", 
             "reprs": [
                 {"default": True, "lang": "en", "value": "Balance Sheet"}
             ]
@@ -168,7 +189,7 @@ class FinancialStatementType(VersionedModel):
     ]
 
     def __repr__(self):
-        return "FinancialStatementType({!r})".format(self.name)
+        return "FinancialStatement({!r})".format(self.name)
 
     def __str__(self):
         try:
@@ -182,45 +203,45 @@ class FinancialStatementType(VersionedModel):
 
     @staticmethod
     def insert_defaults(session):
-        for ftype_spec in FinancialStatementType.DEFAULT_FTYPES:
-            ftype = FinancialStatementType(name=ftype_spec["name"])
+        for ftype_spec in FinancialStatement.DEFAULT_FTYPES:
+            ftype = FinancialStatement(name=ftype_spec["name"])
             for ftype_repr_spec in ftype_spec["reprs"]:
                 ftype.reprs.append(
-                    FinancialStatementTypeRepr(**ftype_repr_spec)       
+                    FinancialStatementRepr(**ftype_repr_spec)       
                 )
             session.add(ftype)
 
     def get_repr(self, lang=None):
         session = inspect(self).session
-        ftype_repr = session.query(FinancialStatementTypeRepr).filter(
-            func.lower(FinancialStatementTypeRepr.lang) == func.lower(lang) 
+        ftype_repr = session.query(FinancialStatementRepr).filter(
+            func.lower(FinancialStatementRepr.lang) == func.lower(lang) 
         ).first()
         return ftype_repr
 
     def get_default_repr(self):
         session = inspect(self).session
-        ftype_repr = session.query(FinancialStatementTypeRepr).filter_by(
+        ftype_repr = session.query(FinancialStatementRepr).filter_by(
             ftype_id=self.id, default=True
         ).first()
         return ftype_repr
                 
 
-class FinancialStatementTypeRepr(VersionedModel):
+class FinancialStatementRepr(VersionedModel):
     id = Column(Integer, primary_key=True)
     value = Column(String, nullable=False)
     lang = Column(String, nullable=False, default="en")
     default = Column(Boolean, nullable=False, default=False)
 
     ftype_id = Column(
-        Integer, ForeignKey("financialstatementtype.id"), nullable=False
+        Integer, ForeignKey("financialstatement.id"), nullable=False
     )
     ftype = relationship(
-        "FinancialStatementType", 
+        "FinancialStatement", 
         backref=backref("reprs", lazy="joined", cascade="all, delete-orphan")
     )
 
     def __repr__(self):
-        return "FinancialStatementTypeRepr({!r}, {!r}, {!r})".format(
+        return "FinancialStatementRepr({!r}, {!r}, {!r})".format(
             self.ftype, self.lang, self.value
         )    
 
@@ -229,21 +250,19 @@ class FinancialStatementTypeRepr(VersionedModel):
 
         
 class RecordType(VersionedModel):
+    PIT = 1 # point-in-time (e.g. balance sheet)
+    POT = 0 # period-of-time (e.g. income statement)
+    
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-    timeframe = Column(String, nullable=False, default="pit") 
-
+    timeframe = Column(SmallInteger, nullable=False)
+    
     ftype_id = Column(
-        Integer, ForeignKey("financialstatementtype.id"), nullable=False
+        Integer, ForeignKey("financialstatement.id"), nullable=True
     )
     ftype = relationship(
-        "FinancialStatementType",
+        "FinancialStatement",
         backref=backref("rtypes", lazy="select", cascade="all, delete-orphan")
-    )
-
-    __table_args__ = (
-        # pit - point-in-time; pot - period-of-time
-        CheckConstraint("timeframe in ('pit', 'pot')"),  
     )
 
     def __hash__(self):
@@ -265,7 +284,7 @@ class RecordType(VersionedModel):
     @property
     def revformulas(self):
         return [ item.formula for item in self.formula_components ]
-        
+
     @staticmethod
     def insert_rtypes(session):
         import rparser.specs.records as spec
@@ -294,13 +313,10 @@ class Record(VersionedModel):
     timerange = Column(Integer, nullable=False)
     synthetic = Column(Boolean, default=False, nullable=False)
 
-    #dependencies
-    #impacts
-
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
     rtype = relationship(
         "RecordType",
-        backref=backref("records", lazy="joined", cascade="all, delete-orphan")
+        backref=backref("records", lazy="noload", cascade="all, delete-orphan")
     )
 
     report_id = Column(Integer, ForeignKey("report.id"))
@@ -355,7 +371,7 @@ class Record(VersionedModel):
         if not fiscal_year:
             fiscal_year = self.determine_fiscal_year()
 
-        if self.rtype.timeframe == "pit":
+        if self.rtype.timeframe == RecordType.PIT:
             return self._project_pit_onto_fiscal_year(fiscal_year)
         else:
             return self._project_pot_onto_fiscal_year(fiscal_year)
@@ -365,7 +381,7 @@ class Record(VersionedModel):
             projection = self.timestamp.month - fiscal_year.start.month + 1
         else:
             projection = 12 - fiscal_year.start.month + self.timestamp.month + 1
-        return projection, projection
+        return projection, projection # return tuple just as _project_pot_onto_fiscal_year 
 
     def _project_pot_onto_fiscal_year(self, fiscal_year):
         if self.timestamp_start.month >= fiscal_year.start.month:
@@ -373,8 +389,8 @@ class Record(VersionedModel):
         else:
             pstart = 12 - fiscal_year.start.month + self.timestamp_start.month + 1
         pend = pstart + self.timerange - 1
-        return pstart, pend    
-
+        return pstart, pend        
+    
     @staticmethod
     def create_synthetic_records(session, base_records):
         if not isinstance(base_records, collections.Iterable):
@@ -420,7 +436,7 @@ class Record(VersionedModel):
         records_db = Record.get_records_for_company_within_fiscal_year(
             session, company, fiscal_year
         )
-    
+
         synthetic_records = [
             adapter.convert_rparser_record(
                 session, record, company, fiscal_year
@@ -452,20 +468,21 @@ class Record(VersionedModel):
         ))
         return records
         
+    
         
 # timerange of 'point-in-time' records cannot be changed, this field has
 # little sense for this records, because they show some value at specific
 # time
 @event.listens_for(Record.timerange, "set", retval=True)
 def update_timerange_for_pit_records(target, value, oldvalue, initiator):
-    if target.rtype and target.rtype.timeframe == "pit":
+    if target.rtype and target.rtype.timeframe == RecordType.PIT:
         return 0
     return value
 
 
 @event.listens_for(Record, "after_insert")
 def after_insert(mapper, connection, target):
-    if target.rtype and target.rtype.timeframe == "pit":
+    if target.rtype and target.rtype.timeframe == RecordType.PIT:
         record_table = Record.__table__
         connection.execute(
             record_table.update().
@@ -603,7 +620,7 @@ class FormulaComponent(VersionedModel):
         return True
 
 
-class FinancialStatementSchema(Model):
+class FinancialStatementLayout(Model):
 
     DEFAULT_SCHEMAS = [
         {
@@ -632,9 +649,9 @@ class FinancialStatementSchema(Model):
 
     id = Column(Integer, primary_key=True)
 
-    ftype_id = Column(Integer, ForeignKey("financialstatementtype.id"))
+    ftype_id = Column(Integer, ForeignKey("financialstatement.id"))
     ftype = relationship(
-        "FinancialStatementType", 
+        "FinancialStatement", 
         backref=backref(
             "fstatements", lazy="joined", 
             cascade="all, delete-orphan"
@@ -655,18 +672,43 @@ class FinancialStatementSchema(Model):
 
     def get_records(self, company, timerange, *, session=None):
         session = session or inspect(self).session
-        rtypes_ids = [ item["rtype"].id for item in self.get_rtypes() ]
-        if not any( # adjust timerange when all records are point-in-time
-            item for item in self.get_rtypes() 
-                 if item["rtype"].timeframe == "pot"
-        ):
-            timerange = 0
-        records = session.query(Record).filter(
-            Record.company == company,
-            Record.rtype_id.in_(rtypes_ids),
-            Record.timerange == timerange
-        ).all()
-        return records
+
+        rtypes = self._get_rtypes_by_timeframe()
+        fiscal_months = company.determine_fiscal_months(timerange)
+
+        pit_condition = None
+        if RecordType.PIT in rtypes:
+            pit_condition = and_(
+                Record.rtype_id.in_(rtypes[RecordType.PIT]), 
+                extract("month", Record.timestamp).in_(fiscal_months)
+            )
+
+        pot_condition = None
+        if RecordType.POT in rtypes:
+            pot_condition = and_(
+                Record.rtype_id.in_(rtypes[RecordType.POT]),
+                Record.timerange == timerange
+            )
+
+        query = session.query(Record).filter(Record.company == company)
+        if pit_condition is not None and pot_condition is not None:
+            query = query.filter(or_(pit_condition, pot_condition))
+        elif pit_condition is not None:
+            query = query.filter(pit_condition)
+        elif pot_condition is not None:
+            query = query.filter(pot_condition)
+
+        return query.all()
+
+    def _get_rtypes_by_timeframe(self):
+        rtypes_by_timeframe = utils.group_objects(
+            self.rtypes, key=lambda x: x.rtype.timeframe
+        )
+        rtypes_id_by_timeframe = {
+            key: [ assoc.rtype.id for assoc in rtypes ]
+            for key, rtypes in rtypes_by_timeframe.items()
+        }
+        return rtypes_id_by_timeframe
 
     @property
     def default_repr(self):
@@ -685,39 +727,38 @@ class FinancialStatementSchema(Model):
         except StopIteration:
             return None
 
-
     @staticmethod
     def insert_defaults(session):
-        for fschema_spec in FinancialStatementSchema.DEFAULT_SCHEMAS:
+        for fschema_spec in FinancialStatementLayout.DEFAULT_SCHEMAS:
             if "ftype" in fschema_spec:
-                ftype = session.query(FinancialStatementType).\
+                ftype = session.query(FinancialStatement).\
                             filter_by(name=fschema_spec["ftype"]).one()
             else:
                 ftype = None
 
-            fschema = FinancialStatementSchema(ftype=ftype)
+            fschema = FinancialStatementLayout(ftype=ftype)
             for index, rtype in enumerate(fschema_spec["rtypes"]):
                 rtype_db = session.query(RecordType).filter_by(name=rtype).one()
                 if rtype_db:
                     fschema.append_rtype(rtype_db, position=index)  
             for fschema_repr in fschema_spec["reprs"]:
                 fschema.reprs.append(
-                    FinancialStatementSchemaRepr(**fschema_repr)       
+                    FinancialStatementLayoutRepr(**fschema_repr)       
                 )
             session.add(fschema)
 
 
-class FinancialStatementSchemaRepr(Model):
+class FinancialStatementLayoutRepr(Model):
     id = Column(Integer, primary_key=True)
     lang = Column(String, nullable=False, default="PL")
     value = Column(String, nullable=False)
     default = Column(Boolean, default=False, nullable=False)
 
     fschema_id = Column(
-        Integer, ForeignKey("financialstatementschema.id"), nullable=False
+        Integer, ForeignKey("financialstatementlayout.id"), nullable=False
     )
     fschema = relationship(
-        "FinancialStatementSchema",
+        "FinancialStatementLayout",
         backref=backref("reprs", lazy="select", cascade="all, delete-orphan")
     )
 
@@ -726,9 +767,9 @@ class RTypeFSchemaAssoc(Model):
     '''Association table between RecordType and FinancialStatement.'''
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), primary_key=True)
     fstatement_id = Column(
-        Integer, ForeignKey("financialstatementschema.id"), primary_key=True
+        Integer, ForeignKey("financialstatementlayout.id"), primary_key=True
     )
     rtype = relationship("RecordType", backref=backref("fschemas"))
-    fschema = relationship("FinancialStatementSchema", backref=backref("rtypes"))
+    fschema = relationship("FinancialStatementLayout", backref=backref("rtypes"))
     position = Column(Integer, nullable=False, default=0)
     calculable = Column(Boolean, default=False)

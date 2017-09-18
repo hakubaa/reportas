@@ -21,6 +21,6 @@ dbmd.add_view(views.UserView(User, db.session, endpoint="dbmd_user"))
 dbmd.add_view(views.DBRequestView(DBRequest, db.session))
 dbmd.add_view(views.SectorView(models.Sector, db.session))
 dbmd.add_view(
-    views.FinancialStatementTypeView(models.FinancialStatementType, db.session)
+    views.FinancialStatementView(models.FinancialStatement, db.session)
 )
 dbmd.add_view(views.RecordFormulaView(models.RecordFormula, db.session))

@@ -12,7 +12,7 @@ from app import db
 from app.models import File, User, DBRequest
 from app.dbmd.tools import forms
 from db import models
-from app.rapi.util import DatetimeEncoder
+from db.serializers import DatetimeEncoder
 
 from tests.app import AppTestCase, create_and_login_user
 from tests.app.dbmd.tools.utils import (
@@ -219,7 +219,10 @@ class ParserPostViewTest(AppTestCase):
         return report
 
     def create_data_for_request(self, records=True):
-        rtype = models.RecordType(name="NETPROFIT", ftype=create_ftype("bls"))
+        rtype = models.RecordType(
+            name="NETPROFIT", ftype=create_ftype("bls"),
+            timeframe=models.RecordType.POT
+        )
         db.session.add(rtype)
         company = create_company()
         
@@ -457,9 +460,18 @@ class BatchUploaderViewTest(AppTestCase):
     def test_fschema_contains_sorted_rtypes_by_their_position(self):
         ftype=create_ftype("bls")
         fschema = create_fschema(ftype=ftype, value="FSCHEMA#1")
-        fschema.append_rtype(create_rtype(name="R2", ftype=ftype), position=2)
-        fschema.append_rtype(create_rtype(name="R1", ftype=ftype), position=1)
-        fschema.append_rtype(create_rtype(name="R3", ftype=ftype), position=3)
+        fschema.append_rtype(
+            create_rtype(name="R2", ftype=ftype, timeframe=models.RecordType.POT), 
+            position=2
+        )
+        fschema.append_rtype(
+            create_rtype(name="R1", ftype=ftype, timeframe=models.RecordType.POT), 
+            position=1
+        )
+        fschema.append_rtype(
+            create_rtype(name="R3", ftype=ftype, timeframe=models.RecordType.POT), 
+            position=3
+        )
         company = create_company(name="TEST", isin="#TEST")
         data = {
             "company": company.id, "fschema": fschema.id, "language": "PL"

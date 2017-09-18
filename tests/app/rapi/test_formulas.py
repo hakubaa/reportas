@@ -8,7 +8,7 @@ from app.rapi import api
 from db.serializers import DatetimeEncoder
 from db.models import (
     Company, Report, CompanyRepr, RecordType, RecordTypeRepr, Record,
-    RecordFormula, FormulaComponent, FinancialStatementType
+    RecordFormula, FormulaComponent, FinancialStatement
 )
 from app.models import Permission, Role, User, DBRequest
 
@@ -16,10 +16,13 @@ from tests.app import AppTestCase, create_and_login_user
 
 
 def create_test_formulas():
-    ftype = FinancialStatementType.get_or_create(db.session, name="bls")
-    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype)
-    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype)
-    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype)
+    ftype = FinancialStatement.get_or_create(db.session, name="bls")
+    total_assets = RecordType(name="TOTAL_ASSETS", ftype=ftype, 
+                              timeframe=RecordType.POT)
+    current_assets = RecordType(name="CURRENT_ASSETS", ftype=ftype, 
+                              timeframe=RecordType.POT)
+    fixed_assets = RecordType(name="FIXED_ASSETS", ftype=ftype, 
+                              timeframe=RecordType.POT)
     db.session.add_all((total_assets, current_assets, fixed_assets))
     db.session.flush()    
     
@@ -184,8 +187,9 @@ class FormulaComponentListViewTest(AppTestCase):
     @create_and_login_user(pass_user=True)
     def test_post_request_creates_dbrequest(self, user):
         create_test_formulas()
-        ftype = db.session.query(FinancialStatementType).one()
-        new_rtype = RecordType(name="TEST TYPE", ftype=ftype)
+        ftype = db.session.query(FinancialStatement).one()
+        new_rtype = RecordType(name="TEST TYPE", ftype=ftype, 
+                               timeframe=RecordType.POT)
         db.session.add(new_rtype)
         db.session.commit()
         

@@ -163,7 +163,7 @@
 
         if (company_id !== null) {
             loadSchema({
-                fschema: 4, company: company_id, timerange: timerange
+                fschema: 2, company: company_id, timerange: timerange
             }, function(data) {
                 var $table = createTable(data, {
                     "class": "table table-striped table-bordered table-hover"
@@ -190,7 +190,7 @@
     }
 
     loadSchema({
-        fschema: 4, company: 37, timerange: 0
+        fschema: 2, company: 36, timerange: 3
     }, function(data) {
         var $table = createTable(data, {
             "class": "table table-striped table-bordered table-hover"
@@ -199,7 +199,7 @@
     });
 
     // loadData(106, 107, 0, updateChart);
-    loadData({company: 37, rtype: 93, timerange: 0}, updateChart);
+    loadData({company: 36, rtype: 93, timerange: 0}, updateChart);
     // loadData({company: 37, rtype: 69, timerange: 3}, updateChart);
 
 

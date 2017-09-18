@@ -1,13 +1,13 @@
 from app import db
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatementType, FinancialStatementSchema, RTypeFSchemaAssoc,
-    FinancialStatementSchemaRepr, FinancialStatementSchema
+    FinancialStatement, FinancialStatementLayout, RTypeFSchemaAssoc,
+    FinancialStatementLayoutRepr,
 )
 
 
 def create_ftype(name="bls"):
-    ftype = FinancialStatementType(name=name)
+    ftype = FinancialStatement(name=name)
     db.session.add(ftype)
     db.session.commit()
     return ftype

@@ -15,6 +15,7 @@ from flask_login import current_user
 from werkzeug.datastructures import MultiDict
 
 from tests.app import AppTestCase, create_and_login_user
+from tests.app.utils import *
 
 from app import db
 from db.core import Model
@@ -68,29 +69,6 @@ def create_user(name="Test", email="test@test.test", password="test"):
     db.session.add(user)
     db.session.commit()
     return user
-
-def create_company(name="TEST", isin="#TEST"):
-    company = models.Company(name=name, isin=isin)
-    db.session.add(company)
-    db.session.commit()
-    return company
-
-def create_ftype(name="ics"):
-    ftype = models.FinancialStatementType(name=name)
-    db.session.add(ftype)
-    db.session.commit()
-    return ftype
-
-def create_rtype(name="TEST", ftype=None, timeframe="pot"):
-    if not ftype:
-        ftype = db.session.query(models.FinancialStatementType).one()
-    rtype = models.RecordType(name=name, ftype=ftype, timeframe=timeframe)
-    rtype.reprs.append(
-        models.RecordTypeRepr(value="TEST REPR", lang="PL")
-    )
-    db.session.add(rtype)
-    db.session.commit()
-    return rtype
 
 #-------------------------------------------------------------------------------
 
@@ -334,9 +312,11 @@ class CreateRecordTypeViewTest(AppTestCase):
         ftype = create_ftype()
         response = self.client.post(
             url_for("recordtype.create_view"),
-            data = dict(name="TEST", ftype=ftype.id)
+            data = dict(
+                name="TEST", ftype=ftype.id, timeframe=models.RecordType.PIT
+            )
         )
-        
+
         self.assertEqual(db.session.query(models.RecordType).count(), 0)
         self.assertEqual(db.session.query(DBRequest).count(), 1)
         
@@ -348,7 +328,7 @@ class CreateRecordTypeViewTest(AppTestCase):
         self.assertEqual(data["name"], "TEST")
         self.assertEqual(data["ftype_id"], ftype.id)
 
-    def test_name_and_statement_are_required(self):
+    def test_name_and_timeframe_are_required(self):
         view = views.RecordTypeView(models.RecordType, db.session)
         form = view.get_create_form()()
 
@@ -356,14 +336,17 @@ class CreateRecordTypeViewTest(AppTestCase):
 
         errors = form.errors
         self.assertIn("name", errors)
-        self.assertIn("ftype", errors)
+        self.assertIn("timeframe", errors)
         
     @create_and_login_user()
     def test_redirects_after_successful_post_request(self):
         ftype = create_ftype()
         response = self.client.post(
             url_for("recordtype.create_view"),
-            data = dict(name="TEST", ftype=ftype.id)
+            data = dict(
+                name="TEST", ftype=ftype.id, 
+                timeframe=str(models.RecordType.POT)
+            )
         )
         self.assertRedirects(response, url_for("recordtype.index_view"))
         
@@ -377,7 +360,7 @@ class CreateRecordTypeViewTest(AppTestCase):
         self.assertInContent(response, "TEST NAME")
 
     def test_ftype_is_transformed_to_ftype_id(self):
-        ftype = models.FinancialStatementType(name="bls")
+        ftype = models.FinancialStatement(name="bls")
         db.session.add(ftype)
         db.session.commit()
 
@@ -386,7 +369,8 @@ class CreateRecordTypeViewTest(AppTestCase):
         form = view.get_form()()
 
         form.process(formdata=MultiDict(dict(
-            ftype=str(ftype.id), name="TEST"
+            ftype=str(ftype.id), name="TEST", 
+            timeframe=str(models.RecordType.POT)
         )))
         validation_outcome = form.validate() 
 
@@ -420,10 +404,15 @@ class EditRecordTypeViewTest(AppTestCase):
     @create_and_login_user(pass_user=True)
     def test_post_request_with_all_data_creates_new_dbrequest(self, user=True):
         ftype=create_ftype()
-        rtype = create_rtype(name="TEST", ftype=ftype)
+        rtype = create_rtype(
+            name="TEST", ftype=ftype, timeframe=models.RecordType.PIT
+        )
         response = self.client.post(
             url_for("recordtype.edit_view", id=rtype.id),
-            data = dict(name="NEW NAME", id=rtype.id, ftype=ftype.id)
+            data = dict(
+                name="NEW NAME", id=rtype.id, ftype=ftype.id,
+                timeframe=models.RecordType.PIT
+            )
         )
         self.assertEqual(db.session.query(DBRequest).count(), 1)
         
@@ -435,7 +424,7 @@ class EditRecordTypeViewTest(AppTestCase):
         self.assertEqual(data["name"], "NEW NAME")
         self.assertEqual(data["id"], rtype.id)
         
-    def test_name_and_statement_are_required(self):
+    def test_name_and_timeframe_are_required(self):
         view = views.RecordTypeView(models.RecordType, db.session)
         form = view.get_edit_form()()
 
@@ -443,7 +432,7 @@ class EditRecordTypeViewTest(AppTestCase):
 
         errors = form.errors
         self.assertIn("name", errors)
-        self.assertIn("ftype", errors)
+        self.assertIn("timeframe", errors)
 
 
 class DeleteRecordTypeViewTest(AppTestCase):
@@ -730,7 +719,8 @@ class DBRequestViewTest(AppTestCase):
         self.assertTrue(csr_mock.called)
         
         record = db.session.query(models.Record).one()
-        self.assertEqual(csr_mock.call_args[0], (db.session, [record]))
+        self.assertEqual(csr_mock.call_args[0][0], db.session)
+        self.assertEqual(csr_mock.call_args[0][1][0].rtype_id, record.rtype_id)
 
 
     @create_and_login_user(role_name="Moderator", pass_user=True)

@@ -1,18 +1,18 @@
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatementType, FinancialStatementSchema, RTypeFSchemaAssoc,
-    FinancialStatementSchemaRepr, FinancialStatementSchema
+    FinancialStatement, FinancialStatementLayout, RTypeFSchemaAssoc,
+    FinancialStatementLayoutRepr
 )
 
 
 def create_ftype(session, name="bls"):
-    ftype = FinancialStatementType(name=name)
+    ftype = FinancialStatement(name=name)
     session.add(ftype)
     session.commit()
     return ftype
 
 
-def create_rtype(session, ftype, name="TOTAL_ASSETS", timeframe="pot"):
+def create_rtype(session, ftype, name="TOTAL_ASSETS", timeframe=RecordType.POT):
     total_assets = RecordType(name=name, ftype=ftype, timeframe=timeframe)
     session.add(total_assets)
     session.commit()    
@@ -46,18 +46,16 @@ def create_record(session, **kwargs):
     return record
 
 
-def create_rtypes(session, ftype=None, timeframe="pot"):
+def create_rtypes(session, ftype=None, timeframe=RecordType.POT):
     if not ftype:
-        ftype = create_ftype(session, name="bls")
-    total_assets = RecordType(
-        name="TOTAL_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    current_assets = RecordType(
-        name="CURRENT_ASSETS", ftype=ftype, timeframe=timeframe
-    )
-    fixed_assets = RecordType(
-        name="FIXED_ASSETS", ftype=ftype, timeframe=timeframe
-    )
+        ftype = session.query(FinancialStatement).filter_by(name="bls").first()
+        if not ftype:
+            ftype = create_ftype(session, name="bls")
+            
+    common = dict(ftype=ftype, timeframe=timeframe)
+    total_assets = RecordType(name="TOTAL_ASSETS", **common)
+    current_assets = RecordType(name="CURRENT_ASSETS", **common)
+    fixed_assets = RecordType(name="FIXED_ASSETS", **common)
     session.add_all((total_assets, current_assets, fixed_assets))
     session.commit()    
     return total_assets, current_assets, fixed_assets

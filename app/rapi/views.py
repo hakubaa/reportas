@@ -333,13 +333,13 @@ class ReportRecordDetailView(DetailView):
 
 
 class FSchemaListView(ListView):
-    model = models.FinancialStatementSchema
-    schema = serializers.FinancialStatementSchemaSimple
+    model = models.FinancialStatementLayout
+    schema = serializers.FinancialStatementLayoutSchemaSimple
 
 
 class FSchemaDetailView(DetailView):
-    model = models.FinancialStatementSchema
-    schema = serializers.FinancialStatementSchema
+    model = models.FinancialStatementLayout
+    schema = serializers.FinancialStatementLayoutSchema
 
 
 class FSchemaRecordsView(ListView):
@@ -351,7 +351,7 @@ class FSchemaRecordsView(ListView):
         return schema
 
     def get_fschema(self, id):
-        fschema = db.session.query(models.FinancialStatementSchema).get(id)
+        fschema = db.session.query(models.FinancialStatementLayout).get(id)
         if not fschema:
             abort(404)
         return fschema
