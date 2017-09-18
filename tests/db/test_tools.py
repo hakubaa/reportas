@@ -17,7 +17,7 @@ class UploadingSpecTest(DbTestCase):
 
 	def setUp(self):
 		super().setUp()
-		models.FinancialStatement.insert_defaults(self.db.session)
+		models.FinancialStatementType.insert_defaults(self.db.session)
 
 	def test_for_creating_records_types(self):
 		testspec = [ 
@@ -75,7 +75,7 @@ class UploadingSpecTest(DbTestCase):
 			} 
 		]
 		tools.upload_records_spec(self.db.session, testspec)
-		ftype = self.db.session.query(models.FinancialStatement).\
+		ftype = self.db.session.query(models.FinancialStatementType).\
 		            filter_by(name="cfs").one()	
 		spec = tools.get_records_reprs(self.db.session, ftype=ftype)
 		self.assertEqual(len(spec), 1)
@@ -86,7 +86,7 @@ class CompaniesReprsTest(DbTestCase):
 
 	def setUp(self):
 		super().setUp()
-		models.FinancialStatement.insert_defaults(self.db.session)
+		models.FinancialStatementType.insert_defaults(self.db.session)
 		
 	def test_get_companies_reprs_returns_isins_and_fullnames(self):
 		company = models.Company.get_or_create(
@@ -136,35 +136,33 @@ class CompaniesReprsTest(DbTestCase):
 class MissingRecordsTest(DbTestCase):
 
     def test_create_missing_records(self):
-        with self.db.session.no_autoflush:
-            company = create_company(self.db.session, name="Test", isin="#TEST")
-            ta, ca, fa = create_rtypes(self.db.session)
-            self.db.session.add_all(create_records(self.db.session, [
-                (company, ta, 0, date(2015, 12, 31), 100),
-                (company, fa, 0, date(2017, 12, 31), 50)
-            ]))
-            schema = FinancialStatementLayout()
-            schema.append_rtype(fa, 0)
-            schema.append_rtype(ca, 1)
-            schema.append_rtype(ta, 2)
-            self.db.session.add(schema)
-            self.db.session.commit()
+        company = create_company(self.db.session, name="Test", isin="#TEST")
+        ta, ca, fa = create_rtypes(self.db.session)
+        self.db.session.add_all(create_records(self.db.session, [
+            (company, ta, 0, date(2015, 12, 31), 100),
+            (company, fa, 0, date(2017, 12, 31), 50)
+        ]))
+        schema = FinancialStatementSchema()
+        schema.append_rtype(fa, 0)
+        schema.append_rtype(ca, 1)
+        schema.append_rtype(ta, 2)
+        self.db.session.add(schema)
+        self.db.session.commit()
 
-            records = schema.get_records(company=company, timerange=0)
-            records.extend(tools.create_missing_records(records, company, 12))
+        records = schema.get_records(company=company, timerange=0)
+        records.extend(tools.create_missing_records(records, company, 12))
 
-            self.assertEqual(len(records), 6)
+        self.assertEqual(len(records), 6)
 
-            records = utils.group_objects(records, key=lambda x: x.rtype_id)
-            records = sorted(records[ta.id], key=lambda x: x.timestamp)
-
-            self.assertEqual(records[0].timestamp, date(2015, 12, 31))
-            self.assertEqual(records[1].timestamp, date(2016, 12, 31))
-            self.assertEqual(records[2].timestamp, date(2017, 12, 31))
+        records = utils.group_objects(records, key=lambda x: x.rtype)
+        records = sorted(records[ta], key=lambda x: x.timestamp)
+        self.assertEqual(records[0].timestamp, date(2015, 12, 31))
+        self.assertEqual(records[1].timestamp, date(2016, 12, 31))
+        self.assertEqual(records[2].timestamp, date(2017, 12, 31))
 
     def test_end_of_month_test01(self):
         ref_date = date(2015, 3, 15)
-    
+        
         eom_date = utils.end_of_month(ref_date)        
         
         self.assertEqual(eom_date, date(2015, 3, 31))

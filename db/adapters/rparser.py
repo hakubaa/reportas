@@ -85,7 +85,7 @@ def convert_rparser_record(session, record, company, fiscal_year):
         defaults = { "value": record.value, "synthetic": True },
         company = company, rtype = rtype,
         timerange = (
-            0 if rtype.timeframe == models.FinancialStatement.PIT 
+            0 if rtype.timeframe == "pit" 
             else timeframe.end - timeframe.start + 1
         ),
         timestamp = project_timeframe_onto_fiscal_year(
@@ -128,15 +128,15 @@ def create_synthetic_records(base_records, db_records, db_formulas):
     dataset = DictRecordsDataset.create_from_db_records(db_records)
     records_spec = set(
         record.rtype for record in itertools.chain(base_records, db_records)
-                     if record.rtype.timeframe == models.FinancialStatement.POT
+                     if record.rtype.timeframe == "pot"
     )
 
     formulas = convert_db_formulas(db_formulas)
     formulas = {
-        models.FinancialStatement.POT: synthetic.create_inverted_mapping(
+        "pot": synthetic.create_inverted_mapping(
             synthetic.create_pot_formulas(formulas, records_spec)
         ),
-        models.FinancialStatement.PIT: synthetic.create_inverted_mapping(
+        "pit": synthetic.create_inverted_mapping(
             synthetic.create_pit_formulas(formulas)
         )
     }

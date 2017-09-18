@@ -48,7 +48,7 @@ class FinancialReportDB(FinancialReport):
         return get_records_reprs(self.session, ftype=self._get_ftype(name))
 
     def _get_ftype(self, name):
-        ftype = self.session.query(models.FinancialStatement).\
+        ftype = self.session.query(models.FinancialStatementType).\
                     filter_by(name=name).one()        
         return ftype
 
@@ -115,7 +115,7 @@ def render_direct_input_miner(form, session):
 
 def get_records_spec(session, spec_name=None):
     spec = list()
-    ftype_query = session.query(models.FinancialStatement)
+    ftype_query = session.query(models.FinancialStatementType)
     if spec_name in ("bls", None):
         ftype = ftype_query.filter_by(name="bls").one()    
         spec.extend(get_records_reprs(session, ftype))

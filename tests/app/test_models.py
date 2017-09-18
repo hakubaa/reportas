@@ -9,7 +9,7 @@ from marshmallow_sqlalchemy import field_for, ModelSchema
 from marshmallow import fields
 
 from app.models import User, Role, Permission, AnonymousUser, DBRequest
-from tests.app import AppTestCase, NoAutoflushMeta
+from tests.app import AppTestCase
 from app import db, ma
 
 from db import records_factory
@@ -59,8 +59,8 @@ class AccountSchema(ModelSchema):
 
     student = fields.Nested(Student,  many=False)
     student_id = field_for(
-        Account, "student_id",
-        error_messages={"required": "Student is required."}
+        Account, "student_id", required=True,
+        error_messages={"required": "RecordType is required."}
     )
 
     subaccounts = fields.Nested(
@@ -116,7 +116,7 @@ class DBRequestTest(AppTestCase):
             data=json.dumps({"age": 17, "name": "Python"})
         )
         result = dbrequest.execute(user, records_factory)
-        # db.session.add(result["instance"])
+        db.session.add(result["instance"])
         self.assertTrue(db.session.query(Student).count(), 1)
 
     def test_update_object_with_dbrequest(self):
@@ -191,6 +191,7 @@ class DBRequestTest(AppTestCase):
         )
         db.session.add(dbrequest)
         result = dbrequest.execute(moderator, records_factory, comment="ok")
+        self.assertFalse(result["errors"]) # make sure there are no errors
         
         self.assertEqual(dbrequest.moderator, moderator)
         self.assertEqual(dbrequest.moderator_action, "accept")
@@ -288,7 +289,7 @@ class DBRequestTest(AppTestCase):
         user = self.create_user()
         main_request, subrequest = create_related_requests(db.session, user)
         
-        main_request.execute(user, records_factory) 
+        main_request.execute(user, records_factory)    
         
         student = db.session.query(Student).one()
         account = db.session.query(Account).one()

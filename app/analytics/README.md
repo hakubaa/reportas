@@ -17,4 +17,3 @@ analytics-0.2.0:
 - think about moving timeframe 'rtype' to financial statement type which is used
   by schemas also and create property inside recordtype with the same name and
   add this to FinancialStatementSchema
-- remove deep dependeciens e.g. if self.rtype.timeframe == "pit":

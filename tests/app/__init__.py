@@ -7,35 +7,8 @@ from app import create_app, db
 from app.models import User, Role
 
 
-class NoAutoflushMeta(type):
-
-    @staticmethod
-    def turn_off_autoflush(f):
-        def wrapper(*args, **kwargs):
-            output = None
-            with db.session.no_autoflush:
-                output = f(*args, **kwargs)
-            return output
-        return wrapper
-
-    def __init__(cls, name, bases, attr_dict):
-        super().__init__(name, bases, attr_dict)
-        for key, attr in attr_dict.items():
-            if callable(attr) and key.startswith("test"):
-                setattr(cls, key, NoAutoflushMeta.turn_off_autoflush(attr))
-
-
 class AppTestCase(TestCase):
     models = None
-
-    @staticmethod
-    def no_autoflush(f):
-        def wrapper(*args, **kwargs):
-            output = None
-            with db.session.no_autoflush:
-                output = f(*args, **kwargs)
-            return output
-        return wrapper
 
     def create_app(self):
         return create_app("testing")

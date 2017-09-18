@@ -7,7 +7,7 @@ from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from werkzeug.utils import secure_filename
 
 from app import db
-from db.models import Company, FinancialStatementLayout
+from db.models import Company, FinancialStatementSchema
 
 
 class LanguageMixin(object):
@@ -73,7 +73,7 @@ class BatchUploaderForm(
     CompanyMixin, ReportTimerangeMixin, LanguageMixin, FlaskForm
 ):
     fschema = QuerySelectField(
-        query_factory=lambda: db.session.query(FinancialStatementLayout).all(),
+        query_factory=lambda: db.session.query(FinancialStatementSchema).all(),
         get_label=lambda item: item.default_repr.value, 
         get_pk=lambda item: item.id,
         validators = [validators.DataRequired()]

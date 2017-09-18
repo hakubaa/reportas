@@ -2,10 +2,9 @@ __all__ = [
     "CompanyReprSchema", "CompanySchema", "CompanySimpleSchema", 
     "RecordTypeSchema", "RecordTypeReprSchema", "RecordTypeSimpleSchema",
     "RecordSchema", "ReportSchema", "RecordFormulaSchema",
-    "FormulaComponentSchema", "SectorSchema", 
-    "FinancialStatementReprSchema", "FinancialStatementSchema",
-    "FinancialStatementLayoutSchemaSimple", "DatetimeEncoder",
-    "FinancialStatementLayoutSchema"
+    "FormulaComponentSchema", "SectorSchema", "FinancialStatementTypeSchema",
+    "FinancialStatementTypeReprSchema", "FinancialStatementSchema",
+    "FinancialStatementSchemaSimple", "DatetimeEncoder"
 ]
 
 import json
@@ -138,38 +137,38 @@ class CompanySimpleSchema(ModelSchema):
 
 
 @records_factory.register_schema()
-class FinancialStatementReprSchema(ModelSchema):
+class FinancialStatementTypeReprSchema(ModelSchema):
     class Meta:
-        model = models.FinancialStatementRepr
+        model = models.FinancialStatementTypeRepr
         fields = ("id", "value", "lang", "ftype_id")
 
     id = MyInteger()
     ftype_id = field_for(
-        models.FinancialStatementRepr, "ftype_id", required=True,
-        error_messages={"required": "FinancialStatement is required."}
+        models.FinancialStatementTypeRepr, "ftype_id", required=True,
+        error_messages={"required": "FinancialStatementType is required."}
     )   
 
     @validates("ftype_id")
     def validate_rtype(self, value):
         (ret, ), = self.session.query(
-            exists().where(models.FinancialStatement.id == value)
+            exists().where(models.FinancialStatementType.id == value)
         )
         if not ret:
             raise ValidationError(
-                "FinancialStatement with id '{}' does not exist.".format(value)
+                "FinancialStatementType with id '{}' does not exist.".format(value)
             )
         return True
 
 
 @records_factory.register_schema()        
-class FinancialStatementSchema(ModelSchema):
+class FinancialStatementTypeSchema(ModelSchema):
     class Meta:
-        model = models.FinancialStatement
-        fields = ("id", "name", "timeframe", "reprs")
+        model = models.FinancialStatementType
+        fields = ("id", "name", "reprs")
 
     id = MyInteger()
     reprs = fields.Nested(
-        FinancialStatementReprSchema, only=("id", "value"), many=True
+        FinancialStatementTypeReprSchema, only=("id", "value"), many=True
     )
 
     @validates("name")
@@ -178,7 +177,7 @@ class FinancialStatementSchema(ModelSchema):
             return True
 
         (ret, ), = self.session.query(
-            exists().where(models.FinancialStatement.name == value)
+            exists().where(models.FinancialStatementType.name == value)
         )
         if ret:
             raise ValidationError("name not unique")
@@ -217,11 +216,11 @@ class RecordTypeSchema(ModelSchema):
 
     id = MyInteger()
     ftype = fields.Nested(
-        FinancialStatementSchema, only=("name"), many=False
+        FinancialStatementTypeSchema, only=("name"), many=False
     )
     ftype_id = field_for(
         models.RecordType, "ftype_id", required=True,
-        error_messages={"required": "FinancialStatement is required."}
+        error_messages={"required": "FinancialStatementType is required."}
     )
     reprs = fields.Nested(
         RecordTypeReprSchema, only=("id", "value"), many=True
@@ -242,11 +241,11 @@ class RecordTypeSchema(ModelSchema):
     @validates("ftype_id")
     def validate_ftype(self, value):
         (ret, ), = self.session.query(
-            exists().where(models.FinancialStatement.id == value)
+            exists().where(models.FinancialStatementType.id == value)
         )
         if not ret:
             raise ValidationError(
-                "FinancialStatement with id '{}' does not " 
+                "FinancialStatementType with id '{}' does not " 
                 "exist.".format(value)
             )
         return True
@@ -255,7 +254,7 @@ class RecordTypeSchema(ModelSchema):
 class RecordTypeSimpleSchema(ModelSchema):
     class Meta:
         model = models.RecordType
-        fields = ("id", "name", "uri", "ftype_id")
+        fields = ("id", "name", "timeframe", "uri", "ftype_id")
 
     id = MyInteger()
 
@@ -315,7 +314,6 @@ class RecordSchema(ModelSchema):
             raise ValidationError(
                 "Report with id '{}' does not exist.".format(value)
             )
-
         return True
 
     @validates_schema
@@ -384,7 +382,7 @@ class RecordSchema(ModelSchema):
 
     def _adjust_timerange_for_pit_records(self, timerange, rtype_id):
         rtype = self.session.query(models.RecordType).get(rtype_id)
-        if rtype and rtype.timeframe == models.FinancialStatement.PIT:
+        if rtype and rtype.timeframe == "pit":
             return 0
         return timerange
 
@@ -403,14 +401,10 @@ class RecordSchema(ModelSchema):
         """Extend default make_instance method ensuing that point-in-time 
         records will have set timerange to zero (0).
         """
-
-        pit_record = self.session.query(models.RecordType.id)\
-            .join(models.FinancialStatement)\
-            .filter(
-                models.RecordType.id == data["rtype_id"],
-                models.FinancialStatement.timeframe == models.FinancialStatement.PIT
-            ).first()
-
+        (pit_record, ), = self.session.query(exists().where(and_(
+            models.RecordType.id == data["rtype_id"], 
+            models.RecordType.timeframe == "pit"
+        )))
         if pit_record:
             data["timerange"] = 0
         return super().make_instance(data)
@@ -573,27 +567,27 @@ class RTypeFSchemaAssocSchema(ModelSchema):
         return True
 
 
-class FinancialStatementLayoutRepr(ModelSchema):
+class FinancialStatementSchemaRepr(ModelSchema):
     class Meta:
-        model = models.FinancialStatementLayoutRepr
+        model = models.FinancialStatementSchemaRepr
         fields = ("id", "lang", "value", "default")
 
 
 @records_factory.register_schema() 
-class FinancialStatementLayoutSchema(ModelSchema):
+class FinancialStatementSchema(ModelSchema):
     class Meta:
-        model = models.FinancialStatementLayout
+        model = models.FinancialStatementSchema
 
     rtypes = fields.Nested(
         RTypeFSchemaAssocSchema, many=True,
         only=("position", "rtype", "calculable", "rtype_id"), 
     )
-    reprs = fields.Nested(FinancialStatementLayoutRepr, many=True)
+    reprs = fields.Nested(FinancialStatementSchemaRepr, many=True)
 
 
-class FinancialStatementLayoutSchemaSimple(ModelSchema):
+class FinancialStatementSchemaSimple(ModelSchema):
     class Meta:
-        model = models.FinancialStatementLayout
+        model = models.FinancialStatementSchema
         fields = ("rtypes",)
 
     rtypes = fields.Nested(

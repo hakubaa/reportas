@@ -7,7 +7,7 @@ import itertools
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, Float,
-    UniqueConstraint, CheckConstraint, Date, SmallInteger
+    UniqueConstraint, CheckConstraint, Date
 )
 from sqlalchemy.orm.query import Query
 from sqlalchemy import func, bindparam, cast, inspect, event
@@ -142,30 +142,25 @@ class Report(VersionedModel):
         return record
 
 
-class FinancialStatement(VersionedModel):
-
-    PIT = 1 # point-in-time (e.g. balance sheet)
-    POT = 0 # period-of-time (e.g. income statement)
-
+class FinancialStatementType(VersionedModel):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-    timeframe = Column(SmallInteger, nullable=False)
 
     DEFAULT_FTYPES = [
         {
-            "name": "bls", "timeframe": 1,
+            "name": "bls",
             "reprs": [
                 {"default": True, "lang": "en", "value": "Balance Sheet"}
             ]
         },
         {
-            "name": "ics", "timeframe": 0,
+            "name": "ics",
             "reprs": [
                 {"default": True, "lang": "en", "value": "Income Statement"}
             ]
         },
         {
-            "name": "cfs", "timeframe": 0,
+            "name": "cfs",
             "reprs": [
                 {"default": True, "lang": "en", "value": "Cash Flow Statement"}
             ]
@@ -173,7 +168,7 @@ class FinancialStatement(VersionedModel):
     ]
 
     def __repr__(self):
-        return "FinancialStatement({!r})".format(self.name)
+        return "FinancialStatementType({!r})".format(self.name)
 
     def __str__(self):
         try:
@@ -187,47 +182,45 @@ class FinancialStatement(VersionedModel):
 
     @staticmethod
     def insert_defaults(session):
-        for ftype_spec in FinancialStatement.DEFAULT_FTYPES:
-            ftype = FinancialStatement(
-                name=ftype_spec["name"], timeframe=ftype_spec["timeframe"]
-            )
+        for ftype_spec in FinancialStatementType.DEFAULT_FTYPES:
+            ftype = FinancialStatementType(name=ftype_spec["name"])
             for ftype_repr_spec in ftype_spec["reprs"]:
                 ftype.reprs.append(
-                    FinancialStatementRepr(**ftype_repr_spec)       
+                    FinancialStatementTypeRepr(**ftype_repr_spec)       
                 )
             session.add(ftype)
 
     def get_repr(self, lang=None):
         session = inspect(self).session
-        ftype_repr = session.query(FinancialStatementRepr).filter(
-            func.lower(FinancialStatementRepr.lang) == func.lower(lang) 
+        ftype_repr = session.query(FinancialStatementTypeRepr).filter(
+            func.lower(FinancialStatementTypeRepr.lang) == func.lower(lang) 
         ).first()
         return ftype_repr
 
     def get_default_repr(self):
         session = inspect(self).session
-        ftype_repr = session.query(FinancialStatementRepr).filter_by(
+        ftype_repr = session.query(FinancialStatementTypeRepr).filter_by(
             ftype_id=self.id, default=True
         ).first()
         return ftype_repr
                 
 
-class FinancialStatementRepr(VersionedModel):
+class FinancialStatementTypeRepr(VersionedModel):
     id = Column(Integer, primary_key=True)
     value = Column(String, nullable=False)
     lang = Column(String, nullable=False, default="en")
     default = Column(Boolean, nullable=False, default=False)
 
     ftype_id = Column(
-        Integer, ForeignKey("financialstatement.id"), nullable=False
+        Integer, ForeignKey("financialstatementtype.id"), nullable=False
     )
     ftype = relationship(
-        "FinancialStatement", 
+        "FinancialStatementType", 
         backref=backref("reprs", lazy="joined", cascade="all, delete-orphan")
     )
 
     def __repr__(self):
-        return "FinancialStatementRepr({!r}, {!r}, {!r})".format(
+        return "FinancialStatementTypeRepr({!r}, {!r}, {!r})".format(
             self.ftype, self.lang, self.value
         )    
 
@@ -238,13 +231,19 @@ class FinancialStatementRepr(VersionedModel):
 class RecordType(VersionedModel):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
+    timeframe = Column(String, nullable=False, default="pit") 
 
     ftype_id = Column(
-        Integer, ForeignKey("financialstatement.id"), nullable=False
+        Integer, ForeignKey("financialstatementtype.id"), nullable=False
     )
     ftype = relationship(
-        "FinancialStatement",
+        "FinancialStatementType",
         backref=backref("rtypes", lazy="select", cascade="all, delete-orphan")
+    )
+
+    __table_args__ = (
+        # pit - point-in-time; pot - period-of-time
+        CheckConstraint("timeframe in ('pit', 'pot')"),  
     )
 
     def __hash__(self):
@@ -266,11 +265,7 @@ class RecordType(VersionedModel):
     @property
     def revformulas(self):
         return [ item.formula for item in self.formula_components ]
-
-    @property
-    def timeframe(self):
-        return self.ftype.timeframe
-
+        
     @staticmethod
     def insert_rtypes(session):
         import rparser.specs.records as spec
@@ -305,7 +300,7 @@ class Record(VersionedModel):
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), nullable=False)
     rtype = relationship(
         "RecordType",
-        backref=backref("records", lazy="noload", cascade="all, delete-orphan")
+        backref=backref("records", lazy="joined", cascade="all, delete-orphan")
     )
 
     report_id = Column(Integer, ForeignKey("report.id"))
@@ -360,7 +355,7 @@ class Record(VersionedModel):
         if not fiscal_year:
             fiscal_year = self.determine_fiscal_year()
 
-        if self.rtype.timeframe == FinancialStatement.PIT:
+        if self.rtype.timeframe == "pit":
             return self._project_pit_onto_fiscal_year(fiscal_year)
         else:
             return self._project_pot_onto_fiscal_year(fiscal_year)
@@ -370,7 +365,7 @@ class Record(VersionedModel):
             projection = self.timestamp.month - fiscal_year.start.month + 1
         else:
             projection = 12 - fiscal_year.start.month + self.timestamp.month + 1
-        return projection, projection # return tuple just as _project_pot_onto_fiscal_year 
+        return projection, projection
 
     def _project_pot_onto_fiscal_year(self, fiscal_year):
         if self.timestamp_start.month >= fiscal_year.start.month:
@@ -425,7 +420,7 @@ class Record(VersionedModel):
         records_db = Record.get_records_for_company_within_fiscal_year(
             session, company, fiscal_year
         )
-
+    
         synthetic_records = [
             adapter.convert_rparser_record(
                 session, record, company, fiscal_year
@@ -463,14 +458,14 @@ class Record(VersionedModel):
 # time
 @event.listens_for(Record.timerange, "set", retval=True)
 def update_timerange_for_pit_records(target, value, oldvalue, initiator):
-    if target.rtype and target.rtype.timeframe == FinancialStatement.PIT:
+    if target.rtype and target.rtype.timeframe == "pit":
         return 0
     return value
 
 
 @event.listens_for(Record, "after_insert")
 def after_insert(mapper, connection, target):
-    if target.rtype and target.rtype.timeframe == FinancialStatement.PIT:
+    if target.rtype and target.rtype.timeframe == "pit":
         record_table = Record.__table__
         connection.execute(
             record_table.update().
@@ -608,7 +603,7 @@ class FormulaComponent(VersionedModel):
         return True
 
 
-class FinancialStatementLayout(Model):
+class FinancialStatementSchema(Model):
 
     DEFAULT_SCHEMAS = [
         {
@@ -637,9 +632,9 @@ class FinancialStatementLayout(Model):
 
     id = Column(Integer, primary_key=True)
 
-    ftype_id = Column(Integer, ForeignKey("financialstatement.id"))
+    ftype_id = Column(Integer, ForeignKey("financialstatementtype.id"))
     ftype = relationship(
-        "FinancialStatement", 
+        "FinancialStatementType", 
         backref=backref(
             "fstatements", lazy="joined", 
             cascade="all, delete-orphan"
@@ -661,10 +656,11 @@ class FinancialStatementLayout(Model):
     def get_records(self, company, timerange, *, session=None):
         session = session or inspect(self).session
         rtypes_ids = [ item["rtype"].id for item in self.get_rtypes() ]
-
-        if self.ftype and self.ftype.timeframe == FinancialStatement.PIT:
+        if not any( # adjust timerange when all records are point-in-time
+            item for item in self.get_rtypes() 
+                 if item["rtype"].timeframe == "pot"
+        ):
             timerange = 0
-        
         records = session.query(Record).filter(
             Record.company == company,
             Record.rtype_id.in_(rtypes_ids),
@@ -692,36 +688,36 @@ class FinancialStatementLayout(Model):
 
     @staticmethod
     def insert_defaults(session):
-        for fschema_spec in FinancialStatementLayout.DEFAULT_SCHEMAS:
+        for fschema_spec in FinancialStatementSchema.DEFAULT_SCHEMAS:
             if "ftype" in fschema_spec:
-                ftype = session.query(FinancialStatement).\
+                ftype = session.query(FinancialStatementType).\
                             filter_by(name=fschema_spec["ftype"]).one()
             else:
                 ftype = None
 
-            fschema = FinancialStatementLayout(ftype=ftype)
+            fschema = FinancialStatementSchema(ftype=ftype)
             for index, rtype in enumerate(fschema_spec["rtypes"]):
                 rtype_db = session.query(RecordType).filter_by(name=rtype).one()
                 if rtype_db:
                     fschema.append_rtype(rtype_db, position=index)  
             for fschema_repr in fschema_spec["reprs"]:
                 fschema.reprs.append(
-                    FinancialStatementLayoutRepr(**fschema_repr)       
+                    FinancialStatementSchemaRepr(**fschema_repr)       
                 )
             session.add(fschema)
 
 
-class FinancialStatementLayoutRepr(Model):
+class FinancialStatementSchemaRepr(Model):
     id = Column(Integer, primary_key=True)
     lang = Column(String, nullable=False, default="PL")
     value = Column(String, nullable=False)
     default = Column(Boolean, default=False, nullable=False)
 
     fschema_id = Column(
-        Integer, ForeignKey("financialstatementlayout.id"), nullable=False
+        Integer, ForeignKey("financialstatementschema.id"), nullable=False
     )
     fschema = relationship(
-        "FinancialStatementLayout",
+        "FinancialStatementSchema",
         backref=backref("reprs", lazy="select", cascade="all, delete-orphan")
     )
 
@@ -730,9 +726,9 @@ class RTypeFSchemaAssoc(Model):
     '''Association table between RecordType and FinancialStatement.'''
     rtype_id = Column(Integer, ForeignKey("recordtype.id"), primary_key=True)
     fstatement_id = Column(
-        Integer, ForeignKey("financialstatementlayout.id"), primary_key=True
+        Integer, ForeignKey("financialstatementschema.id"), primary_key=True
     )
     rtype = relationship("RecordType", backref=backref("fschemas"))
-    fschema = relationship("FinancialStatementLayout", backref=backref("rtypes"))
+    fschema = relationship("FinancialStatementSchema", backref=backref("rtypes"))
     position = Column(Integer, nullable=False, default=0)
     calculable = Column(Boolean, default=False)

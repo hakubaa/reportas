@@ -2,7 +2,7 @@ from datetime import date
 
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
-    FinancialStatement
+    FinancialStatementType
 )
 from db.adapters.rparser import (
     convert_db_formula, convert_db_record, DictRecordsDataset,
@@ -12,8 +12,54 @@ from db.adapters.rparser import (
 import rparser.synthetic as rparser
 
 from tests.db import DbTestCase
-from tests.db.utils import *
 
+
+#-------------------------------------------------------------------------------
+# Utils
+#-------------------------------------------------------------------------------
+
+def create_db_formula(session, left, right):
+    formula = RecordFormula(rtype=left)
+    session.add(formula)
+    for item in right:
+        formula.add_component(rtype=item[1], sign=item[0])
+    session.commit()
+    return formula
+
+
+def create_ftype(session, name="bls"):
+    fst = FinancialStatementType(name=name)
+    session.add(fst)
+    session.commit()
+    return fst
+
+
+def create_rtypes(session, ftype=None, timeframe="pot"):
+    if not ftype:
+        ftype = create_ftype(session)
+    total_assets = RecordType(
+        name="TOTAL_ASSETS", ftype=ftype, timeframe=timeframe
+    )
+    current_assets = RecordType(
+        name="CURRENT_ASSETS", ftype=ftype, timeframe=timeframe
+    )
+    fixed_assets = RecordType(
+        name="FIXED_ASSETS", ftype=ftype, timeframe=timeframe
+    )
+    session.add_all((total_assets, current_assets, fixed_assets))
+    session.commit()    
+    return total_assets, current_assets, fixed_assets
+
+
+def create_company(session, name, isin, fiscal_year_start_month = 1):
+    company = Company(
+        name=name, isin=isin, fiscal_year_start_month=fiscal_year_start_month
+    )
+    session.add(company)
+    session.commit()
+    return company
+
+#-------------------------------------------------------------------------------
 
 class TestRParserAdapters(DbTestCase):
 
@@ -30,7 +76,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(formula.rhs[1].spec, fa)
 
     def test_convert_db_record(self):
-        ta, ca, fa = create_rtypes(self.db.session) 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe="pot") 
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         record_db = Record(
             company=company, rtype=ta, value=100, timerange=6,
@@ -45,7 +91,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(record.value, 100)
 
     def test_create_dataset_from_records(self):
-        ta, ca, fa = create_rtypes(self.db.session) 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe="pot") 
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         r1 = Record(company=company, rtype=ta, value=100, timerange=6,
                     timestamp=date(2016, 6, 30))
@@ -70,7 +116,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(dataset[index]["value"], 60)
         
     def test_convert_rparser_record_into_db_record(self):
-        ta, ca, fa = create_rtypes(self.db.session) 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe="pot") 
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         
         record = rparser.Record(
@@ -119,11 +165,7 @@ class TestRParserAdapters(DbTestCase):
         self.assertEqual(timestamp_range.end, date(2015, 6, 30))  
         
     def test_create_synthetic_records(self):
-        ftype = create_ftype(
-            self.db.session, name="bls", timeframe=FinancialStatement.PIT
-        )
-        
-        ta, ca, fa = create_rtypes(self.db.session, ftype=ftype) 
+        ta, ca, fa = create_rtypes(self.db.session, timeframe="pit") 
         db_formula = create_db_formula(self.db.session, ta, ((1, ca), (1, fa)))
         company = create_company(self.db.session, name="TEST", isin="TEST#1")
         record_fa = Record(
