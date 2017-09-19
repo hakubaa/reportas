@@ -10,6 +10,7 @@ from flask.views import MethodView
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 import requests
+from sqlalchemy import exists
 
 from app import debugtoolbar, db
 from app.models import DBRequest, Permission
@@ -185,10 +186,14 @@ class CompanyRecordListView(ListView):
     schema = serializers.RecordSchema
 
     def get_objects(self, id):
-        company = db.session.query(models.Company).get(id)
-        if not company:
+        if not self.verify_company_id(id):
             abort(404)
-        return company.records
+        return db.session.query(models.Record).filter_by(company_id=id)
+
+    def verify_company_id(self, company_id):
+        return db.session.query(
+            exists().where(models.Company.id == company_id)
+        ).scalar()
 
     def modify_data(self, data):
         data["company_id"] = data["id"]

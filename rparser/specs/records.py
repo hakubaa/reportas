@@ -1205,6 +1205,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Zysk (strata) przed opodatkowaniem"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) brutto"
             }
         ]
     },  
@@ -1249,6 +1253,10 @@ finrecords = [
             {
                 "lang": "PL",
                 "value": "Wynik netto"
+            },
+            {
+                "lang": "PL",
+                "value": "Zysk (strata) netto"
             }
         ]
     },

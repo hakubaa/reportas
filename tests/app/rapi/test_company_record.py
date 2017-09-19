@@ -14,11 +14,11 @@ from tests.app import AppTestCase, create_and_login_user
 
 
 
-def generate_data(name="TEST"):
+def generate_data(name="TEST", timeframe=RecordType.POT):
     company = Company.create(db.session, name=name, isin="#"+name)
     ftype = FinancialStatement.get_or_create(db.session, name="bls")
     rtype = RecordType.get_or_create(
-        db.session, {"ftype": ftype, "timeframe": RecordType.POT}, 
+        db.session, {"ftype": ftype, "timeframe": timeframe}, 
         name="NET_PROFIT"
     )
     rec1 = Record.create(

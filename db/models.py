@@ -23,6 +23,27 @@ from db import utils
 import db.adapters.rparser as adapter
 
 
+class GetDefaultReprMixin(object):
+
+    @property
+    def default_repr(self):
+        return self.get_default_repr()
+
+    def get_default_repr(self):
+        reprs = self.get_reprs()
+        try:
+            return next(item.value for item in reprs if item.default)
+        except StopIteration:
+            return None
+
+    def get_reprs(self):
+        if isinstance(self.reprs, Query):
+            reprs = self.reprs.all()
+        else:
+            reprs = self.reprs 
+        return reprs
+
+
 class Sector(VersionedModel):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
@@ -620,7 +641,7 @@ class FormulaComponent(VersionedModel):
         return True
 
 
-class FinancialStatementLayout(Model):
+class FinancialStatementLayout(GetDefaultReprMixin, Model):
 
     DEFAULT_SCHEMAS = [
         {
@@ -628,10 +649,11 @@ class FinancialStatementLayout(Model):
             "reprs": [
                 {"lang": "PL", "value": "Pusty schema", "default": False},
                 {"lang": "EN", "value": "Clear schema", "default": True}
-            ]
+            ],
+            "inputonly": True,
+            "default": False
         },
         {
-            "ftype": "bls",
             "rtypes": [ 
                 "BLS@FIXEDASSETS", "BLS@CURRENTASSETS", "BLS@TOTALASSETS",
                 "BLS@EQUITY", "BLS@LONGANDSHORTERMLIABILITIES", 
@@ -643,20 +665,38 @@ class FinancialStatementLayout(Model):
                     "lang": "PL", "value": "Simplify balance sheet", 
                     "default": True
                 }
-            ]
+            ],
+            "inputonly": False,
+            "default": False
+        },
+        {
+            "rtypes": [
+                "ICS@REVENUESFROMSALE", "ICS@GROSSPROFITONSALES",
+                "ICS@PROFITONOPERATINGACTIVITIES", "ICS@GROSSPROFIT",
+                "ICS@NETPROFIT",
+                "CFS@NETCFFROMOPERATINGACTIVITIES",
+                "CFS@NETCFFROMINVESTMENTACTIVITIES",
+                "CFS@NETCFFROMFINANCIALACTIVITIES",
+                "CFS@TOTALNETCASHFLOWS",
+                "BLS@TOTALASSETS", "BLS@FIXEDASSETS", "BLS@CURRENTASSETS",
+                "BLS@EQUITY", "BLS@LONGTERMLIABILITIES",
+                "BLS@SHORTTERMLIABILITIES"
+            ],
+            "reprs": [
+                {"lang": "PL", "value": "Wybrane Dane Finansowe", "default": False},
+                {
+                    "lang": "PL", "value": "Selected Financial Data", 
+                    "default": True
+                }
+            ],
+            "inputonly": False,
+            "default": True
         }
     ]
 
     id = Column(Integer, primary_key=True)
-
-    ftype_id = Column(Integer, ForeignKey("financialstatement.id"))
-    ftype = relationship(
-        "FinancialStatement", 
-        backref=backref(
-            "fstatements", lazy="joined", 
-            cascade="all, delete-orphan"
-        )
-    )
+    inputonly = Column(Boolean, default=False)
+    default = Column(Boolean, default=False)
 
     def append_rtype(self, rtype, position, **kwargs):
         assoc = RTypeFSchemaAssoc(
@@ -710,33 +750,14 @@ class FinancialStatementLayout(Model):
         }
         return rtypes_id_by_timeframe
 
-    @property
-    def default_repr(self):
-        if hasattr(self, "_cached_default_repr"): 
-            return self._cached_default_repr
-
-        if isinstance(self.reprs, Query):
-            fs_reprs = self.reprs.all()
-        else:
-            fs_reprs = self.reprs
-
-        try:
-            default_repr = next(filter(lambda item: item.default, fs_reprs))
-            self._cached_default_repr = default_repr
-            return default_repr
-        except StopIteration:
-            return None
-
-    @staticmethod
-    def insert_defaults(session):
-        for fschema_spec in FinancialStatementLayout.DEFAULT_SCHEMAS:
-            if "ftype" in fschema_spec:
-                ftype = session.query(FinancialStatement).\
-                            filter_by(name=fschema_spec["ftype"]).one()
-            else:
-                ftype = None
-
-            fschema = FinancialStatementLayout(ftype=ftype)
+    @classmethod
+    def insert_defaults(cls, session):
+        for fschema_spec in cls.DEFAULT_SCHEMAS:
+            fschema_args = { 
+                cname: fschema_spec[cname] 
+                for cname in cls.__table__.columns if cname in fschema_spec 
+            }
+            fschema = cls(**fschema_args)
             for index, rtype in enumerate(fschema_spec["rtypes"]):
                 rtype_db = session.query(RecordType).filter_by(name=rtype).one()
                 if rtype_db:

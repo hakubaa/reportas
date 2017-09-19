@@ -13,15 +13,20 @@
             margin-bottom: 20px;
         }
 
-    .table-responsive {
-        width: 100%;
-        margin-bottom: 15px;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        -ms-overflow-style: -ms-autohiding-scrollbar;
-        border: 1px solid #DDD;
-    }
+        .table-responsive {
+            width: 100%;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            -ms-overflow-style: -ms-autohiding-scrollbar;
+            border: 1px solid #DDD;
+        }
+
+        #fintable-wrapper {
+            max-height: 400px;
+            overflow-y: scroll;
+        }
 
     </style>
 {% endblock %}
@@ -29,13 +34,13 @@
 {% block page_body %}
 <div class="container">
     <div id="controls">
-        <select class="chart-control" id="company" style="width: 200px;">
+        <select class="data-control" id="company" style="width: 200px;">
             <option disabled selected>-- Select an option --</option>
         </select>
-        <select class="chart-control" id="rtype" style="width: 200px;">
+        <select class="data-control" id="fschema" style="width: 200px;">>
             <option disabled selected>-- Select an option --</option>
         </select>
-        <select class="chart-control" id="timerange" style="width: 200px;">
+        <select class="data-control" id="timerange" style="width: 200px;">
             <option value="3">3</option>
             <option value="6">6</option>
             <option value="12">12</option>
@@ -86,10 +91,11 @@
         var select = this;
         $.each(data, function() {
             $(select).append(
-                $("<option/>").val(this.id).text(this.name)
-                    .attr("data-timeframe", this.timeframe)
+                $("<option/>").val(this[attrs.id]).text(this[attrs.label])
             );
         });
+
+
         this.applySelect2(attrs);
     }
 
@@ -123,47 +129,40 @@
 
     $("#timerange").select2();
     $("#company").fillSelect2WithAjax("/api/companies?fields=id,name", {"label": "name"});
-    $("#rtype").fillSelect2WithAjax("/api/rtypes?fields=id,name,timeframe", {"label": "name"}); 
+    $("#fschema").fillSelect2WithAjax(
+        "/api/fschemas?fields=id,default_repr&filter=inputonly=false",
+        {"label": "default_repr"}
+    );
 
-    $(".chart-control").change(function() {
-        var company_id = $("#company").val();
-        var rtype_id = $("#rtype").val();
+    function isSelectValid(selector) {
+        var $selectElement = $(selector);
+        return $selectElement.val() !== null;
+    }
 
-        // if (rtype_id !== null) {
-        //     var timeframe = $("#rtype").find(":selected").data("timeframe");
-        //     var $timerange = $("#timerange");
-        //     if (timeframe == "pot") {
-        //         if ($timerange.prop("disabled")) {
-        //             $timerange.prop("disabled", false); 
-        //             $timerange.val($timerange.children("option:first-child").val());
-        //         }
-                
-        //     } else {
-        //         if (!$timerange.prop("disabled")) {
-        //             $timerange.val("0");
-        //             $timerange.prop("disabled", true);
-        //         }
-        //     }
-        // }
+    function getSelectVal(selector) {
+        var $selectElement = $(selector);
+        return $selectElement.find("option:selected").val();
+    }
 
-        var timerange = $("#timerange").val();
+    function getSelectText(selector) {
+        var $selectElement = $(selector);
+        return $selectElement.find("otpion:selected").text();
+    }
 
-        if (rtype_id !== null && company_id !== null) {
-            var company_name = $("#company option:selected").text();
-            var rtype_name = $("#rtype option:selected").text();
+    $(".data-control").change(function() {
 
-            loadData({
-                company: company_id, rtype: rtype_id, 
-                timerange: timerange
-            }, updateChart, {
-                company: company_name, rtype: rtype_name,
-                timerange: timerange 
-            });
-        }
+        if (isSelectValid("#company") && isSelectValid("#fschema") && 
+                isSelectValid("#timerange")) {
+            
+            var company_id = getSelectVal("#company");
+            var fschema_id = getSelectVal("#fschema");
+            var timerange = getSelectVal("#timerange");
 
-        if (company_id !== null) {
+            var company_name = getSelectText("#company");
+
             loadSchema({
-                fschema: 2, company: company_id, timerange: timerange
+                fschema: fschema_id, company: company_id, 
+                timerange: timerange
             }, function(data) {
                 var $table = createTable(data, {
                     "class": "table table-striped table-bordered table-hover"
@@ -173,8 +172,50 @@
             });
         }
 
+
+        // if (rtype_id !== null && company_id !== null) {
+        //     var company_name = $("#company option:selected").text();
+        //     var rtype_name = $("#rtype option:selected").text();
+
+        //     loadData({
+        //         company: company_id, rtype: rtype_id, 
+        //         timerange: timerange
+        //     }, updateChart, {
+        //         company: company_name, rtype: rtype_name,
+        //         timerange: timerange 
+        //     });
+        // }
+
+        // if (company_id !== null) {
+        //     loadSchema({
+        //         fschema: 2, company: company_id, timerange: timerange
+        //     }, function(data) {
+        //         var $table = createTable(data, {
+        //             "class": "table table-striped table-bordered table-hover"
+        //         });
+        //         $("#fintable-wrapper").empty();
+        //         $("#fintable-wrapper").append($table);
+        //     });
+        // }
+
     });
 
+    $(document).on("click", ".rtype-btn", function() {
+        var company_id = getSelectVal("#company");
+        var timerange = getSelectVal("#timerange");
+        var rtype_id = $(this).closest("tr").attr("data-rtype-id");
+
+        var company_name = getSelectText("#company");
+        var rtype_name = $(this).closest("tr").attr("data-rtype");
+
+        loadData({
+            company: company_id, rtype: rtype_id, 
+            timerange: timerange
+        }, updateChart, {
+            company: company_name, rtype: rtype_name,
+            timerange: timerange 
+        });
+    });
 
     function loadData(request, callback, metadata) {
         var request_url = "http://localhost:5000/api/companies/" + 
@@ -189,17 +230,17 @@
         });
     }
 
-    loadSchema({
-        fschema: 2, company: 36, timerange: 3
-    }, function(data) {
-        var $table = createTable(data, {
-            "class": "table table-striped table-bordered table-hover"
-        });
-        $("#fintable-wrapper").append($table);
-    });
+    // loadSchema({
+    //     fschema: 2, company: 36, timerange: 3
+    // }, function(data) {
+    //     var $table = createTable(data, {
+    //         "class": "table table-striped table-bordered table-hover"
+    //     });
+    //     $("#fintable-wrapper").append($table);
+    // });
 
     // loadData(106, 107, 0, updateChart);
-    loadData({company: 36, rtype: 93, timerange: 0}, updateChart);
+    // loadData({company: 36, rtype: 93, timerange: 0}, updateChart);
     // loadData({company: 37, rtype: 69, timerange: 3}, updateChart);
 
 

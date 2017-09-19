@@ -39,7 +39,8 @@ function createTable(data, attributes) {
     data.schema.forEach(function(item) {
         var $row = $("<tr></tr>");
         $row.attr("data-rtype", item.rtype.name);
-        $row.append(createCellWithRType(item.rtype.name));
+        $row.attr("data-rtype-id", item.rtype.id);
+        $row.append(createCellWithRType(item.rtype));
         rows[item.position] = $row;
     });
 
@@ -72,7 +73,9 @@ function createHeaderCell(data) {
 }
 
 function createCellWithRType(rtype) {
-    return wrapWith("td", $("<span>" + rtype + "</span>"));
+    return wrapWith("td", 
+        $("<a class='rtype-btn' href='javascript:void(0);''>" + rtype.name + "</a>")
+    );
 }
 
 function createCellWithRecord(record) {

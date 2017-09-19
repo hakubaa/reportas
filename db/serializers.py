@@ -590,9 +590,13 @@ class FinancialStatementLayoutSchema(ModelSchema):
 class FinancialStatementLayoutSchemaSimple(ModelSchema):
     class Meta:
         model = models.FinancialStatementLayout
-        fields = ("rtypes",)
+        fields = ("id", "rtypes", "default_repr", "inputonly")
 
     rtypes = fields.Nested(
         RTypeFSchemaAssocSchema, only=("position", "rtype", "calculable"), 
         many=True
     )
+    default_repr = fields.Method("get_default_repr")
+
+    def get_default_repr(self, obj):
+        return obj.default_repr
