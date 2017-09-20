@@ -32,3 +32,16 @@ def end_of_month(date, months_to_add=0):
         year += 1
         month = month - 12
     return datetime.date(year, month, calendar.monthrange(year, month)[1])
+
+
+def determine_fiscal_months(fy_start_month, timerange):
+    months = list()
+    next_month = fy_start_month - 1 or 12
+
+    while next_month not in months:
+        months.append(next_month)
+        next_month += timerange
+        if next_month > 12:
+            next_month = next_month - 12
+
+    return months

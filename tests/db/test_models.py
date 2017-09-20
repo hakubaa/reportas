@@ -12,7 +12,8 @@ from tests.db.utils import *
 from db.models import (
     Company, RecordType, RecordFormula, FormulaComponent, Record,
     FinancialStatement, FinancialStatementLayout, RTypeFSchemaAssoc,
-    FinancialStatementLayoutRepr, FinancialStatementLayout
+    FinancialStatementLayoutRepr, FinancialStatementLayout,
+    Timerange
 )
 from db.core import Model, VersionedModel
 import db.utils as utils
@@ -470,6 +471,154 @@ class RecordTest(DbTestCase):
             self.assertEqual(record.timerange, 12)
 
 
+class RecordQueryTimerangesTest(DbTestCase):
+
+    def setUp(self):
+        super().setUp()
+        Timerange.insert_defaults(self.db.session)
+
+    def test_get_covered_timeranges_for_pit_record(self):
+        company = create_company(self.db.session, fiscal_year_start_month=1)
+        rtype = create_rtype(
+            self.db.session, ftype=create_ftype(self.db.session),
+            timeframe=RecordType.PIT
+        )
+        record = create_record(self.db.session,
+            company=company, rtype=rtype, value=1, timerange=0,
+            timestamp=date(2015, 6, 30)
+        )
+
+        timeranges = [ item.timerange for item in record.covered_timeranges ]
+        self.assertEqual(timeranges, [3, 6])
+
+    def test_get_covered_timeranges_for_pot_record(self):
+        company = create_company(self.db.session, fiscal_year_start_month=1)
+        rtype = create_rtype(
+            self.db.session, ftype=create_ftype(self.db.session),
+            timeframe=RecordType.POT
+        )
+        record = create_record(self.db.session,
+            company=company, rtype=rtype, value=1, timerange=6,
+            timestamp=date(2015, 6, 30)
+        )
+
+        timeranges = [ item.timerange for item in record.covered_timeranges ]
+        self.assertEqual(timeranges, [6])
+
+    def test_query_records_by_covered_timeranges(self):
+        company = create_company(self.db.session, fiscal_year_start_month=1)
+        ftype = create_ftype(self.db.session)
+        rtype = create_rtype(
+            self.db.session, ftype=ftype, timeframe=RecordType.POT
+        )
+        fake_record = create_record(self.db.session,
+            company=company, rtype=rtype, value=1, timerange=3  ,
+            timestamp=date(2015, 3, 31)
+        )
+        ref_record = create_record(self.db.session,
+            company=company, rtype=rtype, value=1, timerange=6,
+            timestamp=date(2015, 6, 30)
+        )
+
+        timeranges = self.db.session.query(Timerange.id).filter_by(
+            timerange=6, fiscal_year_start_month=company.fiscal_year_start_month
+        ).all()
+
+        timeranges = [ item for item, in timeranges ]
+
+        wal_record = self.db.session.query(Record).filter(
+            Record.covered_timeranges.any(Timerange.id.in_(timeranges))
+        ).one()
+
+        self.assertIsNotNone(wal_record)
+        self.assertEqual(ref_record, wal_record)
+
+
+    def test_query_pit_and_pot_records_by_covered_timeranges(self):
+        company = create_company(self.db.session, fiscal_year_start_month=1)
+        ftype = create_ftype(self.db.session)
+
+        rtype_pot = create_rtype(
+            self.db.session, name="REVENEUS", ftype=ftype, 
+            timeframe=RecordType.POT
+        )
+        rtype_pit = create_rtype(
+            self.db.session, name="ASSETS", ftype=ftype, 
+            timeframe=RecordType.PIT
+        )
+
+        fake_record = create_record(self.db.session,
+            company=company, rtype=rtype_pot, value=1, timerange=3,
+            timestamp=date(2015, 3, 31)
+        )
+        revenues = create_record(self.db.session,
+            company=company, rtype=rtype_pot, value=1, timerange=6,
+            timestamp=date(2015, 6, 30)
+        )
+        assets = create_record(self.db.session,
+            company=company, rtype=rtype_pit, value=1, timerange=0,
+            timestamp=date(2015, 6, 30)
+        )
+
+        timeranges = self.db.session.query(Timerange.id).filter_by(
+            timerange=6
+        ).all()
+
+        timeranges = [ item for item, in timeranges ]
+
+        records = self.db.session.query(Record).filter(
+            Record.covered_timeranges.any(Timerange.id.in_(timeranges))
+        ).all()
+
+        self.assertEqual(len(records), 2)
+        self.assertCountEqual(records, [revenues, assets])
+
+    def test_query_records_of_two_different_companies(self):
+        jago = create_company(
+            self.db.session, name="JAGO", fiscal_year_start_month=1
+        )
+        bago = create_company(
+            self.db.session, name="BAGO", fiscal_year_start_month=7
+        )
+
+        ftype = create_ftype(self.db.session)
+        rtype_pot = create_rtype(
+            self.db.session, name="REVENEUS", ftype=ftype, 
+            timeframe=RecordType.POT
+        )
+
+        create_record(self.db.session,
+            company=jago, rtype=rtype_pot, value=10, timerange=12,
+            timestamp=date(2015, 12, 31)
+        )
+        revenues_jago = create_record(self.db.session,
+            company=jago, rtype=rtype_pot, value=10, timerange=6,
+            timestamp=date(2015, 6, 30)
+        )
+
+        create_record(self.db.session,
+            company=bago, rtype=rtype_pot, value=100, timerange=12,
+            timestamp=date(2015, 6, 30)
+        )
+        revenues_bago = create_record(self.db.session,
+            company=bago, rtype=rtype_pot, value=100, timerange=6,
+            timestamp=date(2015, 12, 31)
+        )
+
+        timeranges = self.db.session.query(Timerange.id).filter_by(
+            timerange=6
+        ).all()
+
+        timeranges = [ item for item, in timeranges ]
+
+        records = self.db.session.query(Record).filter(
+            Record.covered_timeranges.any(Timerange.id.in_(timeranges))
+        ).all()
+
+        self.assertEqual(len(records), 2)
+        self.assertCountEqual(records, [revenues_jago, revenues_bago])
+
+
 class SyntheticReccordsTest(DbTestCase):
     
     def create_records(self, data):
@@ -762,7 +911,7 @@ class FinancialStatementLayoutTest(DbTestCase):
                     filter_by(name=name).one()
 
     def test_create_relation_with_record_type_test01(self):
-        fs = FinancialStatementLayout(ftype=self.get_ftype("bls"))
+        fs = FinancialStatementLayout()
         rtype = RecordType(
             name="TOTAL_ASSETS", ftype=self.get_ftype("bls"),
             timeframe=RecordType.POT
@@ -780,7 +929,7 @@ class FinancialStatementLayoutTest(DbTestCase):
         self.assertEqual(rtype.fschemas[0].fschema, fs)
 
     def test_create_relation_with_record_type_test02(self):
-        fs = FinancialStatementLayout(ftype=self.get_ftype("bls"))
+        fs = FinancialStatementLayout()
         rtype = RecordType(
             name="TOTAL_ASSETS", ftype=self.get_ftype("bls"),
             timeframe=RecordType.POT
@@ -797,7 +946,7 @@ class FinancialStatementLayoutTest(DbTestCase):
         self.assertEqual(rtype.fschemas[0].fschema, fs)
 
     def test_create_relation_with_method_append_rtype(self):
-        fs = FinancialStatementLayout(ftype=self.get_ftype("bls"))
+        fs = FinancialStatementLayout()
         rtype = RecordType(
             name="TOTAL_ASSETS", ftype=self.get_ftype("bls"),
             timeframe=RecordType.POT
@@ -814,7 +963,7 @@ class FinancialStatementLayoutTest(DbTestCase):
         self.assertEqual(rtype.fschemas[0].fschema, fs)
 
     def test_get_default_repr(self):
-        fs = FinancialStatementLayout(ftype=self.get_ftype("bls"))
+        fs = FinancialStatementLayout()
         fs.reprs.append(FinancialStatementLayoutRepr(lang="PL", value="Bilans"))
         fs.reprs.append(FinancialStatementLayoutRepr(
             lang="EN", value="Balance Sheet", default=True
@@ -822,10 +971,7 @@ class FinancialStatementLayoutTest(DbTestCase):
         self.db.session.add(fs)
         self.db.session.commit()
 
-        fs_repr = fs.default_repr
-
-        self.assertEqual(fs_repr.lang, "EN")
-        self.assertEqual(fs_repr.value, "Balance Sheet")
+        self.assertEqual(fs.default_repr, "Balance Sheet")
 
     def test_for_retrieving_records_in_accordance_with_schema(self):
         company = create_company(self.db.session, name="Test", isin="#TEST")
@@ -977,4 +1123,67 @@ class CompanyTest(DbTestCase):
         
         fiscal_months = company.determine_fiscal_months(12)
         
-        self.assertCountEqual(fiscal_months, (6,))   
+        self.assertCountEqual(fiscal_months, (6,))
+
+
+class TimerangeTest(DbTestCase):
+    
+    def test_create_default_records_for_3months_timerange_and_1fy(self):
+        records = Timerange.create_records(
+            timeranges=[3], fy_start_months = [1]
+        )
+
+        self.assertEqual(len(records), 4)
+
+        months = [ item.month for item in records ]
+        self.assertCountEqual(months, [3, 6, 9, 12])
+        
+    def test_create_default_records_for_6months_timerange_and_1fy(self):
+        records = Timerange.create_records(
+            timeranges=[6], fy_start_months = [1]
+        )
+        
+        self.assertEqual(len(records), 2)
+        
+        months = [ item.month for item in records ]
+        self.assertCountEqual(months, [6, 12])
+        
+    def test_create_default_records_for_12months_timerange_and_1fy(self):
+        records = Timerange.create_records(
+            timeranges=[12], fy_start_months = [1]
+        )
+        
+        self.assertEqual(len(records), 1)
+        
+        months = [ item.month for item in records ]
+        self.assertEqual(months, [12])
+        
+    def test_create_default_records_for_3months_timerange_and_7fy(self):
+        records = Timerange.create_records(
+            timeranges=[3], fy_start_months = [7]
+        )
+        
+        self.assertEqual(len(records), 4)
+        
+        months = [ item.month for item in records ]
+        self.assertCountEqual(months, [3, 6, 9, 12])
+        
+    def test_create_default_records_for_6months_timerange_and_7fy(self):
+        records = Timerange.create_records(
+            timeranges=[6], fy_start_months = [7]
+        )
+        
+        self.assertEqual(len(records), 2)
+        
+        months = [ item.month for item in records ]
+        self.assertCountEqual(months, [6, 12])
+        
+    def test_create_default_records_for_12months_timerange_and_7fy(self):
+        records = Timerange.create_records(
+            timeranges=[12], fy_start_months = [7]
+        )
+        
+        self.assertEqual(len(records), 1)
+        
+        months = [ item.month for item in records ]
+        self.assertEqual(months, [6])

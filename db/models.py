@@ -11,11 +11,12 @@ from sqlalchemy import (
     UniqueConstraint, CheckConstraint, Date, SmallInteger
 )
 from sqlalchemy.orm.query import Query
-from sqlalchemy import func, cast, inspect, event, and_, or_, extract
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import func, cast, inspect, event, and_, or_, extract, select
+from sqlalchemy.orm import relationship, backref, remote, foreign
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.dialects.postgresql import INTERVAL 
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm.properties import RelationshipProperty
 from dateutil.relativedelta import relativedelta
 
 from db.core import Model, VersionedModel
@@ -326,6 +327,39 @@ class RecordTypeRepr(VersionedModel):
         backref=backref("reprs", lazy="joined", cascade="all, delete-orphan")
     )
 
+
+class Timerange(Model):
+    id = Column(Integer, primary_key=True)
+    
+    fiscal_year_start_month = Column(SmallInteger, nullable=False)
+    timerange = Column(SmallInteger, nullable=False)
+    month = Column(SmallInteger, nullable=False)
+    
+    def __repr__(self):
+        return "Timerange({})".format(self.timerange) 
+
+    @staticmethod
+    def insert_defaults(
+        session, timeranges=[3, 6, 12], fy_start_months=range(1, 13)
+    ):
+        records = Timerange.create_records(timeranges, fy_start_months)
+        session.add_all(records)
+        session.commit()
+        
+    @staticmethod
+    def create_records(timeranges=[3, 6, 12], fy_start_months=range(1, 13)):
+        records = []
+        for timerange, fm in itertools.product(timeranges, fy_start_months):
+            months = utils.determine_fiscal_months(fm, timerange)
+            records.extend(
+                Timerange(
+                    fiscal_year_start_month=fm,
+                    timerange=timerange, month=month
+                )
+                for month in months
+            )
+        return records
+        
     
 class Record(VersionedModel):
     id = Column(Integer, primary_key=True)
@@ -489,8 +523,29 @@ class Record(VersionedModel):
         ))
         return records
         
-    
-        
+    covered_timeranges = relationship(
+        "Timerange",
+        secondary="join(Company, Record, Company.id == Record.company_id)",
+        primaryjoin=or_(
+            and_(
+                Timerange.timerange == timerange,
+                remote(foreign(Timerange.month)) \
+                    == extract("month", timestamp),
+                remote(foreign(Timerange.fiscal_year_start_month)) \
+                    == Company.fiscal_year_start_month
+            ),
+            and_(
+                timerange == 0,
+                remote(foreign(Timerange.month)) \
+                    == extract("month", timestamp),
+                remote(foreign(Timerange.fiscal_year_start_month)) \
+                    == Company.fiscal_year_start_month,
+            )
+        ),
+        secondaryjoin="Company.id == foreign(Record.company_id)"
+    )
+
+
 # timerange of 'point-in-time' records cannot be changed, this field has
 # little sense for this records, because they show some value at specific
 # time
@@ -510,7 +565,6 @@ def after_insert(mapper, connection, target):
             where(record_table.c.id == target.id).
             values(timerange=0)
         )
-
 
 class RecordFormula(VersionedModel):
 
