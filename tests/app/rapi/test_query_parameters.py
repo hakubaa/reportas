@@ -10,7 +10,7 @@ from sqlalchemy.orm import backref, relationship
 from app import db, ma
 from app.rapi import rapi
 from app.rapi.base import ListView
-from app.rapi.utils import create_query_filter
+from app.rapi.utils import FilterParser
 from app.models import User, Role, DBRequest
 from db.core import Model
 
@@ -60,7 +60,7 @@ class StudentEmailListView(ListView):
         if not student:
             abort(404)
         return student.emails
-
+        
 
 rapi.add_url_rule(
     "/students",  
@@ -301,67 +301,7 @@ class FilterTest(AppTestCase):
 
     def assertFilter(self, qfilter, results):
         students = db.session.query(Student).filter(qfilter).all()
-        self.assertCountEqual(students, results)
-
-    def test_create_query_filter_returns_True_when_no_filter_matches(self):
-        stud_filter = create_query_filter(Student.age, "$@$37")
-        self.assertTrue(stud_filter)
-
-    def test_create_query_filter_eq(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "age=1")
-
-        self.assertFilter(stud_filter, [students[1]])
-
-    def test_create_query_filter_eq2(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "name=Student3")
-
-        self.assertFilter(stud_filter, [students[3]])
-
-    def test_create_query_filter_le(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "age<=2")
-
-        self.assertFilter(stud_filter, students[:3])
-
-    def test_create_query_filter_lt(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "age<2")
-
-        self.assertFilter(stud_filter, students[:2])
-
-    def test_create_query_filter_ne(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "age!=2")
-
-        self.assertFilter(stud_filter, students[:2] + students[3:])
-
-    def test_create_query_filter_ge(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "age>=3")
-        
-        self.assertFilter(stud_filter, students[3:])
-
-    def test_create_query_filter_gt(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "age>3")
-        
-        self.assertFilter(stud_filter, students[4:])    
-
-    def test_create_query_filter_in(self):
-        students = self.create_five_students()
-
-        stud_filter = create_query_filter(Student, "age@in@0,2,4")
-        
-        self.assertFilter(stud_filter, students[::2])    
+        self.assertCountEqual(students, results)  
 
     @create_and_login_user()
     def test_filter_students_by_age_test01(self):
@@ -432,3 +372,102 @@ class FilterTest(AppTestCase):
         data = response.json
         
         self.assertEqual(data["count"], 2)
+
+
+#-------------------------------------------------------------------------------
+# Refactored Views
+#-------------------------------------------------------------------------------
+
+class StudentListRefView(ListView):
+    model = Student
+    schema = StudentSchema
+    
+    filter_columns = ["name"] # only this columns can be filtered
+
+
+rapi.add_url_rule(
+    "/students_ref",
+    view_func=StudentListRefView.as_view("student_list_ref")
+)
+
+#-------------------------------------------------------------------------------
+
+
+# class FilterParserTest(unittest.TestCase):
+    
+#     def assert_parser(self, fparser, expected):
+#         self.assertEqual(fparser.field, expected.get("field", None))
+#         self.assertEqual(fparser.operator, expected.get("operator", None))
+#         self.assertEqual(fparser.value, expected.get("value", None))
+        
+#     def test_for_parsing_valid_filter_with_one_sign_operator(self):
+#         fparser = FilterParser("timerange=12")
+#         import pdb; pdb.set_trace()
+#         self.assert_parser(fparser, {
+#             "field": "timerange", "operator": "=", "value": "12"
+#         })
+        
+#     def test_for_parsing_valid_filter_with_two_signs_operator(self):
+#         fparser = FilterParser("age>=10")
+        
+#         self.assert_parser(fparser, {
+#             "field": "age", "operator": ">=", "value": "10"
+#         })
+        
+#     def test_for_parsing_string_values(self):
+#         fparser = FilterParser("name='Kuba'")
+        
+#         self.assert_parser(fparser, {
+#             "field": "name", "operator": "=", "value": "Kuba"
+#         })
+    
+#     def test_for_parsing_in_operator(self):
+#         fparser = FilterParser("timerange@in@1,2,3")
+        
+#         self.assert_parser(fparser, {
+#             "field": "timerange", "operator": "@in@", "value": "1,2,3"    
+#         })
+
+#     def test_defective_filter_returns_nones(self):
+#         fparser = FilterParser("time12")
+        
+#         self.assert_parser(fparser, {})
+
+
+
+# class RefFilterTest(AppTestCase):
+#     models = (Student, EMail, User, Role)
+
+#     def create_five_students(self):
+#         return [ 
+#             create_student(name="Student%d" % i, age=i) 
+#             for i in range(5) 
+#         ]
+        
+#     @create_and_login_user()
+#     def test_cannot_filter_with_columns_not_being_in_the_list(self):
+#         students = self.create_five_students()
+
+#         response = self.client.get(
+#             url_for("rapi.student_list_ref"),
+#             query_string={"filter": "age=1"}
+#         )
+#         data = response.json["results"]
+
+#         self.assertEqual(len(data), 5)
+        
+#     @create_and_login_user()
+#     def test_can_filter_with_columns_from_the_list(self):
+#         students = self.create_five_students()
+        
+#         response = self.client.get(
+#             url_for("rapi.student_list_ref"),
+#             query_string={"filter": "name='Student1'"}
+#         )
+#         data = response.json["results"]
+        
+#         self.assertEqual(len(data), 1)
+#         self.assertEqual(data[0].age, 1)
+#         self.assertEqual(data[0].name, "Student1")
+        
+    

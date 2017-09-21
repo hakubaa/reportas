@@ -4,6 +4,7 @@ import re
 import operator
 
 from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.util import class_mapper
 from flask import request, current_app
 
 import db.utils as dbutil
@@ -21,8 +22,9 @@ class QueryFilter:
     '''
     REGEX_SPECIAL_CHARACTERS = "\\^${}[]().*+?|<>-&"
 
-    def __init__(self, operator, method):
-        self.method = method
+    def __init__(self, operator, method_query, method_list=None):
+        self.method_query = method_query
+        self.method_list = method_list
         self.operator = operator
         self.regex = self._create_regex(operator)
 
@@ -43,8 +45,18 @@ class QueryFilter:
             value = m.group("value")
         except (AttributeError, IndexError):
             return None
+        
+        if self.is_model(obj):
+            return self.method_query(subject, value) 
         else:
-            return self.method(subject, value) 
+            return self.method_list(subject, value)
+
+    def is_model(self, cls):
+        try:
+            class_mapper(cls)
+        except:
+            return False
+        return True
 
     def match(self, expr):
         return re.match(self.regex, expr)
@@ -64,106 +76,20 @@ def apply_conversion(f):
     return wrapper 
 
 
-sql_query_filters = [
-    QueryFilter(operator="=", method=operator.eq),
-    QueryFilter(operator="<=", method=operator.le),
-    QueryFilter(operator="<", method=operator.lt),
-    QueryFilter(operator="!=", method=operator.ne),
-    QueryFilter(operator=">=", method=operator.ge),
-    QueryFilter(operator=">", method=operator.gt),
-    QueryFilter(operator="@in@", method=lambda c, v: c.in_(v.split(",")))
-]
-
-qlist_filters = [
-    QueryFilter(operator="=", method=apply_conversion(operator.eq)),
-    QueryFilter(operator="<=", method=apply_conversion(operator.le)),
-    QueryFilter(operator="<", method=apply_conversion(operator.lt)),
-    QueryFilter(operator="!=", method=apply_conversion(operator.ne)),
-    QueryFilter(operator=">=", method=apply_conversion(operator.ge)),
-    QueryFilter(operator=">", method=apply_conversion(operator.gt)),
-    QueryFilter(operator="@in@", method=qlist_in_operator)
-]
-
-
-def create_query_filter(model, expr):
-    try:
-        qfilter = next(qf for qf in sql_query_filters if qf.match(expr))
-    except StopIteration:
-        return True
-
-    return qfilter(model, expr)
-
-
-def filter_query_list(qlist, expr):
-    try:
-        qfilter = next(qf for qf in qlist_filters if qf.match(expr))
-    except StopIteration:
-        return qlist
-
-    new_qlist = [ item for item in qlist if qfilter(item, expr) ]
-    return new_qlist
-
-
-def get_models_from_query(query):
-    return [ mapper.type for mapper in query._mapper_entities ]
-
-
-def apply_query_parameters_to_list(qlist, filters, limit, offset, sort):
-    if filters:
-        for expr in filters:
-            qlist = filter_query_list(qlist, expr)
-
-    if sort:
-        for field in sort.split(","):
-            index = 1 if field.startswith("-") else 0
-            try:
-                qlist = sorted(
-                    qlist, key=lambda x: getattr(x, field[index:]),
-                    reverse = bool(index)
-                )
-            except AttributeError:
-                continue
-    if not limit: limit = len(qlist)
-    qlist = qlist[offset:(offset+limit)]
-    return qlist
-
-
-def apply_query_parameters_to_query(query, filters, limit, offset, sort):
-    if filters:
-        model = get_models_from_query(query)[0]
-        for expr in filters:
-            query = query.filter(create_query_filter(model, expr))
-
-    if sort:
-        for field in sort.split(","):
-            index = 1 if field.startswith("-") else 0
-            try:
-                model = query.column_descriptions[0]["type"]
-                column = model.__table__.columns[field[index:]]
-                if index:
-                    column = column.desc()
-            except KeyError:
-                continue
-            else:
-                query = query.order_by(column)
+class FilterParser:
+    REGEX_FILTER = "^(?P<field>[^=\<\>!]+)(?P<operator>.*)(?P<value>.*)"
     
-    query = query.limit(limit or None).offset(offset or None)
-    return query.all()
-
-
-def apply_query_parameters(obj):
-    filters = request.args.get("filter", None)
-    if filters: filters = filters.split(";")
-    limit = int(request.args.get("limit", 0))
-    offset = int(request.args.get("offset", 0))
-    sort = request.args.get("sort")
-    if sort: sort = "".join(sort.split()) # remove all whitespaces
-
-    if isinstance(obj, Query):
-        method = apply_query_parameters_to_query
-    else:
-        method = apply_query_parameters_to_list
-
-    return method(obj, filters, limit, offset, sort)
-
-#-------------------------------------------------------------------------------
+    def __init__(self, expr):
+        self.expr = re.match(self.REGEX_FILTER, expr)
+        
+    @property
+    def field(self):
+        return self.expr.group("field")
+        
+    @property
+    def operator(self):
+        return self.expr.group("operator")
+        
+    @property
+    def value(self):
+        return self.expr.group("value")

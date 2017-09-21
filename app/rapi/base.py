@@ -1,9 +1,11 @@
 import json
+import operator
 
 from flask import jsonify, request, g, abort
 from flask.views import MethodView
+from sqlalchemy.orm.query import Query
 
-from app.rapi.utils import apply_query_parameters
+from app.rapi.utils import QueryFilter, apply_conversion, qlist_in_operator
 from app.models import DBRequest, Permission
 from app.user import auth
 from app.user.auth import permission_required
@@ -89,6 +91,187 @@ class DetailView(ViewUtilMixin, MethodView):
 class ListView(ViewUtilMixin, MethodView):
     model = None
 
+    filter_columns = []
+    filter_operators = [
+        QueryFilter(
+            operator="=", method_query=operator.eq, 
+            method_list=apply_conversion(operator.eq)
+        ),
+        QueryFilter(
+            operator="<=", method_query=operator.le,
+            method_list=apply_conversion(operator.le)
+        ),
+        QueryFilter(
+            operator="<", method_query=operator.lt,
+            method_list=apply_conversion(operator.lt)
+        ),
+        QueryFilter(
+            operator="!=", method_query=operator.ne,
+            method_list=apply_conversion(operator.ne)
+        ),
+        QueryFilter(
+            operator=">=", method_query=operator.ge,
+            method_list=apply_conversion(operator.ge)
+        ),
+        QueryFilter(
+            operator=">", method_query=operator.gt,
+            method_list=apply_conversion(operator.gt)
+        ),
+        QueryFilter(
+            operator="@in@", method_query=lambda c, v: c.in_(v.split(",")),
+            method_list=qlist_in_operator
+        )
+    ]
+
+    @auth.login_required
+    @permission_required(Permission.BROWSE_DATA)
+    def get(self, *args, **kwargs):
+        query = self.apply_query_parameters(self.get_query(*args, **kwargs))
+        objs = self.execute_query(query)
+        schema = self.get_schema()
+        data = schema.dump(objs, many=True).data
+        return jsonify({
+            "results": data,
+            "count": len(data)
+        }), 200
+
+    def get_objects(self, *args, **kwargs):
+        objs = db.session.query(self.model)
+        return objs
+
+    def get_query(self, *args, **kwargs):
+        return self.get_objects(*args, **kwargs)
+        
+    def execute_query(self, query):
+        if isinstance(query, Query):
+            return query.all()
+        else:
+            return query
+        
+    def apply_query_parameters(self, query):
+        if isinstance(query, Query):
+            method = self.apply_query_parameters_to_query
+        else:
+            method = self.apply_query_parameters_to_list
+            
+        qparams = self.get_query_parameters()
+        return method(query, **qparams)
+        
+    def get_query_parameters(self):
+        filters = request.args.get("filter", None)
+        if filters: filters = filters.split(";")
+        limit = int(request.args.get("limit", 0))
+        offset = int(request.args.get("offset", 0))
+        sort = request.args.get("sort")
+        if sort: sort = "".join(sort.split()) # remove all whitespaces
+        
+        return {
+            "filters": filters, "sort": sort,
+            "limit": limit, "offset": offset
+        }
+        
+    def apply_query_parameters_to_query(self, query, filters, limit, offset, sort):
+        query = self.apply_filters_to_query(query, filters)
+        query = self.apply_sort_to_query(query, sort)
+        query = self.apply_slice_to_query(query, limit, offset)
+        return query.all()
+        
+    def apply_filters_to_query(self, query, filters):
+        if not filters:
+            return query
+            
+        model = self.get_models_from_query(query)[0]
+        for expr in filters:
+            query = query.filter(self.create_query_filter(model, expr))
+            
+        return query
+
+    def match_filter(self, expr):
+        try:
+            qfilter = next(qf for qf in self.filter_operators if qf.match(expr))
+        except StopIteration:
+            return None
+        else:
+            return qfilter
+        
+    def create_query_filter(self, model, expr):
+        qfilter = self.match_filter(expr)
+        if not qfilter:
+            return True
+        return qfilter(model, expr)
+
+    def apply_sort_to_query(self, query, sort):
+        if not sort:
+            return query
+            
+        for field in sort.split(","):
+            index = 1 if field.startswith("-") else 0
+            try:
+                model = query.column_descriptions[0]["type"]
+                column = model.__table__.columns[field[index:]]
+                if index:
+                    column = column.desc()
+            except KeyError:
+                continue
+            else:
+                query = query.order_by(column)
+                
+        return query
+                    
+    def apply_slice_to_query(self, query, limit, offset):
+        return query.limit(limit or None).offset(offset or None)
+
+    def apply_query_parameters_to_list(self, qlist, filters, limit, offset, sort):
+        qlist = self.apply_filters_to_list(qlist, filters)
+        qlist = self.apply_sort_to_list(qlist, sort)
+        qlist = self.apply_slice_to_list(qlist, limit, offset)
+        return qlist
+        
+    def apply_filters_to_list(self, qlist, filters):
+        if not filters:
+            return qlist
+            
+        for expr in filters:
+            qlist = self.filter_query_list(qlist, expr)
+        
+        return qlist
+
+    def filter_query_list(self, qlist, expr):
+        qfilter = self.match_filter(expr)
+        if not qfilter:
+            return qlist
+        new_qlist = [ item for item in qlist if qfilter(item, expr) ]
+        return new_qlist
+        
+    def apply_sort_to_list(self, qlist, sort):
+        if not sort:
+            return qlist
+            
+        for field in sort.split(","):
+            index = 1 if field.startswith("-") else 0
+            try:
+                qlist = sorted(
+                    qlist, key=lambda x: getattr(x, field[index:]),
+                    reverse = bool(index)
+                )
+            except AttributeError:
+                continue
+            
+        return qlist
+        
+    def apply_slice_to_list(self, qlist, limit, offset):
+        if not limit: limit = len(qlist)
+        qlist = qlist[offset:(offset+limit)]
+        return qlist
+
+    def get_models_from_query(self, query):
+        return [ mapper.type for mapper in query._mapper_entities ]
+    
+    
+    post = create_http_request_handler("create")
+    delete = create_http_request_handler("delete")
+    put = create_http_request_handler("update")
+    
     def create_dbrequests(self, action, user, **kwargs):
         request_data = json.loads(request.data.decode())
         many = request.args.get("many", "F").lower() in ("t", "true")
@@ -104,22 +287,3 @@ class ListView(ViewUtilMixin, MethodView):
                           model=self.model.__name__)
             )
         return dbrequests
-
-    def get_objects(self, *args, **kwargs):
-        objs = db.session.query(self.model)
-        return objs
-
-    @auth.login_required
-    @permission_required(Permission.BROWSE_DATA)
-    def get(self, *args, **kwargs):
-        objs = apply_query_parameters(self.get_objects(*args, **kwargs))
-        schema = self.get_schema()
-        data = schema.dump(objs, many=True).data
-        return jsonify({
-            "results": data,
-            "count": len(data)
-        }), 200
-
-    post = create_http_request_handler("create")
-    delete = create_http_request_handler("delete")
-    put = create_http_request_handler("update")
