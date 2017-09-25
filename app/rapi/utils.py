@@ -51,7 +51,7 @@ class QueryFilter:
         if self.is_model(obj):
             return self.method_query(*params_for_method) 
         else:
-            return self.method_list(*params_for_method)
+            return (self.method_list or self.method_query)(*params_for_method)
             
     def modify_column(self, column):
         return column

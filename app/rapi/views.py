@@ -24,6 +24,7 @@ import db.models as models
 from db import tools
 
 
+#TODO: WHAT ABOUT LISTS?
 class RecordTimerangeFilter(QueryFilter):
 
     @staticmethod

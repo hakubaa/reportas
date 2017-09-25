@@ -12,6 +12,7 @@
 - timestamp/timerange report - empty option
 - delete action: use wrapping request to group many delete requests
 - ocr linux: https://openms.net/ocr-linux/ for reports saved in stupid format
+- cofered_timeranges - what about list?
 
 
 #DONE:
