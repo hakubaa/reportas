@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
 import unittest
+import operator
 
 from flask import url_for
 import dateutil
@@ -10,9 +11,10 @@ from sqlalchemy.orm import backref, relationship
 from app import db, ma
 from app.rapi import rapi
 from app.rapi.base import ListView
-from app.rapi.utils import FilterParser
+from app.rapi.utils import QueryFilter
 from app.models import User, Role, DBRequest
 from db.core import Model
+from app.rapi.utils import apply_conversion
 
 from tests.app import AppTestCase, create_and_login_user
 
@@ -378,96 +380,162 @@ class FilterTest(AppTestCase):
 # Refactored Views
 #-------------------------------------------------------------------------------
 
-class StudentListRefView(ListView):
+class StudentExtListView(ListView):
     model = Student
     schema = StudentSchema
     
     filter_columns = ["name"] # only this columns can be filtered
 
 
+class CrazyQueryFilter(QueryFilter):
+    
+    def modify_column(self, field):
+        return "age"
+        
+
+class StudentCrazyListView(ListView):
+    model = Student
+    schema = StudentSchema
+    
+    filter_overrides = {
+        "name": [
+            CrazyQueryFilter(
+                operator="=", method_query=operator.eq,
+                method_list=apply_conversion(operator.eq)
+            )
+        ]
+    }
+
+class CrazyEmailFilter(QueryFilter):
+    
+    def modify_value(self, value):
+        return "-1"
+        
+
+class StudentEmailListView(ListView):
+    model = EMail
+    schema = EMailSchema
+    
+    filter_overrides = {
+        "priority": [
+            CrazyEmailFilter(
+                operator=">", method_query=operator.ge,
+                method_list=apply_conversion(operator.ge)
+            )
+        ]
+    }
+
+    def get_objects(self, id):
+        student = db.session.query(Student).get(id)
+        if not student:
+            abort(404)
+        return student.emails
+        
+
 rapi.add_url_rule(
-    "/students_ref",
-    view_func=StudentListRefView.as_view("student_list_ref")
+    "/students_ext",
+    view_func=StudentExtListView.as_view("student_ext_list")
 )
 
+rapi.add_url_rule(
+    "/students_crazy",
+    view_func=StudentCrazyListView.as_view("student_crazy_list")
+)
+
+rapi.add_url_rule(
+    "/students_crazy/<int:id>/emails",
+    view_func=StudentEmailListView.as_view("student_crazy_email_list")
+)
+
+class ModyfiedFilterTest(AppTestCase):
+    models = (Student, EMail, User, Role)
+
+    def create_five_students(self):
+        return [ 
+            create_student(name="Student%d" % i, age=i) 
+            for i in range(5) 
+        ]
+        
+    @create_and_login_user()
+    def test_cannot_filter_with_columns_not_being_in_the_list(self):
+        students = self.create_five_students()
+
+        response = self.client.get(
+            url_for("rapi.student_ext_list"),
+            query_string={"filter": "age=1"}
+        )
+        data = response.json["results"]
+
+        self.assertEqual(len(data), 5)
+        
+    @create_and_login_user()
+    def test_can_filter_with_columns_from_the_list(self):
+        students = self.create_five_students()
+        
+        response = self.client.get(
+            url_for("rapi.student_ext_list"),
+            query_string={"filter": "name=Student1"}
+        )
+        data = response.json["results"]
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["age"], 1)
+        self.assertEqual(data[0]["name"], "Student1")
+        
+    @create_and_login_user()
+    def test_default_filters_can_be_overridden(self):
+        students = self.create_five_students()
+        
+        response = self.client.get(
+            url_for("rapi.student_crazy_list"),
+            query_string={"filter": "name=2"}
+        )
+        data = response.json["results"]
+        
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["age"], 2)
+        self.assertEqual(data[0]["name"], "Student2")
+        
+    @create_and_login_user()
+    def test_overidden_filters_without_defined_operators_are_omitted(self):
+        students = self.create_five_students()
+        
+        response = self.client.get(
+            url_for("rapi.student_crazy_list"),
+            query_string={"filter": "name%in%2"}
+        )
+        data = response.json["results"]
+        
+        self.assertEqual(len(data), 5)
+
+   
+    @create_and_login_user()
+    def test_not_overriden_filters_working_conventionally(self):
+        students = self.create_five_students()
+        
+        response = self.client.get(
+            url_for("rapi.student_crazy_list"),
+            query_string={"filter": "age=3"}
+        )
+        data = response.json["results"]
+        
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["age"], 3)
+        self.assertEqual(data[0]["name"], "Student3")
+        
+    @create_and_login_user()
+    def test_overridden_filter_works_for_list(self):
+        student = create_student(name="Python", age=18)
+        student.emails.append(EMail(value="Test", priority=0))
+        student.emails.append(EMail(value="Help", priority=10))
+        student.emails.append(EMail(value="Question", priority=5))
+        
+        response = self.client.get(
+            url_for("rapi.student_crazy_email_list", id=student.id),
+            query_string={"filter": "priority>5"}
+        )
+        data = response.json
+        
+        self.assertEqual(data["count"], 3)
+        
 #-------------------------------------------------------------------------------
-
-
-# class FilterParserTest(unittest.TestCase):
-    
-#     def assert_parser(self, fparser, expected):
-#         self.assertEqual(fparser.field, expected.get("field", None))
-#         self.assertEqual(fparser.operator, expected.get("operator", None))
-#         self.assertEqual(fparser.value, expected.get("value", None))
-        
-#     def test_for_parsing_valid_filter_with_one_sign_operator(self):
-#         fparser = FilterParser("timerange=12")
-#         import pdb; pdb.set_trace()
-#         self.assert_parser(fparser, {
-#             "field": "timerange", "operator": "=", "value": "12"
-#         })
-        
-#     def test_for_parsing_valid_filter_with_two_signs_operator(self):
-#         fparser = FilterParser("age>=10")
-        
-#         self.assert_parser(fparser, {
-#             "field": "age", "operator": ">=", "value": "10"
-#         })
-        
-#     def test_for_parsing_string_values(self):
-#         fparser = FilterParser("name='Kuba'")
-        
-#         self.assert_parser(fparser, {
-#             "field": "name", "operator": "=", "value": "Kuba"
-#         })
-    
-#     def test_for_parsing_in_operator(self):
-#         fparser = FilterParser("timerange@in@1,2,3")
-        
-#         self.assert_parser(fparser, {
-#             "field": "timerange", "operator": "@in@", "value": "1,2,3"    
-#         })
-
-#     def test_defective_filter_returns_nones(self):
-#         fparser = FilterParser("time12")
-        
-#         self.assert_parser(fparser, {})
-
-
-
-# class RefFilterTest(AppTestCase):
-#     models = (Student, EMail, User, Role)
-
-#     def create_five_students(self):
-#         return [ 
-#             create_student(name="Student%d" % i, age=i) 
-#             for i in range(5) 
-#         ]
-        
-#     @create_and_login_user()
-#     def test_cannot_filter_with_columns_not_being_in_the_list(self):
-#         students = self.create_five_students()
-
-#         response = self.client.get(
-#             url_for("rapi.student_list_ref"),
-#             query_string={"filter": "age=1"}
-#         )
-#         data = response.json["results"]
-
-#         self.assertEqual(len(data), 5)
-        
-#     @create_and_login_user()
-#     def test_can_filter_with_columns_from_the_list(self):
-#         students = self.create_five_students()
-        
-#         response = self.client.get(
-#             url_for("rapi.student_list_ref"),
-#             query_string={"filter": "name='Student1'"}
-#         )
-#         data = response.json["results"]
-        
-#         self.assertEqual(len(data), 1)
-#         self.assertEqual(data[0].age, 1)
-#         self.assertEqual(data[0].name, "Student1")
-        
-    

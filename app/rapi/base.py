@@ -91,7 +91,6 @@ class DetailView(ViewUtilMixin, MethodView):
 class ListView(ViewUtilMixin, MethodView):
     model = None
 
-    filter_columns = []
     filter_operators = [
         QueryFilter(
             operator="=", method_query=operator.eq, 
@@ -122,6 +121,8 @@ class ListView(ViewUtilMixin, MethodView):
             method_list=qlist_in_operator
         )
     ]
+    filter_columns = []
+    filter_overrides = {}
 
     @auth.login_required
     @permission_required(Permission.BROWSE_DATA)
@@ -135,12 +136,12 @@ class ListView(ViewUtilMixin, MethodView):
             "count": len(data)
         }), 200
 
+    def get_query(self, *args, **kwargs):
+        return self.get_objects(*args, **kwargs)
+        
     def get_objects(self, *args, **kwargs):
         objs = db.session.query(self.model)
         return objs
-
-    def get_query(self, *args, **kwargs):
-        return self.get_objects(*args, **kwargs)
         
     def execute_query(self, query):
         if isinstance(query, Query):
@@ -158,8 +159,8 @@ class ListView(ViewUtilMixin, MethodView):
         return method(query, **qparams)
         
     def get_query_parameters(self):
-        filters = request.args.get("filter", None)
-        if filters: filters = filters.split(";")
+        filters = request.args.get("filter", [])
+        if isinstance(filters, str): filters = filters.split(";")
         limit = int(request.args.get("limit", 0))
         offset = int(request.args.get("offset", 0))
         sort = request.args.get("sort")
@@ -177,29 +178,38 @@ class ListView(ViewUtilMixin, MethodView):
         return query.all()
         
     def apply_filters_to_query(self, query, filters):
-        if not filters:
-            return query
-            
         model = self.get_models_from_query(query)[0]
         for expr in filters:
-            query = query.filter(self.create_query_filter(model, expr))
-            
+            query = self.apply_filter_to_query(query, expr, model)
         return query
+        
+    def apply_filter_to_query(self, query, expr, model):
+        qfilter = self.match_filter(expr)
+        if not qfilter:
+            return query
+        else:
+            return query.filter(qfilter(model, expr))
 
     def match_filter(self, expr):
         try:
-            qfilter = next(qf for qf in self.filter_operators if qf.match(expr))
+            qfilter = next(qf for qf in self.get_filters(expr) if qf.match(expr))
         except StopIteration:
             return None
         else:
             return qfilter
+            
+    def get_filters(self, expr):
+        field = QueryFilter.identify_field(expr)
+        if not (field and self.is_field_eligible_for_filtering(field)):
+            return []
+        filters = self.filter_overrides.get(field, self.filter_operators)
+        return filters
+            
+    def is_field_eligible_for_filtering(self, field):
+        if len(self.filter_columns) > 0 and not field in self.filter_columns:
+            return False
+        return True
         
-    def create_query_filter(self, model, expr):
-        qfilter = self.match_filter(expr)
-        if not qfilter:
-            return True
-        return qfilter(model, expr)
-
     def apply_sort_to_query(self, query, sort):
         if not sort:
             return query
@@ -228,20 +238,16 @@ class ListView(ViewUtilMixin, MethodView):
         return qlist
         
     def apply_filters_to_list(self, qlist, filters):
-        if not filters:
-            return qlist
-            
         for expr in filters:
-            qlist = self.filter_query_list(qlist, expr)
-        
+            qlist = self.apply_filter_to_list(qlist, expr)
         return qlist
 
-    def filter_query_list(self, qlist, expr):
+    def apply_filter_to_list(self, qlist, expr):
         qfilter = self.match_filter(expr)
         if not qfilter:
             return qlist
-        new_qlist = [ item for item in qlist if qfilter(item, expr) ]
-        return new_qlist
+        else:
+            return [ item for item in qlist if qfilter(item, expr) ]
         
     def apply_sort_to_list(self, qlist, sort):
         if not sort:

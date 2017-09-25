@@ -14,13 +14,30 @@ from sqlalchemy import exists
 
 from app import debugtoolbar, db
 from app.models import DBRequest, Permission
-from app.rapi import api, rapi
+from app.rapi import api, rapi, serializers
+from app.rapi.utils import QueryFilter, qlist_in_operator
 from app.user import auth
 from app.user.auth import permission_required
-import db.models as models
-from app.rapi import serializers
 from app.rapi.base import DetailView, ListView
+
+import db.models as models
 from db import tools
+
+
+class RecordTimerangeFilter(QueryFilter):
+
+    @staticmethod
+    def operator(column, value):
+        return column.any(models.Timerange.id.in_(value.split(",")))
+    
+    def modify_column(self, column):
+        return "covered_timeranges"
+            
+    def modify_value(self, value):
+        timeranges = [ int(item) for item in value.split(",") ]
+        tdb = db.session.query(models.Timerange)\
+                  .filter(models.Timerange.timerange.in_(timeranges)).all()
+        return ','.join(str(item.id) for item in tdb)
 
 
 class ReportListView(ListView):
@@ -47,6 +64,19 @@ class CompanyDetailView(DetailView):
 class RecordListView(ListView):
     model = models.Record
     schema = serializers.RecordSchema
+
+    filter_overrides = {
+        "timerange": [
+            RecordTimerangeFilter(
+                operator="=",method_query=RecordTimerangeFilter.operator,
+                method_list=qlist_in_operator 
+            ),
+            RecordTimerangeFilter(
+                operator="@in@", method_query=RecordTimerangeFilter.operator,
+                method_list=qlist_in_operator
+            )
+        ]
+    }
 
 
 class RecordDetailView(DetailView):
@@ -184,6 +214,19 @@ class FormulaComponentDetailView(DetailView):
 class CompanyRecordListView(ListView):
     model = models.Record
     schema = serializers.RecordSchema
+    
+    filter_overrides = {
+        "timerange": [
+            RecordTimerangeFilter(
+                operator="=",method_query=RecordTimerangeFilter.operator,
+                method_list=qlist_in_operator 
+            ),
+            RecordTimerangeFilter(
+                operator="@in@", method_query=RecordTimerangeFilter.operator,
+                method_list=qlist_in_operator
+            )
+        ]
+    }
 
     def get_objects(self, id):
         if not self.verify_company_id(id):
@@ -572,5 +615,3 @@ rapi.add_url_rule("/fschemas/<int:id>/records", methods=["GET"],
 #         response = html_wrapped_response
 
 #     return response
-
-

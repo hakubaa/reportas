@@ -21,6 +21,7 @@ class QueryFilter:
     operator.
     '''
     REGEX_SPECIAL_CHARACTERS = "\\^${}[]().*+?|<>-&"
+    REGEX_EXPR = "^(?P<column>[^=\<\>!@]+){}(?P<value>.*)"
 
     def __init__(self, operator, method_query, method_list=None):
         self.method_query = method_query
@@ -35,22 +36,39 @@ class QueryFilter:
                 chars.append("\\%s" % char)
             else:
                 chars.append(char)
-        re_expr = "^(?P<column>[^=\<\>!]+)%s(?P<value>.*)" % "".join(chars)
+        re_expr = self.REGEX_EXPR.format("".join(chars))
         return re.compile(re_expr)
 
     def __call__(self, obj, expr):
+        params = self.parse_expr(expr)
+        if not params:
+            return None
+            
+        params_for_method = (
+            getattr(obj, self.modify_column(params["column"])),
+            self.modify_value(params["value"])
+        )
+        if self.is_model(obj):
+            return self.method_query(*params_for_method) 
+        else:
+            return self.method_list(*params_for_method)
+            
+    def modify_column(self, column):
+        return column
+        
+    def modify_value(self, value):
+        return value
+
+    def parse_expr(self, expr):
         m = re.match(self.regex, expr)
         try:
-            subject = getattr(obj, m.group("column"))
+            column = m.group("column")
             value = m.group("value")
-        except (AttributeError, IndexError):
+        except AttributeError:
             return None
-        
-        if self.is_model(obj):
-            return self.method_query(subject, value) 
         else:
-            return self.method_list(subject, value)
-
+            return dict(column=column, value=value)
+        
     def is_model(self, cls):
         try:
             class_mapper(cls)
@@ -60,6 +78,14 @@ class QueryFilter:
 
     def match(self, expr):
         return re.match(self.regex, expr)
+        
+    @classmethod
+    def identify_field(cls, expr):
+        re_expr = re.compile(cls.REGEX_EXPR.format(".*"))
+        m = re.match(re_expr, expr)
+        if not m:
+            return None
+        return m.group("column")
 
 
 def qlist_in_operator(value, strlist):
@@ -74,22 +100,3 @@ def apply_conversion(f):
         value = type_c(v)
         return f(c, value)
     return wrapper 
-
-
-class FilterParser:
-    REGEX_FILTER = "^(?P<field>[^=\<\>!]+)(?P<operator>.*)(?P<value>.*)"
-    
-    def __init__(self, expr):
-        self.expr = re.match(self.REGEX_FILTER, expr)
-        
-    @property
-    def field(self):
-        return self.expr.group("field")
-        
-    @property
-    def operator(self):
-        return self.expr.group("operator")
-        
-    @property
-    def value(self):
-        return self.expr.group("value")

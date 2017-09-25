@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import json
 
 from flask import url_for
@@ -11,6 +11,7 @@ from db.models import Company, RecordType, Record, FinancialStatement
 from app.models import Permission, Role, User, DBRequest
 
 from tests.app import AppTestCase, create_and_login_user
+from tests.app.utils import *
 
 
 
@@ -89,6 +90,31 @@ class TestListView(AppTestCase):
         dbrequest = db.session.query(DBRequest).one()
         data = json.loads(dbrequest.data)
         self.assertEqual(data["company_id"], test_data["company"].id)
+        
+    @create_and_login_user()
+    def test_post_query_records_by_timerange(self):
+        models.Timerange.insert_defaults(db.session)
+        company = create_company()
+        ftype = create_ftype()
+        rtype_pit = create_rtype(ftype=ftype, name="PIT", timeframe=RecordType.PIT)
+        rtype_pot = create_rtype(ftype=ftype, name="POT", timeframe=RecordType.POT)
+        
+        rec1 = create_record(
+            value=10, timerange=0, timestamp=date(2015, 12, 31),
+            rtype=rtype_pit, company=company
+        )
+        rec2 = create_record(
+            value=10, timerange=12, timestamp=date(2015, 12, 31),
+            rtype=rtype_pot, company=company
+        )
+        
+        response = self.client.get(
+            url_for("rapi.company_record_list", id=company.id),
+            query_string={"filter": "timerange=12"}
+        )
+        data = response.json
+
+        self.assertEqual(data["count"], 2)
 
 
 class TestDetailView(AppTestCase):

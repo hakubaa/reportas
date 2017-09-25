@@ -13,7 +13,7 @@ def create_ftype(name="bls"):
     return ftype
 
 
-def create_rtype(ftype, name="TOTAL_ASSETS", timeframe="pot"):
+def create_rtype(ftype, name="TOTAL_ASSETS", timeframe=RecordType.POT):
     total_assets = RecordType(name=name, ftype=ftype, timeframe=timeframe)
     db.session.add(total_assets)
     db.session.commit()    
@@ -47,7 +47,7 @@ def create_record(**kwargs):
     return record
 
 
-def create_rtypes(ftype=None, timeframe="pot"):
+def create_rtypes(ftype=None, timeframe=RecordType.POT):
     if not ftype:
         ftype = create_ftype(name="bls")
     total_assets = RecordType(
