@@ -100,7 +100,7 @@ class RecordTypeReprListView(ListView):
     model = models.RecordTypeRepr
     schema = serializers.RecordTypeReprSchema
 
-    def get_objects(self, id):
+    def get_query(self, id):
         rtype = db.session.query(models.RecordType).get(id)
         if not rtype:
             abort(404)
@@ -136,7 +136,7 @@ class RecordFormulaListView(ListView):
     model = models.RecordFormula
     schema = serializers.RecordFormulaSchema
     
-    def get_objects(self, rid):
+    def get_query(self, rid):
         rtype = db.session.query(models.RecordType).get(rid)
         if not rtype:
             abort(404)
@@ -174,7 +174,7 @@ class FormulaComponentListView(ListView):
     model = models.FormulaComponent
     schema = serializers.FormulaComponentSchema
     
-    def get_objects(self, rid, fid):
+    def get_query(self, rid, fid):
         formula = db.session.query(models.RecordFormula).filter(
             models.RecordFormula.rtype_id == rid,
             models.RecordFormula.id == fid
@@ -229,7 +229,7 @@ class CompanyRecordListView(ListView):
         ]
     }
 
-    def get_objects(self, id):
+    def get_query(self, id):
         if not self.verify_company_id(id):
             abort(404)
         return db.session.query(models.Record).filter_by(company_id=id)
@@ -271,7 +271,7 @@ class CompanyReprListView(ListView):
     model = models.CompanyRepr
     schema = serializers.CompanyReprSchema
 
-    def get_objects(self, id):
+    def get_query(self, id):
         company = db.session.query(models.Company).get(id)
         if not company:
             abort(404)
@@ -309,7 +309,7 @@ class CompanyReportListView(ListView):
     model = models.Report
     schema = serializers.ReportSchema
 
-    def get_objects(self, id):
+    def get_query(self, id):
         company = db.session.query(models.Company).get(id)
         if not company:
             abort(404)
@@ -347,7 +347,7 @@ class ReportRecordListView(ListView):
     model = models.Record
     schema = serializers.RecordSchema
 
-    def get_objects(self, id):
+    def get_query(self, id):
         report = db.session.query(models.Report).get(id)
         if not report:
             abort(404)
