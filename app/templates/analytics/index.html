@@ -4,57 +4,127 @@
 
 {% block head_css %}
 {{ super() }}
-    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
-    <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
-    <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
-    <style>
-        #controls {
-            margin-bottom: 20px;
-        }
+<style>
+.page-header {
+    margin-top: 0px;
+}
 
-        .table-responsive {
-            width: 100%;
-            margin-bottom: 15px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
-            -ms-overflow-style: -ms-autohiding-scrollbar;
-            border: 1px solid #DDD;
-        }
+.panel {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    width: 100%;
+    height: 100%;
+    border: none;
+}
 
-        #fintable-wrapper {
-            max-height: 400px;
-            overflow-y: scroll;
-        }
+.panel-link:hover, 
+.panel-link:link,
+.panel-link:visited,
+.panel-link:active {
+    text-decoration: none;
+    color: black;
+}
 
-    </style>
+.panel-link:hover > div {
+    -webkit-transform: scale(1.1, 1.1);  
+      -ms-transform: scale(1.1, 1.1);
+          transform: scale(1.1, 1.1);
+    background-color:rgba(0,0,0,0.2);
+    transition-duration: 0.5s;
+    z-index: 100;
+}
+
+.equal {  
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+    margin-bottom: 10px;
+}
+.jumbotron {
+    padding: 0px;
+}
+</style>
 {% endblock %}
+
 
 {% block page_body %}
 <div class="container">
-    <div id="controls">
-        <select class="data-control" id="company" style="width: 200px;">
-            <option disabled selected>-- Select an option --</option>
-        </select>
-        <select class="data-control" id="fschema" style="width: 200px;">>
-            <option disabled selected>-- Select an option --</option>
-        </select>
-        <select class="data-control" id="timerange" style="width: 200px;">
-            <option value="3">3</option>
-            <option value="6">6</option>
-            <option value="12">12</option>
-        </select>
-    </div>
-
-    <div id="fintable-wrapper" class="table-responsive"></div>
-
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-8">
+
+            <div class="jumbotron jumbotron-fluid">
+                <div class="container">
+                    <h1 class="display-3">Analytics - Tools</h1>
+                    <p class="lead">All you need to make good investment decisions.</p>
+                </div>
+            </div>
+
+            <div class="row equal">
+                <div class="col-xs-6">
+                    <a href="#" class="panel-link">
+                        <div class="panel panel-primary">
+                            <div class="panel-heading">Comparative Analysis</div>
+                            <div class="panel-body">
+                                Compare multiple companies from different point of views and choose the one worth to invest in.
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xs-6">
+                    <a href="#" class="panel-link">
+                        <div class="panel panel-primary">
+                            <div class="panel-heading">Sectoral Analysis</div>
+                            <div class="panel-body">
+                                Aggregating data of all companies within sectors will enable you to choose the most promising one.
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="row equal">
+
+                <div class="col-xs-6">
+                    <a href="#" class="panel-link">
+                        <div class="panel panel-primary">
+                            <div class="panel-heading">Search Engine</div>
+                            <div class="panel-body">
+                                Search companies on the base of customized complex queries.
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xs-6">
+                    <a href="#" class="panel-link">
+                        <div class="panel panel-primary">
+                            <div class="panel-heading">Predictive Analytics</div>
+                            <div class="panel-body">
+                                Predict future performance of your companies. Use macroeconomic factors to simulate how they will perform during different economic conditions.
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4" id="companies-list">
             <div class="panel panel-primary">
-                <div class="panel-heading">Panel Heading</div>
-                <div class="panel-body" id="chart-wrapper" data-width="50" data-height="25">
-                    <!-- <canvas id="myChart" width="400" height="200"></canvas> -->
+                <div class="panel-heading">Comprehensive Company Analysis and Review</div>
+                <div class="panel-body">
+                    <p>Analyse and review the latest financial results of your company.</p>
+                    <div class="input-group">
+                        <span class="input-group-addon">
+                            <span class="glyphicon glyphicon-search" aria-hidden="true"></span>
+                        </span>
+                        <input type="text" class="search form-control" placeholder="Search company ..." aria-describedby="sizing-addon1">
+                    </div>
+                    <div class="list list-group">
+                        {% for company in companies %}
+                            <a href="{{ url_for('analytics.ccar', company_name=company.name.lower()) }}" class="list-group-item">
+                                <span class="fullname">{{ company.fullname }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <ul class="pagination"></ul>
                 </div>
             </div>
         </div>
@@ -63,255 +133,15 @@
 {% endblock %}
 
 {% block body_scripts %}
-<script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendors/d3.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendors/Chart.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/list.min.js') }}"></script>
 <script>
-    jQuery.fn.fillSelect2WithAjax = function(url, attributes) {
-        var self = this;
-        $.getJSON(url).done(function(data) {
-            for(var i = 0; i < self.length; i++) {
-                $(self[i]).fillSelect2WithData(data.results, attributes);
-            }
-        });
-    }
-
-    jQuery.fn.fillSelect2WithData = function(data, attributes) {
-        var attrs = {id: "id", label: "text"};
-        $.extend(attrs, attributes);
-
-        if ($(this).hasClass("select2-hidden-accessible")) {
-            $(this).select2("destroy");
+    new List(
+        "companies-list", 
+        {
+            valueNames: [ "name", "fullname" ],
+            page: 5,
+            pagination: true
         }
-
-        var select = this;
-        $.each(data, function() {
-            $(select).append(
-                $("<option/>").val(this[attrs.id]).text(this[attrs.label])
-            );
-        });
-
-
-        this.applySelect2(attrs);
-    }
-
-    jQuery.fn.applySelect2 = function(attributes) {
-        var attrs = {
-            dropdownAutoWidth: true,
-            placeholder: {
-                id: "none",
-                value: "-1",
-                text: "Select an option",
-            },
-        };
-        $.extend(attrs, attributes);
-
-        for(var i = 0; i < this.length; i++) {
-            $(this[i]).select2(attrs);
-        }
-    }    
-
-    function distinct(array, key) {
-        if (key === undefined) key = function(item) { return item; };
-        var flags = [];
-        var output = [];
-        for(var i = 0; i < array.length; i++) {
-            if (flags[key(array[i])]) continue;
-            flags[key(array[i])] = true;
-            output.push(array[i]);
-        }
-        return output;
-    }
-
-    $("#timerange").select2();
-    $("#company").fillSelect2WithAjax("/api/companies?fields=id,name", {"label": "name"});
-    $("#fschema").fillSelect2WithAjax(
-        "/api/fschemas?fields=id,default_repr&filter=inputonly=false",
-        {"label": "default_repr"}
     );
-
-    function isSelectValid(selector) {
-        var $selectElement = $(selector);
-        return $selectElement.val() !== null;
-    }
-
-    function getSelectVal(selector) {
-        var $selectElement = $(selector);
-        return $selectElement.find("option:selected").val();
-    }
-
-    function getSelectText(selector) {
-        var $selectElement = $(selector);
-        return $selectElement.find("otpion:selected").text();
-    }
-
-    $(".data-control").change(function() {
-
-        if (isSelectValid("#company") && isSelectValid("#fschema") && 
-                isSelectValid("#timerange")) {
-            
-            var company_id = getSelectVal("#company");
-            var fschema_id = getSelectVal("#fschema");
-            var timerange = getSelectVal("#timerange");
-
-            var company_name = getSelectText("#company");
-
-            loadSchema({
-                fschema: fschema_id, company: company_id, 
-                timerange: timerange
-            }, function(data) {
-                var $table = createTable(data, {
-                    "class": "table table-striped table-bordered table-hover"
-                });
-                $("#fintable-wrapper").empty();
-                $("#fintable-wrapper").append($table);
-            });
-        }
-
-
-        // if (rtype_id !== null && company_id !== null) {
-        //     var company_name = $("#company option:selected").text();
-        //     var rtype_name = $("#rtype option:selected").text();
-
-        //     loadData({
-        //         company: company_id, rtype: rtype_id, 
-        //         timerange: timerange
-        //     }, updateChart, {
-        //         company: company_name, rtype: rtype_name,
-        //         timerange: timerange 
-        //     });
-        // }
-
-        // if (company_id !== null) {
-        //     loadSchema({
-        //         fschema: 2, company: company_id, timerange: timerange
-        //     }, function(data) {
-        //         var $table = createTable(data, {
-        //             "class": "table table-striped table-bordered table-hover"
-        //         });
-        //         $("#fintable-wrapper").empty();
-        //         $("#fintable-wrapper").append($table);
-        //     });
-        // }
-
-    });
-
-    $(document).on("click", ".rtype-btn", function() {
-        var company_id = getSelectVal("#company");
-        var timerange = getSelectVal("#timerange");
-        var rtype_id = $(this).closest("tr").attr("data-rtype-id");
-
-        var company_name = getSelectText("#company");
-        var rtype_name = $(this).closest("tr").attr("data-rtype");
-
-        loadData({
-            company: company_id, rtype: rtype_id, 
-            timerange: timerange
-        }, updateChart, {
-            company: company_name, rtype: rtype_name,
-            timerange: timerange 
-        });
-    });
-
-    function loadData(request, callback, metadata) {
-        var request_url = "http://localhost:5000/api/companies/" + 
-            request.company + "/records?filter=rtype_id=" + 
-            request.rtype + ";timerange=" + request.timerange;
-
-        $.getJSON(request_url).done(function(data) {
-            data.results.forEach(function(item) {
-                item.timestamp = moment(item.timestamp);
-            });
-            callback(data.results, metadata);
-        });
-    }
-
-    // loadSchema({
-    //     fschema: 2, company: 36, timerange: 3
-    // }, function(data) {
-    //     var $table = createTable(data, {
-    //         "class": "table table-striped table-bordered table-hover"
-    //     });
-    //     $("#fintable-wrapper").append($table);
-    // });
-
-    // loadData(106, 107, 0, updateChart);
-    // loadData({company: 36, rtype: 93, timerange: 0}, updateChart);
-    // loadData({company: 37, rtype: 69, timerange: 3}, updateChart);
-
-
-    function formatTimestamp(timestamp, format) {
-        if (format === undefined) format = "YYYY-MM";
-        return timestamp.format(format);
-    }
-
-
-    function updateChart(data, metadata) {
-        if (data.length === 0) {
-            alert("No data");
-            return;
-        }
-
-        var $wrapper = $("#chart-wrapper");
-        $wrapper.empty();
-
-        var $canvas = $("<canvas><canvas>");
-        $canvas.prop("width", $wrapper.attr("data-width"));
-        $canvas.prop("height", $wrapper.attr("data-height"));
-        $wrapper.append($canvas);
-
-        var ctx = $canvas[0].getContext("2d");
-
-        var labels = data.map(function(item) { return item.timestamp; })
-            .sort().reverse().map(function(item) { return formatTimestamp(item); });
-        var data = data.sort(function(x, y) {
-                return moment(x.timestamp) - moment(y.timestamp);
-            })
-            .map(function(item) { 
-                return {
-                    "y": item.value,
-                    "x": formatTimestamp(item.timestamp)
-                }
-            });
-
-        var label = "";
-        if (metadata !== undefined) {
-            label = metadata.company + ": " + metadata.rtype;
-        }
-        var myChart = new Chart(ctx, {
-            type: "bar",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    backgroundColor: data.map(function(d) {
-                        if (d.y > 0) {
-                            return "limegreen";
-                        } else {
-                            return "red";
-                        }
-                    }),
-                    borderColor: "black",
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    yAxes: [{
-                        ticks: {
-                            beginAtZero:true
-                        }
-                    }]
-                }
-            }
-        });
-
-
-    }
 </script>
 {% endblock %}

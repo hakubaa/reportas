@@ -59,7 +59,7 @@ class Sector(VersionedModel):
 class Company(VersionedModel):
     id = Column(Integer, primary_key=True)
 
-    name = Column(String, nullable=False)
+    name = Column(String, unique=True, nullable=False)
     isin = Column(String, unique=True, nullable=False)
     ticker = Column(String)
     fullname = Column(String)
