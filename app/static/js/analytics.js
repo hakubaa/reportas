@@ -30,6 +30,7 @@ function wrapWith(wrapper, elements, attributes) {
 
 function createTable(data, attributes) {
     var $headers = $("<tr></tr>");
+    $headers.append("<th></th>");
     $headers.append("<th>Financial Record</th>");
     data.data.forEach(function(data, index) {
         $headers.append(createHeaderCell(data));
@@ -40,6 +41,7 @@ function createTable(data, attributes) {
         var $row = $("<tr></tr>");
         $row.attr("data-rtype", item.rtype.name);
         $row.attr("data-rtype-id", item.rtype.id);
+        $row.append(wrapWith("td", createAddToChartBtn()));
         $row.append(createCellWithRType(item.rtype));
         rows[item.position] = $row;
     });
@@ -59,6 +61,14 @@ function createTable(data, attributes) {
     return $table;
 }
 
+function createAddToChartBtn() {
+    var chartBtn = wrapWith("button",
+        $("<span></span>", {"class": "glyphicon glyphicon-stats"}),
+        {"class": "btn btn-xs btn-link btn-add-to-chart"}
+    ); 
+    return chartBtn;
+}
+
 function sortByTimestamp(data) {
     var rdata = $.extend(true, [], data);
     rdata.sort(function(x, y) {
@@ -73,10 +83,14 @@ function createHeaderCell(data) {
 }
 
 function createCellWithRType(rtype) {
+    // return wrapWith("td", 
+    //     $("<a class='rtype-btn' href='javascript:void(0);''>" + rtype.name + "</a>")
+    // );
     return wrapWith("td", 
-        $("<a class='rtype-btn' href='javascript:void(0);''>" + rtype.name + "</a>")
+        $("<a href='#chart-modal' data-toggle='modal' data-target='#chart-modal'>" + rtype.name + "</a>")
     );
 }
+
 
 function createCellWithRecord(record) {
     if (record === null) {
@@ -86,3 +100,125 @@ function createCellWithRecord(record) {
     $cell.attr("data-id", record.id);
     return $cell;
 }
+
+jQuery.fn.fillSelect2WithAjax = function(url, attributes) {
+    var self = this;
+    $.getJSON(url).done(function(data) {
+        for(var i = 0; i < self.length; i++) {
+            $(self[i]).fillSelect2WithData(data.results, attributes);
+        }
+    });
+}
+
+jQuery.fn.fillSelect2WithData = function(data, attributes) {
+    var attrs = {id: "id", label: "text"};
+    $.extend(attrs, attributes);
+
+    if ($(this).hasClass("select2-hidden-accessible")) {
+        $(this).select2("destroy");
+    }
+
+    var select = this;
+    $.each(data, function() {
+        $(select).append(
+            $("<option/>").val(this[attrs.id]).text(this[attrs.label])
+        );
+    });
+
+
+    this.applySelect2(attrs);
+}
+
+jQuery.fn.applySelect2 = function(attributes) {
+    var attrs = {
+        dropdownAutoWidth: true,
+        placeholder: {
+            id: "none",
+            value: "-1",
+            text: "Select an option",
+        },
+    };
+    $.extend(attrs, attributes);
+
+    for(var i = 0; i < this.length; i++) {
+        $(this[i]).select2(attrs);
+    }
+}    
+
+function distinct(array, key) {
+    if (key === undefined) key = function(item) { return item; };
+    var flags = [];
+    var output = [];
+    for(var i = 0; i < array.length; i++) {
+        if (flags[key(array[i])]) continue;
+        flags[key(array[i])] = true;
+        output.push(array[i]);
+    }
+    return output;
+}
+
+function isSelectValid(selector) {
+    var $selectElement = $(selector);
+    return $selectElement.val() !== null;
+}
+
+function getSelectVal(selector) {
+    var $selectElement = $(selector);
+    return $selectElement.find("option:selected").val();
+}
+
+function getSelectText(selector) {
+    var $selectElement = $(selector);
+    return $selectElement.find("otpion:selected").text();
+}
+
+function loadData(request, callback) {
+    var request_url = "http://localhost:5000/api/companies/" + 
+        request.company + "/records?filter=rtype_id=" + 
+        request.rtype + ";timerange=" + request.timerange;
+
+    $.getJSON(request_url).done(function(data) {
+        data.results.forEach(function(item) {
+            item.timestamp = moment(item.timestamp);
+        });
+        callback(data.results);
+    });
+}
+
+function formatTimestamp(timestamp, format) {
+    if (format === undefined) format = "YYYY-MM";
+    return timestamp.format(format);
+}
+
+function createCanvas(width, height) {
+    var $canvas = $("<canvas><canvas>");
+    $canvas.prop("width", width);
+    $canvas.prop("height", height);
+    return $canvas;
+}
+
+function createChart(ctx, data, metadata) {
+    var barChart = new BarChart({ctx: ctx});
+    barChart.appendDataset(data);
+    barChart.appendDataset(data.slice(1,3));
+}
+
+// function updateChart(data, metadata) {
+//     if (data.length === 0) {
+//         alert("No data");
+//         return;
+//     }
+
+//     var $wrapper = $("#chart-wrapper");
+//     $wrapper.empty();
+
+//     var $canvas = $("<canvas><canvas>");
+//     $canvas.prop("width", $wrapper.attr("data-width"));
+//     $canvas.prop("height", $wrapper.attr("data-height"));
+//     $wrapper.append($canvas);
+//     $wrapper.append($canvas);
+
+//     var ctx = $canvas[0].getContext("2d");
+
+//     createChart(ctx, data, metadata);
+// }

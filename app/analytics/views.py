@@ -8,7 +8,7 @@ from app.analytics import analytics
 from app.models import Permission
 from app.decorators import permission_required
 
-from db.models import Company
+from db.models import Company, FinancialStatementLayout
 
 
 @analytics.route("/")
@@ -28,9 +28,24 @@ def ccar(company_name):
     except NoResultFound:
         return redirect(url_for("analytics.index"))
     else:
-        return render_template("analytics/ccar.html", company=company)
+        fslayouts = db.session.query(FinancialStatementLayout).filter_by(
+            inputonly=False
+        ).all()
+        return render_template(
+            "analytics/ccar.html", 
+            company=company, fslayouts=fslayouts,
+            fslayout_default=get_default_fslayout()
+        )
 
-    
+
+def get_default_fslayout():
+    fslayouts = db.session.query(FinancialStatementLayout).all()
+    try:
+        fslayout_default = next(item for item in fslayouts if item.default)
+    except StopIteration:
+        fslayout_default = False  
+    return fslayout_default
+
 # @analytics.route("/")
 # @login_required
 # def index():

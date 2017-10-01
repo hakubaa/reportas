@@ -4,6 +4,8 @@ from flask import url_for
 from tests.app import AppTestCase, create_and_login_user
 from tests.app.utils import *
 
+from db.models import FinancialStatementLayout
+
 
 class IndexViewTest(AppTestCase):
 
@@ -30,7 +32,7 @@ class IndexViewTest(AppTestCase):
         self.assertCountEqual(companies_wal, companies)
 
 
-class CompanyDetailTest(AppTestCase):
+class CCARTest(AppTestCase):
 
     @create_and_login_user()
     def test_render_proper_template(self):
@@ -70,3 +72,19 @@ class CompanyDetailTest(AppTestCase):
         company_wal = self.get_context_variable("company")
 
         self.assertEqual(company_wal, company)
+
+    @create_and_login_user()
+    def test_pass_all_but_inputonly_financial_statement_layouts(self):
+        company = create_company()
+
+        fschema1 = FinancialStatementLayout(default=True)
+        fschema2 = FinancialStatementLayout(default=False, inputonly=True)
+        db.session.add_all((fschema1, fschema2))
+        db.session.commit()
+
+        response = self.client.get(
+            url_for("analytics.ccar", company_name=company.name)
+        )
+
+        fschema_wal = self.get_context_variable("fslayouts")
+        self.assertCountEqual(fschema_wal, [fschema1])

@@ -2,5 +2,204 @@
 
 {% block title %}Analytics{% endblock %}
 
+{% block head_css %}
+{{ super() }}
+    <link href="{{ url_for('static', filename='vendors/select2/css/select2.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
+    <style>
+        #controls {
+            margin-bottom: 20px;
+        }
+
+        .table-responsive {
+            width: 100%;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            -ms-overflow-style: -ms-autohiding-scrollbar;
+            border: 1px solid #DDD;
+        }
+
+        #fintable-wrapper {
+            /*max-height: 400px;*/
+            /*overflow-y: scroll;*/
+            margin: 0 auto;
+        }
+
+    </style>
+{% endblock %}
+
 {% block page_body %}
+<div class="container">
+    <div id="controls">
+        <select class="data-control" id="fschema" style="width: 200px;">>
+            <option disabled>-- Select an option --</option>
+            {% for fslayout in fslayouts %}
+                {% if fslayout.default %}
+                    <option value="{{fslayout.id}}" selected>
+                {% else %}
+                    <option value="{{fslayout.id}}">
+                {% endif %}
+                {{ fslayout.default_repr }}</option>
+            {% endfor %}
+        </select>
+        <select class="data-control" id="timerange" style="width: 200px;">
+            <option value="3">3</option>
+            <option value="6">6</option>
+            <option value="12" selected>12</option>
+        </select>
+    </div>
+
+    <div id="fintable-wrapper" class="table-responsive"></div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Panel Heading</div>
+                <div class="panel-body">
+                    <div id="chart-wrapper" data-width="50" data-height="25">
+                        <canvas width="50" height="25"></canvas>
+                    </div>
+                    <ul id="datasets-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- <a href="#chart-modal" data-toggle="modal" data-target="#chart-modal">Load me</a> -->
+
+<div class="modal fade" tabindex="-1" role="dialog" id="chart-modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">Modal title</h4>
+            </div>
+            <div class="modal-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save changes</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+{% endblock %}
+
+{% block body_scripts %}
+<script src="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/d3.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/Chart.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
+<script>
+    var company = {
+        "id": {{company.id}},
+        "name": "{{company.name}}"
+    };
+
+    var $canvas = $("#chart-wrapper").find("canvas");
+    var chart = new BarChart({
+        ctx: $canvas[0].getContext("2d"),
+        timerange: $("#timerange").val()
+    });
+
+    loadSchema({
+        fschema: "{{fslayout_default.id}}", company: company["id"], 
+        timerange: $("#timerange").val()
+    }, function(data) {
+        var $table = createTable(data, {
+            "class": "table table-striped table-bordered table-hover"
+        });
+        $("#fintable-wrapper").append($table);
+    });
+
+    $("#timerange").select2();
+    $("#fschema").select2();
+
+    $("#chart-modal").on("shown.bs.modal", function (e) {
+        var $caller = $(e.relatedTarget);
+        var modal = this;
+
+        var rtypeId = $caller.closest("tr").attr("data-rtype-id");
+        var rtypeName = $caller.closest("tr").attr("data-rtype");
+
+        var companyId = company["id"];
+        var companyName = company["name"];
+
+        var timerange = getSelectVal("#timerange");
+        
+        loadData({
+            company: companyId, rtype: rtypeId, 
+            timerange: timerange
+        }, function(data) {
+            if (data.length === 0) {
+                alert("No data");
+                return;
+            }
+
+            var $wrapper = $(modal).find(".modal-body");
+            $wrapper.empty();
+
+            var $canvas = createCanvas(
+                $wrapper.attr("data-width"), $wrapper.attr("data-height")
+            );
+            $wrapper.append($canvas);
+
+            createChart($canvas[0].getContext("2d"), data);
+        });
+    });
+
+    $(".data-control").change(function() {
+        if (isSelectValid("#fschema") && isSelectValid("#timerange")) {
+            
+            var company_id = company["id"];
+            var fschema_id = getSelectVal("#fschema");
+            var timerange = getSelectVal("#timerange");
+
+            var company_name = company["name"];
+
+            loadSchema({
+                fschema: fschema_id, company: company_id, 
+                timerange: timerange
+            }, function(data) {
+                var $table = createTable(data, {
+                    "class": "table table-striped table-bordered table-hover"
+                });
+                $("#fintable-wrapper").empty();
+                $("#fintable-wrapper").append($table);
+            });
+        }
+    });
+
+    $(document).on("click", ".btn-add-to-chart", function() {
+        var companyId = company["id"];
+        var timerange = getSelectVal("#timerange");
+        var rtypeId = $(this).closest("tr").attr("data-rtype-id");
+
+        var rtypeName = $(this).closest("tr").attr("data-rtype");
+
+        loadData({
+            company: companyId, rtype: rtypeId, timerange: timerange
+        }, function(data) {
+            chart.appendDataset(data, rtypeName);
+            addDatasetItem(rtypeName);
+        });
+    });
+
+    function addDatasetItem(rtype) {
+        var $ul = $("#datasets-list");
+        $ul.append($("<li>" + rtype + "</li>"));
+    }
+</script>
 {% endblock %}
