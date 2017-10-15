@@ -8,6 +8,7 @@
     <link href="{{ url_for('static', filename='vendors/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/bootstrap-datepicker/css/bootstrap-datepicker3.min.css') }}", rel="stylesheet">
     <link href="{{ url_for('static', filename='vendors/bootstrap3-dialog/css/bootstrap-dialog.min.css') }}", rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendors/bootstrap-colorpicker/css/bootstrap-colorpicker.min.css') }}", rel="stylesheet">
     <style>
         #controls {
             margin-bottom: 20px;
@@ -63,7 +64,9 @@
                     <div id="chart-wrapper" data-width="50" data-height="25">
                         <canvas width="50" height="25"></canvas>
                     </div>
-                    <ul id="datasets-list"></ul>
+                    <table id="datasets-list">
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -98,6 +101,7 @@
 <script src="{{ url_for('static', filename='vendors/d3.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-datepicker/js/bootstrap-datepicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap-colorpicker/js/bootstrap-colorpicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/Chart.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
@@ -192,14 +196,63 @@
         loadData({
             company: companyId, rtype: rtypeId, timerange: timerange
         }, function(data) {
-            chart.appendDataset(data, rtypeName);
-            addDatasetItem(rtypeName);
+            try {
+                chart.appendDataset(data, rtypeName, rtypeName);
+                chart.update();
+                appendDatasetItem(rtypeName);
+            } 
+            catch(err) {
+                alert("Unable to append dataset to chart. Dataset already in use.");
+            }
         });
     });
 
-    function addDatasetItem(rtype) {
-        var $ul = $("#datasets-list");
-        $ul.append($("<li>" + rtype + "</li>"));
+    $(document).on("click", ".dataset-remove-btn", function() {
+        var datasetId = getDatasetId($(this));
+        chart.removeDataset(datasetId);
+        chart.update();
+        removeDatasetItem($(this));
+    });
+
+    function getDatasetId($item) {
+        return $item.closest("tr").attr("data-rtype");
+    }
+
+    function appendDatasetItem(rtype) {
+        var $datasets = $("#datasets-list");
+        $datasets.append(createDatasetRow(rtype));
+    }
+
+    function createDatasetRow(rtype) {
+        var $row = $("<tr></tr>");
+        $row.attr("data-rtype", rtype);
+        $row.append(wrapWith("td", createDatasetRemoveButton(rtype)));
+        $row.append($("<td>" + rtype + "</td>"));
+        $row.append(wrapWith("td", createColorPicker()));
+        return $row;
+    }
+
+    function createDatasetRemoveButton() {
+        return wrapWith("button",
+            $("<span></span>", {"class": "glyphicon glyphicon-remove"}),
+            {
+                "class": "btn btn-danger btn-xs dataset-remove-btn",
+                "type": "button", "tabindex": "-1"
+            }
+        ); 
+    }
+
+    function createColorPicker() {
+        var $div = wrapWith("div", [
+            $("<input></input>", {"type": "text", "class": "form-control"}),
+            wrapWith("span", $("<i></i>"), {"class": "input-group-addon"})
+        ], {"class": "input-group  input-group-sm colorpicker-component"});
+        $div.colorpicker();
+        return $div;
+    }
+
+    function removeDatasetItem($item) {
+        $item.closest("tr").remove();
     }
 </script>
 {% endblock %}
