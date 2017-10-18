@@ -91,13 +91,14 @@ function createCellWithRType(rtype) {
     );
 }
 
-
 function createCellWithRecord(record) {
-    if (record === null) {
-        return $("<td></td>");
+    var $cell = $("<td></td>");
+    if (record !== null) {
+        $cell.html(record.value);
+        $cell.attr("data-id", record.id);
+        $cell.attr("data-value", record.value);
     }
-    var $cell = $("<td>" + record.value + "</td>");
-    $cell.attr("data-id", record.id);
+    $cell.addClass("record-value");
     return $cell;
 }
 
@@ -190,35 +191,18 @@ function formatTimestamp(timestamp, format) {
     return timestamp.format(format);
 }
 
-function createCanvas(width, height) {
-    var $canvas = $("<canvas><canvas>");
-    $canvas.prop("width", width);
-    $canvas.prop("height", height);
-    return $canvas;
+jQuery.fn.formatRecords = function(callback) {
+    for(var i = 0; i < this.length; i++) {
+        formatNumbers($(this[i]), callback);
+    }
+    return this; 
+};
+
+function formatNumbers($table, callback) {
+    var records = $table.find(".record-value");
+    records.each(function() {
+        if (callback !== undefined) {
+            $(this).html(callback($(this).attr("data-value")));
+        }
+    });
 }
-
-function createChart(ctx, data, metadata) {
-    var barChart = new BarChart({ctx: ctx});
-    barChart.appendDataset(data);
-    barChart.appendDataset(data.slice(1,3));
-}
-
-// function updateChart(data, metadata) {
-//     if (data.length === 0) {
-//         alert("No data");
-//         return;
-//     }
-
-//     var $wrapper = $("#chart-wrapper");
-//     $wrapper.empty();
-
-//     var $canvas = $("<canvas><canvas>");
-//     $canvas.prop("width", $wrapper.attr("data-width"));
-//     $canvas.prop("height", $wrapper.attr("data-height"));
-//     $wrapper.append($canvas);
-//     $wrapper.append($canvas);
-
-//     var ctx = $canvas[0].getContext("2d");
-
-//     createChart(ctx, data, metadata);
-// }

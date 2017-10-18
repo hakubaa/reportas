@@ -1,6 +1,7 @@
 function BarChart(config) {
     this.ctx = config.ctx;
     this.timerange = config.timerange;
+    this.colorPicker = config.colorPicker;
     this.config = {
         type: "bar",
         data: {
@@ -36,6 +37,15 @@ BarChart.prototype.getDefaultOptions = function() {
     };
 }
 
+BarChart.prototype.setYAxisTicks = function(callback, index) {
+    if (index === undefined) index = 0;
+    this.config.options.scales.yAxes[index].ticks.callback = callback;
+}
+
+BarChart.prototype.setTooltipLabel = function(callback) {
+    this.config.options.tooltips.callbacks.label = callback;
+}
+
 BarChart.prototype.appendDataset = function(data, label, id) {
     if (this.indexOfDataset(id) >= 0) {
         throw "Dataset ID in use.";
@@ -47,6 +57,7 @@ BarChart.prototype.appendDataset = function(data, label, id) {
         });
         this.updateDatasets(dataset);
         this.chart.update();
+        return dataset;
     }
 }
 
@@ -86,7 +97,7 @@ BarChart.prototype.createDataset = function(config) {
     var options = {
         borderColor: "black",
         borderWidth: 1,
-        backgroundColor: this.createBackgroundColors(config.data)
+        backgroundColor: this.colorPicker.next()//this.createBackgroundColors(config.data)
     };
     $.extend(options, config)
     return options;
@@ -111,7 +122,7 @@ BarChart.prototype.updateDatasets = function(dataset) {
         this.appendMissingDataPoints(data);
         data = this.sortDataPoints(data);
         this.datasets[i].data = data;
-        this.datasets[i].backgroundColor = this.createBackgroundColors(data);
+        // this.datasets[i].backgroundColor = this.createBackgroundColors(data);
     }
 }
 

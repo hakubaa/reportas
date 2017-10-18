@@ -1,4 +1,8 @@
-﻿#DEPLOYMENTS ERRORS:
+﻿- examine why the notes for report 'Protektor 2013' were not removed
+- show only pages with financial statments, load rest if user requires
+- add buttons? to remove or add cells in the row at specific position
+
+#DEPLOYMENTS ERRORS:
 - synthetic records have not been created (decora q1 i m1)
 - financial statement type: change of default does not work (check other reprs)
 
@@ -7,7 +11,6 @@
 - default records (add information about point-in-time / period-of-time)
 - parser:
     - apply schema option
-- order book d3.js (free delivery?)
 - delete multiple records with one dbrequest
 - timestamp/timerange report - empty option
 - delete action: use wrapping request to group many delete requests

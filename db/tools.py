@@ -1,8 +1,9 @@
 import itertools
-from datetime import datetime
+from datetime import datetime, date
 from concurrent import futures
 import warnings
 from collections import namedtuple
+import csv
 
 import requests
 from sqlalchemy.exc import IntegrityError
@@ -163,3 +164,36 @@ def create_missing_records(records, company, fillrange):
         )
 
     return new_records
+
+
+def read_records_from_csv(fpath, session):
+    with open(fpath, newline="") as csvfile:
+        records = read_records(csvfile, session)
+    return records
+        
+
+def read_records(iostream, session):
+    records_reader = csv.DictReader(iostream, delimiter=";")
+    records = create_records(records_reader, session)
+    return records
+        
+
+def create_records(records_reader, session):
+    records = [ create_record(session, **data) for data in records_reader ]
+    return list(filter(bool, records))
+    
+    
+def create_record(session, **data):
+    try:
+        rtype = session.query(RecordType).filter_by(
+            name=data["Record Type"]
+        ).one()
+        company = session.query(Company).filter_by(name=data["Company"]).one()
+    except Exception:
+        return None        
+    else:
+        return Record(
+            rtype=rtype, company=company,
+            value=float(data["Value"]), timerange=int(data["Timerange"]),
+            timestamp=datetime.strptime(data["Timestamp"], "%Y-%m-%d").date()
+        )

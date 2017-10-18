@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Analytics{% endblock %}
+{% block title %}Analytics - CCAR - {{ company.name }}{% endblock %}
 
 {% block head_css %}
 {{ super() }}
@@ -21,13 +21,26 @@
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
             -ms-overflow-style: -ms-autohiding-scrollbar;
-            border: 1px solid #DDD;
         }
 
         #fintable-wrapper {
             /*max-height: 400px;*/
             /*overflow-y: scroll;*/
-            margin: 0 auto;
+            margin: 20px auto;
+        }
+        #fintable-wrapper table tbody td.record-value { 
+            white-space: nowrap;
+            text-align: right;
+            padding: 0px 20px;
+        }
+        #fintable-wrapper table thead th {
+            text-align: center;
+        }
+        #chart-wrapper {
+            margin: 20px;
+        }
+        #datasets-list td {
+            padding: 0px 10px;
         }
 
     </style>
@@ -52,17 +65,18 @@
             <option value="6">6</option>
             <option value="12" selected>12</option>
         </select>
+        <select class="record-uom" data-init-val="1000"></select>
     </div>
 
     <div id="fintable-wrapper" class="table-responsive"></div>
 
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-sm-12">
             <div class="panel panel-primary">
-                <div class="panel-heading">Panel Heading</div>
+                <div class="panel-heading">{{company.fullname}}</div>
                 <div class="panel-body">
-                    <div id="chart-wrapper" data-width="50" data-height="25">
-                        <canvas width="50" height="25"></canvas>
+                    <div id="chart-wrapper" data-width="50" data-height="20">
+                        <canvas width="50" height="20"></canvas>
                     </div>
                     <table id="datasets-list">
                         <tbody></tbody>
@@ -103,29 +117,61 @@
 <script src="{{ url_for('static', filename='vendors/bootstrap3-dialog/js/bootstrap-dialog.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/bootstrap-colorpicker/js/bootstrap-colorpicker.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/Chart.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dbmd_utils.js') }}"></script>
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+<script src="{{ url_for('static', filename='js/colors.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/numeral/numeral.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/numeral/locales/pl.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendors/select2/js/select2.full.min.js') }}"></script>
 <script>
+    numeral.locale("pl")
+
     var company = {
         "id": {{company.id}},
         "name": "{{company.name}}"
     };
 
+    var scp = new SequenceColorPicker([
+        "#5cbae6", "#b6d957", "#fac364", "#8cd3ff", "#d998cb", 
+        "#f2d249", "#93b9c6", "#ccc5a8", "#52bacc", "#dbdb46"
+    ]);
+
     var $canvas = $("#chart-wrapper").find("canvas");
     var chart = new BarChart({
         ctx: $canvas[0].getContext("2d"),
-        timerange: $("#timerange").val()
+        timerange: $("#timerange").val(),
+        colorPicker: scp
     });
+    chart.setYAxisTicks(function(value, index, values) {
+        return value/1000000 + "M";
+    });
+    chart.setTooltipLabel(function(item, data) {
+        var datasetLabel = data.datasets[item.datasetIndex].label;
+        return datasetLabel + ": " + item.yLabel/1000000 + "M";
+    });
+
+    $(".record-uom").bindUnitsOfMeasure();
+    $(".record-uom").val(1000).trigger("change");
+    $(document).on("change", ".record-uom", function() {
+        var divider = parseInt($(this).val());
+        $("#fintable-wrapper table").formatRecords(function(value) {
+            return numeral(value / divider).format("0,0.00");
+        })
+    }); 
 
     loadSchema({
         fschema: "{{fslayout_default.id}}", company: company["id"], 
         timerange: $("#timerange").val()
     }, function(data) {
         var $table = createTable(data, {
-            "class": "table table-striped table-bordered table-hover"
+            "class": "table table-striped table-bordered table-hover table-condensed"
         });
         $("#fintable-wrapper").append($table);
+        $table.formatRecords(function(value) {
+            var divider = 1000;
+            return numeral(value / divider).format("0,0.00");
+        });
     });
 
     $("#timerange").select2();
@@ -197,9 +243,12 @@
             company: companyId, rtype: rtypeId, timerange: timerange
         }, function(data) {
             try {
-                chart.appendDataset(data, rtypeName, rtypeName);
+                var dataset = chart.appendDataset(data, rtypeName, rtypeName);
                 chart.update();
-                appendDatasetItem(rtypeName);
+                appendDatasetItem({
+                    rtype: rtypeName, 
+                    backgroundColor: dataset.backgroundColor
+                });
             } 
             catch(err) {
                 alert("Unable to append dataset to chart. Dataset already in use.");
@@ -218,17 +267,18 @@
         return $item.closest("tr").attr("data-rtype");
     }
 
-    function appendDatasetItem(rtype) {
+    function appendDatasetItem(config) {
         var $datasets = $("#datasets-list");
-        $datasets.append(createDatasetRow(rtype));
+        $datasets.append(createDatasetRow(config));
     }
 
-    function createDatasetRow(rtype) {
+    function createDatasetRow(config) {
+        if (config === undefined) config = {};
         var $row = $("<tr></tr>");
-        $row.attr("data-rtype", rtype);
-        $row.append(wrapWith("td", createDatasetRemoveButton(rtype)));
-        $row.append($("<td>" + rtype + "</td>"));
-        $row.append(wrapWith("td", createColorPicker()));
+        $row.attr("data-rtype", config.rtype);
+        $row.append(wrapWith("td", createDatasetRemoveButton(config.rtype)));
+        $row.append($("<td>" + config.rtype + "</td>"));
+        $row.append(wrapWith("td", createColorPicker(config.backgroundColor)));
         return $row;
     }
 
@@ -242,9 +292,11 @@
         ); 
     }
 
-    function createColorPicker() {
+    function createColorPicker(color) {
         var $div = wrapWith("div", [
-            $("<input></input>", {"type": "text", "class": "form-control"}),
+            $("<input></input>", {
+                "type": "text", "class": "form-control", "value": color
+            }),
             wrapWith("span", $("<i></i>"), {"class": "input-group-addon"})
         ], {"class": "input-group  input-group-sm colorpicker-component"});
         $div.colorpicker();

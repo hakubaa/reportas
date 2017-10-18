@@ -3,6 +3,7 @@ from datetime import datetime, date
 from collections import UserDict
 import unittest
 import operator
+import io
 
 from tests.db import DbTestCase
 from tests.db.utils import *
@@ -193,3 +194,26 @@ class MissingRecordsTest(DbTestCase):
         self.assertEqual(len(dates), 3)
         self.assertCountEqual(dates, [date(2014, 9, 30), date(2014, 12, 31), 
             date(2015, 3, 31)])
+
+
+class LoadRecordsFromCsvTest(DbTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.file = io.StringIO(
+"""Record Type;Company;Timerange;Timestamp;Value
+BLS@PREVIOUSYEARSPROFIT;PROTEKTOR;0;2008-12-31;15785000
+BLS@EQUITYNOTOWNERS;PROTEKTOR;0;2009-12-31;1973000"""
+        )
+
+        company = create_company(self.db.session, name="PROTEKTOR", isin="IS")
+        ftype = create_ftype(self.db.session)
+        create_rtype(self.db.session, ftype, "BLS@PREVIOUSYEARSPROFIT")
+        create_rtype(self.db.session, ftype, "BLS@EQUITYNOTOWNERS")
+
+    def test_read_records_from_file(self):
+        records = tools.read_records(self.file, self.db.session)
+        
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0].value, 15785000)
+        self.assertEqual(records[0].rtype.name, "BLS@PREVIOUSYEARSPROFIT")

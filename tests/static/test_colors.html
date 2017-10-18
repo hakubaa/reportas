@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+    <head>
+        <title>rtab test</title>
+        <link rel="stylesheet" href="mocha.css">
+    </head>
+
+    <body>
+        <div id="fixture"></div>
+        <div id="mocha"></div>
+
+        <script src="jquery-1.7.1.min.js"></script>
+        <script src="mocha.js"></script>
+        <script src="chai.js"></script>
+        <script src="sinon-1.17.6.js"></script>
+        <script>mocha.setup("bdd");</script>
+
+        <!-- load code you want to test heere -->
+        <script src="../../app/static/js/colors.js"></script>
+
+        <!-- load your test files here -->
+        <script>
+
+        var assert = chai.assert;
+
+        describe("SeqColorPickerTest", function() {
+
+            it("next returns next color from sequence", function() {
+                var colors = [ "#5cbae6", "#b6d957", "#fac364", "#8cd3ff" ];
+                var scp = new SequenceColorPicker(colors);
+                
+                assert.equal(scp.next(), colors[0]);
+                assert.equal(scp.next(), colors[1]);
+            });     
+            
+            it("next loops colors in sequence", function() {
+                var colors = ["#5cbae6", "#b6d957"];
+                var scp = new SequenceColorPicker(colors);
+                scp.next(); scp.next();
+                
+                assert.equal(scp.next(), colors[0]);
+            });
+            
+            it("next throws exception when looping is turn off", function() {
+                var colors = ["#5cbae6", "#b6d957"];
+                var scp = new SequenceColorPicker(colors, loop=false);
+                scp.next(); scp.next();
+                
+                chai.expect(function() { scp.next(); })
+                    .to.throw(OutOfColorsError);
+            });
+            
+            it("reset sequence", function() {
+                var colors = ["#5cbae6", "#b6d957"];
+                var scp = new SequenceColorPicker(colors);  
+                scp.next();
+                
+                scp.reset();
+                assert.equal(scp.next(), colors[0]);
+            });
+            
+            it("next throws exception when empty sequence", function() {
+                var scp = new SequenceColorPicker([]);
+                
+                chai.expect(function() { scp.next(); })
+                    .to.throw(OutOfColorsError);
+            });
+            
+        });
+        </script>
+
+        <script>
+            mocha.run();
+        </script>
+    </body>
+
+</html>
