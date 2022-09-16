@@ -24,7 +24,7 @@ idna==2.6
 itsdangerous==0.24
 Jinja2==2.9.6
 lxml==3.8.0
-Mako==1.0.7
+Mako==1.2.2
 MarkupSafe==1.0
 marshmallow==2.13.5
 marshmallow-sqlalchemy==0.13.1
